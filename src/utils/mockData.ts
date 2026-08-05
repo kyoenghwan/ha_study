@@ -1,4 +1,10 @@
-import type { Room, Reservation, BankInfo, AdminBarcodeItem } from '../types';
+import type { Room, Reservation, BankInfo, AdminBarcodeItem, MasterBarcode } from '../types';
+
+export const INITIAL_MASTER_BARCODE: MasterBarcode = {
+  type: 'number',
+  value: '*M091063684*',
+  updatedAt: '2026-08-05',
+};
 
 export const getTodayDateString = () => {
   const today = new Date();

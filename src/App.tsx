@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem } from './types';
-import { INITIAL_ROOMS, INITIAL_RESERVATIONS, INITIAL_BANK_INFO, INITIAL_ADMIN_BARCODES } from './utils/mockData';
+import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode } from './types';
+import { INITIAL_ROOMS, INITIAL_RESERVATIONS, INITIAL_BANK_INFO, INITIAL_ADMIN_BARCODES, INITIAL_MASTER_BARCODE } from './utils/mockData';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
@@ -12,6 +12,7 @@ function App() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [adminBarcodes, setAdminBarcodes] = useState<AdminBarcodeItem[]>([]);
+  const [masterBarcode, setMasterBarcode] = useState<MasterBarcode>(INITIAL_MASTER_BARCODE);
   const [bankInfo, setBankInfo] = useState<BankInfo>(INITIAL_BANK_INFO);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   
@@ -24,6 +25,7 @@ function App() {
     const savedRooms = localStorage.getItem('lheureux_rooms');
     const savedReservations = localStorage.getItem('lheureux_reservations');
     const savedAdminBarcodes = localStorage.getItem('lheureux_admin_barcodes');
+    const savedMasterBarcode = localStorage.getItem('lheureux_master_barcode');
     const savedPoints = localStorage.getItem('lheureux_user_points');
     const savedBankInfo = localStorage.getItem('lheureux_bank_info');
 
@@ -46,6 +48,13 @@ function App() {
     } else {
       setAdminBarcodes(INITIAL_ADMIN_BARCODES);
       localStorage.setItem('lheureux_admin_barcodes', JSON.stringify(INITIAL_ADMIN_BARCODES));
+    }
+
+    if (savedMasterBarcode) {
+      setMasterBarcode(JSON.parse(savedMasterBarcode));
+    } else {
+      setMasterBarcode(INITIAL_MASTER_BARCODE);
+      localStorage.setItem('lheureux_master_barcode', JSON.stringify(INITIAL_MASTER_BARCODE));
     }
 
     if (savedPoints) {
@@ -79,6 +88,11 @@ function App() {
     localStorage.setItem('lheureux_admin_barcodes', JSON.stringify(newBarcodes));
   };
 
+  const handleUpdateMasterBarcode = (barcode: MasterBarcode) => {
+    setMasterBarcode(barcode);
+    localStorage.setItem('lheureux_master_barcode', JSON.stringify(barcode));
+  };
+
   const handleUpdateBankInfo = (newInfo: BankInfo) => {
     setBankInfo(newInfo);
     localStorage.setItem('lheureux_bank_info', JSON.stringify(newInfo));
@@ -89,7 +103,7 @@ function App() {
     localStorage.setItem('lheureux_user_points', String(nextPoints));
   };
 
-  // 관리자 사전 등록 바코드 추가
+  // 관리자 사전 등록 바코드 추가 (레거시/향후용)
   const handleAddAdminBarcode = (barcodeStr: string) => {
     const formatted = barcodeStr.startsWith('*') ? barcodeStr : `*${barcodeStr}*`;
     const newItem: AdminBarcodeItem = {
@@ -101,7 +115,7 @@ function App() {
     updateAdminBarcodes([...adminBarcodes, newItem]);
   };
 
-  // 관리자 바코드 삭제
+  // 관리자 바코드 삭제 (레거시/향후용)
   const handleDeleteAdminBarcode = (id: string) => {
     updateAdminBarcodes(adminBarcodes.filter(b => b.id !== id));
   };
@@ -135,7 +149,7 @@ function App() {
     updateReservations(filteredReservations);
   };
 
-  // 관리자 등록 바코드 풀에서 순차 할당 헬퍼
+  /* [향후 확장용] 레거시 유저 1:1 바코드 풀 할당 헬퍼 (현재는 단순화 모드)
   const getNextAvailableAdminBarcode = (userName: string, reservationId: string): string => {
     const available = adminBarcodes.find(b => b.status === 'available');
     if (available) {
@@ -147,8 +161,6 @@ function App() {
       updateAdminBarcodes(updatedBarcodes);
       return available.barcodeId;
     }
-
-    // 미할당 사전등록 바코드가 없을 경우 규격 포맷(*M091063xxx*)으로 등록 후 즉시 할당
     const num = Math.floor(1000 + Math.random() * 9000);
     const newBarcodeStr = `*M091063${num}*`;
     const newBarcodeObj: AdminBarcodeItem = {
@@ -162,6 +174,7 @@ function App() {
     updateAdminBarcodes([...adminBarcodes, newBarcodeObj]);
     return newBarcodeStr;
   };
+  */
 
   // 신규 예약 신청 (단일/다중 슬롯, 결제 수단 지원)
   const handleAddReservations = (
@@ -186,7 +199,8 @@ function App() {
 
     const newReservations: Reservation[] = slots.map((slot, index) => {
       const resId = `res-${Date.now()}-${index}`;
-      const assignedBarcode = getNextAvailableAdminBarcode(userName, resId);
+      // 유저별 개별 할당 대신 대표 바코드 적용 (단순 모드)
+      const assignedBarcode = masterBarcode?.value || '*M091063684*';
       
       return {
         id: resId,
@@ -277,7 +291,11 @@ function App() {
   // 바코드 검증 및 입장 처리
   const handleVerifyBarcode = (barcodeId: string): { success: boolean; message: string; reservation?: Reservation } => {
     const cleanId = barcodeId.trim().toUpperCase();
-    const res = reservations.find((r) => r.barcodeId.toUpperCase() === cleanId || r.barcodeId.replace(/\*/g, '').toUpperCase() === cleanId.replace(/\*/g, ''));
+    const res = reservations.find((r) => 
+      r.barcodeId.toUpperCase() === cleanId || 
+      r.barcodeId.replace(/\*/g, '').toUpperCase() === cleanId.replace(/\*/g, '') ||
+      (masterBarcode.value && masterBarcode.value.replace(/\*/g, '').toUpperCase() === cleanId.replace(/\*/g, ''))
+    );
 
     if (!res) {
       return { success: false, message: '존재하지 않거나 올바르지 않은 바코드 번호입니다.' };
@@ -291,7 +309,6 @@ function App() {
       return { success: false, message: `이미 입장/사용 완료 처리된 바코드입니다. (${res.userName}님)` };
     }
 
-    // 바코드 사용 완료(used) 처리 & 바코드 풀 상태 변경
     const updated = reservations.map((r) => {
       if (r.id === res.id) {
         return { ...r, barcodeStatus: 'used' as const };
@@ -299,15 +316,7 @@ function App() {
       return r;
     });
 
-    const updatedAdminBarcodes = adminBarcodes.map(b => {
-      if (b.barcodeId === res.barcodeId || b.assignedReservationId === res.id) {
-        return { ...b, status: 'used' as const };
-      }
-      return b;
-    });
-
     updateReservations(updated);
-    updateAdminBarcodes(updatedAdminBarcodes);
 
     const room = rooms.find((r) => r.id === res.roomId);
     return {
@@ -367,7 +376,7 @@ function App() {
               </div>
               <div className="text-center">
                 <h3 className="text-base font-bold text-[#1c1c1e]">이용자 예약하기</h3>
-                <p className="text-xs text-[#8e8e93] mt-1">실시간 공부방 스케줄을 확인하고 예약합니다.</p>
+                <p className="text-xs text-[#8e8e93] mt-1">실시간 공부방 스케줄을 확인하고 예약을 진행합니다.</p>
               </div>
             </div>
 
@@ -380,7 +389,7 @@ function App() {
               </div>
               <div className="text-center">
                 <h3 className="text-base font-bold text-[#1c1c1e]">관리자 시스템</h3>
-                <p className="text-xs text-[#8e8e93] mt-1">공부방 생성, 사전 바코드 등록, 장기 예약 및 매출을 관리합니다.</p>
+                <p className="text-xs text-[#8e8e93] mt-1">공부방 생성, 출입 바코드 사진/번호 등록 및 매출을 관리합니다.</p>
               </div>
             </div>
           </div>
@@ -450,6 +459,7 @@ function App() {
             reservations={reservations}
             bankInfo={bankInfo}
             adminBarcodes={adminBarcodes}
+            masterBarcode={masterBarcode}
             onAddRoom={handleAddRoom}
             onDeleteRoom={handleDeleteRoom}
             onCancelReservation={handleCancelReservation}
@@ -461,6 +471,7 @@ function App() {
             onAddAdminBarcode={handleAddAdminBarcode}
             onDeleteAdminBarcode={handleDeleteAdminBarcode}
             onUpdateReservationBarcode={handleUpdateReservationBarcode}
+            onUpdateMasterBarcode={handleUpdateMasterBarcode}
           />
         ) : selectedRoomId && selectedRoom ? (
           <Scheduler
@@ -475,6 +486,7 @@ function App() {
             rooms={rooms}
             reservations={reservations}
             bankInfo={bankInfo}
+            masterBarcode={masterBarcode}
             onSelectRoom={(roomId) => setSelectedRoomId(roomId)}
           />
         )}

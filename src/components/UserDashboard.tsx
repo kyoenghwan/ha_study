@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Room, Reservation, BankInfo } from '../types';
+import type { Room, Reservation, BankInfo, MasterBarcode } from '../types';
 import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
 
@@ -7,6 +7,7 @@ interface UserDashboardProps {
   rooms: Room[];
   reservations: Reservation[];
   bankInfo: BankInfo;
+  masterBarcode?: MasterBarcode;
   onSelectRoom: (roomId: string) => void;
 }
 
@@ -14,6 +15,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   rooms,
   reservations,
   bankInfo,
+  masterBarcode,
   onSelectRoom,
 }) => {
   const [showMyReservationsModal, setShowMyReservationsModal] = useState(false);
@@ -153,9 +155,23 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               <p className="text-xs text-[#8e8e93]">이용자: {activeBarcodeReservation.userName}님 ({activeBarcodeReservation.userPhone})</p>
             </div>
 
-            {/* 📊 진짜 막대 바코드 렌더링 */}
-            <div className="py-2">
-              <BarcodeView value={activeBarcodeReservation.barcodeId} width={280} height={90} />
+            {/* 📊 대표 출입 바코드 렌더링 (사진 또는 막대 그래프) */}
+            <div className="py-2 flex justify-center">
+              {masterBarcode?.type === 'image' ? (
+                <div className="space-y-2">
+                  <img
+                    src={masterBarcode.value}
+                    alt="등록된 출입 바코드"
+                    className="max-h-64 object-contain mx-auto rounded-xl border border-[#e5e5ea] shadow-sm"
+                  />
+                  <p className="text-[10px] text-[#8e8e93]">관리자 등록 바코드 이미지</p>
+                </div>
+              ) : (
+                <BarcodeView
+                  value={masterBarcode?.value || activeBarcodeReservation.barcodeId}
+                  height={90}
+                />
+              )}
             </div>
 
             <div className="bg-[#f8f9fa] p-3 rounded-xl text-[11px] text-[#8e8e93] space-y-1">

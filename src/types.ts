@@ -41,5 +41,11 @@ export interface AdminBarcodeItem {
   createdAt: string;
 }
 
+export interface MasterBarcode {
+  type: 'number' | 'image';
+  value: string;
+  updatedAt: string;
+}
+
 export type Role = 'admin' | 'user';
 

@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem } from '../types';
+import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode } from '../types';
 import { 
   Plus, Trash2, Calendar, Edit2, CheckCircle2, AlertCircle, 
-  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange 
+  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload 
 } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
-
 
 interface AdminDashboardProps {
   rooms: Room[];
   reservations: Reservation[];
   bankInfo: BankInfo;
   adminBarcodes?: AdminBarcodeItem[];
+  masterBarcode?: MasterBarcode;
   onAddRoom: (room: Omit<Room, 'id'>) => void;
   onDeleteRoom: (roomId: string) => void;
   onCancelReservation: (resId: string) => void;
@@ -26,11 +26,11 @@ interface AdminDashboardProps {
   onAddAdminBarcode?: (barcodeId: string) => void;
   onDeleteAdminBarcode?: (id: string) => void;
   onUpdateReservationBarcode?: (resId: string, newBarcodeId: string) => void;
+  onUpdateMasterBarcode?: (barcode: MasterBarcode) => void;
 }
 
 type TabType = 'rooms_reservations' | 'long_term_bulk' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
 
-// 06:00 ~ 24:00 (30분 단위) 타임 옵션 생성
 const generateTimeOptions = () => {
   const options: string[] = [];
   for (let hour = 6; hour <= 24; hour++) {
@@ -50,6 +50,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   reservations,
   bankInfo,
   adminBarcodes = [],
+  masterBarcode,
   onAddRoom,
   onDeleteRoom,
   onCancelReservation,
@@ -61,6 +62,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onAddAdminBarcode,
   onDeleteAdminBarcode,
   onUpdateReservationBarcode,
+  onUpdateMasterBarcode,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('rooms_reservations');
 
@@ -786,6 +788,107 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* TAB 4: 바코드 검증 & 사전 등록 풀(Pool) 관리 */}
         {activeTab === 'barcode_management' && (
           <div className="space-y-6">
+            {/* 0. 대표 출입 바코드 사진 등록 & 번호 수동 설정 카드 */}
+            <div className="bg-[#ffffff] border-2 border-[#b09168]/40 p-5 rounded-2xl shadow-md space-y-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#1c1c1e] flex items-center gap-1.5">
+                    <Camera className="text-[#b09168]" size={20} /> 이용자 대표 출입 바코드 등록 (사진 촬영 / 번호 입력)
+                  </h3>
+                  <p className="text-xs text-[#8e8e93]">
+                    바코드 사진을 찍어 업로드하거나 번호를 입력하면, 예약 완료된 모든 이용자의 출입 화면에 활성화되어 노출됩니다.
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-[#b09168] border border-[#b09168]/30 px-2.5 py-1 rounded-full bg-[#b09168]/10 shrink-0">
+                  현재 상태: {masterBarcode?.type === 'image' ? '🖼️ 사진 이미지 바코드' : '🔢 번호 바코드'}
+                </span>
+              </div>
+
+              {/* 등록 방법 탭 및 입력 폼 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                {/* 방법 A: 사진 촬영 / 이미지 파일 업로드 */}
+                <div className="border border-[#e5e5ea] rounded-xl p-3.5 bg-[#f8f9fa] space-y-2">
+                  <h4 className="text-xs font-bold text-[#1c1c1e] flex items-center gap-1">
+                    <Upload size={14} className="text-[#b09168]" /> 1. 바코드 사진 촬영 / 파일 업로드
+                  </h4>
+                  <p className="text-[11px] text-[#8e8e93]">실물 바코드 사진(JPG, PNG)을 올리시면 이용자 팝업에 바코드 사진으로 노출됩니다.</p>
+                  
+                  <label className="gold-btn w-full py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-center">
+                    <Camera size={16} /> 사진 촬영 / 파일 선택
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && onUpdateMasterBarcode) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            const dataUrl = event.target?.result as string;
+                            onUpdateMasterBarcode({
+                              type: 'image',
+                              value: dataUrl,
+                              updatedAt: new Date().toISOString().split('T')[0],
+                            });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {/* 방법 B: 바코드 번호 직접 입력 */}
+                <div className="border border-[#e5e5ea] rounded-xl p-3.5 bg-[#f8f9fa] space-y-2">
+                  <h4 className="text-xs font-bold text-[#1c1c1e] flex items-center gap-1">
+                    <QrCode size={14} className="text-[#b09168]" /> 2. 바코드 번호 직접 입력
+                  </h4>
+                  <p className="text-[11px] text-[#8e8e93]">예: *M091063684* 번호를 입력하시면 막대 바코드로 렌더링됩니다.</p>
+                  
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      defaultValue={masterBarcode?.type === 'number' ? masterBarcode.value : '*M091063684*'}
+                      id="master-barcode-num-input"
+                      placeholder="예: *M091063684*"
+                      className="form-input text-xs flex-1 py-2"
+                    />
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('master-barcode-num-input') as HTMLInputElement;
+                        const val = el?.value?.trim();
+                        if (val && onUpdateMasterBarcode) {
+                          const formatted = val.startsWith('*') ? val : `*${val}*`;
+                          onUpdateMasterBarcode({
+                            type: 'number',
+                            value: formatted,
+                            updatedAt: new Date().toISOString().split('T')[0],
+                          });
+                        }
+                      }}
+                      className="gold-btn-outline px-3 py-2 text-xs font-bold rounded-xl shrink-0"
+                    >
+                      번호 저장
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 현재 적용 중인 대표 바코드 미리보기 */}
+              <div className="bg-[#f8f9fa] p-3 rounded-xl border border-[#e5e5ea] text-center space-y-1">
+                <p className="text-[10px] font-bold text-[#8e8e93] pb-1">현재 이용자 출입 모달에 노출되는 바코드 미리보기</p>
+                {masterBarcode?.type === 'image' ? (
+                  <img
+                    src={masterBarcode.value}
+                    alt="등록된 대표 바코드 사진"
+                    className="max-h-48 object-contain mx-auto rounded-lg border border-[#e5e5ea]"
+                  />
+                ) : (
+                  <BarcodeView value={masterBarcode?.value || '*M091063684*'} height={75} />
+                )}
+              </div>
+            </div>
             {/* 1. 관리자 고유 바코드 사전 등록 풀 (Pool) */}
             <div className="bg-white border border-[#e5e5ea] p-5 rounded-xl shadow-sm space-y-4">
               <div className="flex justify-between items-start">
