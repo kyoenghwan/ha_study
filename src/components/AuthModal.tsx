@@ -70,7 +70,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     });
 
     if (res.success) {
-      setRegSuccessMsg('회원가입이 완료되었습니다! 로그인 탭에서 로그인해 주세요.');
+      setRegSuccessMsg('회원가입이 완료되었습니다! 로그인해 주세요.');
       setTimeout(() => {
         setTab('login');
         setLoginUserId(regUserId);
@@ -85,8 +85,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 bg-white rounded-3xl shadow-xl border border-[#e5e5ea] space-y-6">
-      {/* 로고 & 타이틀 */}
+    <div className="w-full max-w-sm mx-auto p-2 space-y-6">
+      {/* 르하임 브랜드 로고 & 타이틀 */}
       <div className="text-center space-y-2">
         <img
           src={logoImg}
@@ -98,68 +98,74 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           스터디카페 여의도점
         </h2>
         <p className="text-xs text-[#8e8e93]">
-          로그인 후 공부방 예약 및 관리자 시스템을 이용하세요.
+          로그인 후 공부방 예약 및 시스템을 이용하세요.
         </p>
       </div>
 
-      {/* 탭 전환 (로그인 / 회원가입) */}
-      <div className="flex bg-[#f4f4f7] p-1 rounded-2xl border border-[#e5e5ea]">
+      {/* 탭 메뉴 (로그인 / 회원가입) */}
+      <div className="flex border-b border-[#e5e5ea]">
         <button
           onClick={() => {
             setTab('login');
             setLoginError('');
           }}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 ${
+          className={`flex-1 py-3 text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
             tab === 'login'
-              ? 'bg-white text-[#b09168] shadow-sm'
+              ? 'text-[#b09168] border-b-2 border-[#b09168]'
               : 'text-[#8e8e93] hover:text-[#1c1c1e]'
           }`}
         >
-          <LogIn size={14} /> 로그인
+          <LogIn size={15} /> 로그인
         </button>
         <button
           onClick={() => {
             setTab('register');
             setRegError('');
           }}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 ${
+          className={`flex-1 py-3 text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
             tab === 'register'
-              ? 'bg-white text-[#b09168] shadow-sm'
+              ? 'text-[#b09168] border-b-2 border-[#b09168]'
               : 'text-[#8e8e93] hover:text-[#1c1c1e]'
           }`}
         >
-          <UserPlus size={14} /> 회원가입
+          <UserPlus size={15} /> 회원가입
         </button>
       </div>
 
-      {/* 1. 로그인 폼 */}
+      {/* 1. 로그인 폼 (왼쪽 라벨 - 오른쪽 입력필드 수평 레이아웃) */}
       {tab === 'login' && (
-        <form onSubmit={handleLoginSubmit} className="space-y-4">
+        <form onSubmit={handleLoginSubmit} className="space-y-4 pt-2">
           <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-[#1c1c1e] mb-1">아이디</label>
-              <div className="relative">
+            {/* 아이디 Row */}
+            <div className="flex items-center gap-2">
+              <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right pr-1">
+                아이디
+              </label>
+              <div className="flex-1 relative">
                 <User size={15} className="absolute left-3 top-3 text-[#8e8e93]" />
                 <input
                   type="text"
                   value={loginUserId}
                   onChange={(e) => setLoginUserId(e.target.value)}
-                  placeholder="아이디 입력 (테스트: user1 또는 admin)"
-                  className="form-input text-xs w-full pl-9"
+                  placeholder="아이디 입력 (user1 / admin)"
+                  className="form-input text-xs w-full pl-9 py-2.5"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-[#1c1c1e] mb-1">비밀번호</label>
-              <div className="relative">
+            {/* 비밀번호 Row */}
+            <div className="flex items-center gap-2">
+              <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right pr-1">
+                비밀번호
+              </label>
+              <div className="flex-1 relative">
                 <Lock size={15} className="absolute left-3 top-3 text-[#8e8e93]" />
                 <input
                   type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="비밀번호 입력 (테스트: 123)"
-                  className="form-input text-xs w-full pl-9"
+                  className="form-input text-xs w-full pl-9 py-2.5"
                 />
               </div>
             </div>
@@ -171,12 +177,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </p>
           )}
 
-          <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
+          <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow mt-2">
             로그인하기
           </button>
 
           {/* 테스트 빠른 접속 가이드 */}
-          <div className="bg-[#f8f9fa] p-3 rounded-2xl border border-[#e5e5ea] text-[11px] text-[#8e8e93] space-y-1">
+          <div className="bg-[#f8f9fa] p-3 rounded-2xl border border-[#e5e5ea] text-[11px] text-[#8e8e93] space-y-1 mt-4">
             <p className="font-bold text-[#b09168] flex items-center gap-1">
               <Sparkles size={12} /> 빠른 테스트 계정
             </p>
@@ -210,80 +216,95 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </form>
       )}
 
-      {/* 2. 회원가입 폼 */}
+      {/* 2. 회원가입 폼 (수평 레이아웃) */}
       {tab === 'register' && (
-        <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-          <div>
-            <label className="block text-xs font-bold text-[#1c1c1e] mb-1">회원 유형 선택</label>
-            <div className="grid grid-cols-2 gap-2">
+        <form onSubmit={handleRegisterSubmit} className="space-y-3 pt-2">
+          {/* 가입 유형 선택 Row */}
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right pr-1">
+              가입 유형
+            </label>
+            <div className="flex-1 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setRegRole('user')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${
                   regRole === 'user'
                     ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
                     : 'border-[#e5e5ea] text-[#8e8e93]'
                 }`}
               >
-                <User size={15} /> 일반 이용자
+                <User size={13} /> 일반 이용자
               </button>
               <button
                 type="button"
                 onClick={() => setRegRole('admin')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${
                   regRole === 'admin'
                     ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
                     : 'border-[#e5e5ea] text-[#8e8e93]'
                 }`}
               >
-                <Shield size={15} /> 지점 관리자
+                <Shield size={13} /> 지점 관리자
               </button>
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#1c1c1e] mb-1">아이디</label>
+          {/* 아이디 Row */}
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right pr-1">
+              아이디
+            </label>
             <input
               type="text"
               value={regUserId}
               onChange={(e) => setRegUserId(e.target.value)}
-              placeholder="영문/숫자 아이디"
-              className="form-input text-xs w-full"
+              placeholder="아이디 입력"
+              className="form-input text-xs flex-1 py-2"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#1c1c1e] mb-1">비밀번호</label>
+          {/* 비밀번호 Row */}
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right pr-1">
+              비밀번호
+            </label>
             <input
               type="password"
               value={regPassword}
               onChange={(e) => setRegPassword(e.target.value)}
-              placeholder="비밀번호"
-              className="form-input text-xs w-full"
+              placeholder="비밀번호 입력"
+              className="form-input text-xs flex-1 py-2"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#1c1c1e] mb-1">이름 (성함)</label>
+          {/* 이름 Row */}
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right pr-1">
+              이름
+            </label>
             <input
               type="text"
               value={regName}
               onChange={(e) => setRegName(e.target.value)}
               placeholder="예: 홍길동"
-              className="form-input text-xs w-full"
+              className="form-input text-xs flex-1 py-2"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#1c1c1e] mb-1">휴대폰 번호</label>
-            <div className="relative">
-              <Phone size={14} className="absolute left-3 top-3 text-[#8e8e93]" />
+          {/* 휴대폰 번호 Row */}
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right pr-1">
+              연락처
+            </label>
+            <div className="flex-1 relative">
+              <Phone size={14} className="absolute left-3 top-2.5 text-[#8e8e93]" />
               <input
                 type="text"
                 value={regPhone}
                 onChange={(e) => setRegPhone(e.target.value)}
                 placeholder="예: 010-1234-5678"
-                className="form-input text-xs w-full pl-9"
+                className="form-input text-xs w-full pl-8 py-2"
               />
             </div>
           </div>
@@ -300,7 +321,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </p>
           )}
 
-          <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
+          <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow mt-2">
             회원가입 완료
           </button>
         </form>
