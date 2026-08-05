@@ -47,5 +47,15 @@ export interface MasterBarcode {
   updatedAt: string;
 }
 
+export interface UserAccount {
+  id: string;
+  userId: string;
+  password?: string;
+  name: string;
+  phone: string;
+  role: Role;
+  points: number;
+}
+
 export type Role = 'admin' | 'user';
 

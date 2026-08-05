@@ -50,7 +50,7 @@ body {
   overflow: hidden;
 }
 
-/* Mobile Frame Container */
+/* Mobile & Tablet Frame Container */
 #root {
   width: 100%;
   max-width: 480px;
@@ -63,6 +63,12 @@ body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 관리자 모드: 모바일 & 태블릿 & 데스크톱 대형 반응형 확장 */
+#root.admin-mode {
+  max-width: 1200px;
 }
 
 @media (min-width: 481px) {
@@ -70,6 +76,10 @@ body {
     height: 92vh;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
+  }
+
+  #root.admin-mode {
+    height: 95vh;
   }
 }
 

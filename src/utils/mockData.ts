@@ -1,10 +1,31 @@
-import type { Room, Reservation, BankInfo, AdminBarcodeItem, MasterBarcode } from '../types';
+import type { Room, Reservation, BankInfo, AdminBarcodeItem, MasterBarcode, UserAccount } from '../types';
 
 export const INITIAL_MASTER_BARCODE: MasterBarcode = {
   type: 'number',
   value: '*M091063684*',
   updatedAt: '2026-08-05',
 };
+
+export const INITIAL_USERS: UserAccount[] = [
+  {
+    id: 'user-1',
+    userId: 'user1',
+    password: '123',
+    name: '홍길동',
+    phone: '010-1234-5678',
+    role: 'user',
+    points: 20000,
+  },
+  {
+    id: 'user-2',
+    userId: 'admin',
+    password: '123',
+    name: '최고관리자',
+    phone: '010-9999-8888',
+    role: 'admin',
+    points: 999000,
+  },
+];
 
 export const getTodayDateString = () => {
   const today = new Date();

@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
-import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode } from './types';
-import { INITIAL_ROOMS, INITIAL_RESERVATIONS, INITIAL_BANK_INFO, INITIAL_ADMIN_BARCODES, INITIAL_MASTER_BARCODE } from './utils/mockData';
+import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode, UserAccount } from './types';
+import { INITIAL_ROOMS, INITIAL_RESERVATIONS, INITIAL_BANK_INFO, INITIAL_ADMIN_BARCODES, INITIAL_MASTER_BARCODE, INITIAL_USERS } from './utils/mockData';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
-import { Shield, User, LogOut, Coins, Plus } from 'lucide-react';
+import { AuthModal } from './components/AuthModal';
+import { Shield, User, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Check } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 
 function App() {
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [users, setUsers] = useState<UserAccount[]>([]);
   const [role, setRole] = useState<Role | null>(null);
+  
   const [rooms, setRooms] = useState<Room[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [adminBarcodes, setAdminBarcodes] = useState<AdminBarcodeItem[]>([]);
@@ -16,18 +20,32 @@ function App() {
   const [bankInfo, setBankInfo] = useState<BankInfo>(INITIAL_BANK_INFO);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   
-  // 가상 포인트 시스템 상태
-  const [userPoints, setUserPoints] = useState<number>(20000);
+  // 지점 선택 상태
+  const [selectedBranch, setSelectedBranch] = useState<string>('yeouido');
+
+  // 포인트 충전 모달 상태
   const [showPointModal, setShowPointModal] = useState<boolean>(false);
 
-  // 로컬 스토리지로부터 데이터 로드
+  // 로컬 스토리지 데이터 동기화
   useEffect(() => {
+    const savedUsers = localStorage.getItem('lheureux_users');
+    const savedCurrentUser = localStorage.getItem('lheureux_current_user');
     const savedRooms = localStorage.getItem('lheureux_rooms');
     const savedReservations = localStorage.getItem('lheureux_reservations');
     const savedAdminBarcodes = localStorage.getItem('lheureux_admin_barcodes');
     const savedMasterBarcode = localStorage.getItem('lheureux_master_barcode');
-    const savedPoints = localStorage.getItem('lheureux_user_points');
     const savedBankInfo = localStorage.getItem('lheureux_bank_info');
+
+    if (savedUsers) {
+      setUsers(JSON.parse(savedUsers));
+    } else {
+      setUsers(INITIAL_USERS);
+      localStorage.setItem('lheureux_users', JSON.stringify(INITIAL_USERS));
+    }
+
+    if (savedCurrentUser) {
+      setCurrentUser(JSON.parse(savedCurrentUser));
+    }
 
     if (savedRooms) {
       setRooms(JSON.parse(savedRooms));
@@ -57,13 +75,6 @@ function App() {
       localStorage.setItem('lheureux_master_barcode', JSON.stringify(INITIAL_MASTER_BARCODE));
     }
 
-    if (savedPoints) {
-      setUserPoints(Number(savedPoints));
-    } else {
-      setUserPoints(20000);
-      localStorage.setItem('lheureux_user_points', '20000');
-    }
-
     if (savedBankInfo) {
       setBankInfo(JSON.parse(savedBankInfo));
     } else {
@@ -72,7 +83,34 @@ function App() {
     }
   }, []);
 
+  // 관리자 반응형 레이아웃 토글 (#root 엘리먼트 클래스 조절)
+  useEffect(() => {
+    const rootEl = document.getElementById('root');
+    if (rootEl) {
+      if (role === 'admin') {
+        rootEl.classList.add('admin-mode');
+      } else {
+        rootEl.classList.remove('admin-mode');
+      }
+    }
+  }, [role]);
+
   // 상태 업데이트 및 로컬 스토리지 동기화 헬퍼 함수
+  const updateUsers = (newUsers: UserAccount[]) => {
+    setUsers(newUsers);
+    localStorage.setItem('lheureux_users', JSON.stringify(newUsers));
+  };
+
+  const updateCurrentUser = (user: UserAccount | null) => {
+    setCurrentUser(user);
+    if (user) {
+      localStorage.setItem('lheureux_current_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('lheureux_current_user');
+      setRole(null);
+    }
+  };
+
   const updateRooms = (newRooms: Room[]) => {
     setRooms(newRooms);
     localStorage.setItem('lheureux_rooms', JSON.stringify(newRooms));
@@ -99,8 +137,39 @@ function App() {
   };
 
   const handleUpdatePoints = (nextPoints: number) => {
-    setUserPoints(nextPoints);
-    localStorage.setItem('lheureux_user_points', String(nextPoints));
+    if (!currentUser) return;
+    const updatedUser = { ...currentUser, points: nextPoints };
+    updateCurrentUser(updatedUser);
+    
+    const updatedUsers = users.map(u => u.id === currentUser.id ? updatedUser : u);
+    updateUsers(updatedUsers);
+  };
+
+  // 신규 회원가입 처리
+  const handleRegisterUser = (newUser: Omit<UserAccount, 'id'>): { success: boolean; message?: string } => {
+    const exists = users.some(u => u.userId === newUser.userId);
+    if (exists) {
+      return { success: false, message: '이미 존재하는 아이디입니다.' };
+    }
+
+    const createdUser: UserAccount = {
+      ...newUser,
+      id: `user-${Date.now()}`,
+    };
+
+    updateUsers([...users, createdUser]);
+    return { success: true };
+  };
+
+  // 로그인 성공 처리
+  const handleLoginSuccess = (user: UserAccount) => {
+    updateCurrentUser(user);
+  };
+
+  // 로그아웃
+  const handleLogout = () => {
+    updateCurrentUser(null);
+    setSelectedRoomId(null);
   };
 
   // 관리자 사전 등록 바코드 추가 (레거시/향후용)
@@ -149,33 +218,6 @@ function App() {
     updateReservations(filteredReservations);
   };
 
-  /* [향후 확장용] 레거시 유저 1:1 바코드 풀 할당 헬퍼 (현재는 단순화 모드)
-  const getNextAvailableAdminBarcode = (userName: string, reservationId: string): string => {
-    const available = adminBarcodes.find(b => b.status === 'available');
-    if (available) {
-      const updatedBarcodes = adminBarcodes.map(b => 
-        b.id === available.id 
-          ? { ...b, status: 'assigned' as const, assignedToUserName: userName, assignedReservationId: reservationId }
-          : b
-      );
-      updateAdminBarcodes(updatedBarcodes);
-      return available.barcodeId;
-    }
-    const num = Math.floor(1000 + Math.random() * 9000);
-    const newBarcodeStr = `*M091063${num}*`;
-    const newBarcodeObj: AdminBarcodeItem = {
-      id: `bc-${Date.now()}`,
-      barcodeId: newBarcodeStr,
-      status: 'assigned',
-      assignedToUserName: userName,
-      assignedReservationId: reservationId,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    updateAdminBarcodes([...adminBarcodes, newBarcodeObj]);
-    return newBarcodeStr;
-  };
-  */
-
   // 신규 예약 신청 (단일/다중 슬롯, 결제 수단 지원)
   const handleAddReservations = (
     slots: Array<{ date: string; start: string; end: string }>,
@@ -190,16 +232,16 @@ function App() {
     }
 
     const totalCost = slots.length * 4000;
+    const currentPoints = currentUser?.points || 20000;
     
     // 포인트 결제 시 포인트 잔액 검사
-    if (paymentMethod === 'points' && userPoints < totalCost) {
-      alert(`보유 포인트가 부족합니다. (필요: ${totalCost.toLocaleString()}P / 보유: ${userPoints.toLocaleString()}P)`);
+    if (paymentMethod === 'points' && currentPoints < totalCost) {
+      alert(`보유 포인트가 부족합니다. (필요: ${totalCost.toLocaleString()}P / 보유: ${currentPoints.toLocaleString()}P)`);
       return { success: false, message: '보유 포인트가 부족합니다.' };
     }
 
     const newReservations: Reservation[] = slots.map((slot, index) => {
       const resId = `res-${Date.now()}-${index}`;
-      // 유저별 개별 할당 대신 대표 바코드 적용 (단순 모드)
       const assignedBarcode = masterBarcode?.value || '*M091063684*';
       
       return {
@@ -208,8 +250,8 @@ function App() {
         date: slot.date,
         startTime: slot.start,
         endTime: slot.end,
-        userName,
-        userPhone,
+        userName: currentUser?.name || userName,
+        userPhone: currentUser?.phone || userPhone,
         costPoints: 4000,
         costAmount: 4000,
         paymentMethod,
@@ -222,7 +264,7 @@ function App() {
     updateReservations([...reservations, ...newReservations]);
     
     if (paymentMethod === 'points') {
-      handleUpdatePoints(userPoints - totalCost);
+      handleUpdatePoints(currentPoints - totalCost);
     }
 
     return { success: true, createdReservations: newReservations };
@@ -340,69 +382,148 @@ function App() {
 
   // 포인트 가상 충전 처리
   const handleChargePoints = (amount: number) => {
-    handleUpdatePoints(userPoints + amount);
+    const currentPoints = currentUser?.points || 20000;
+    handleUpdatePoints(currentPoints + amount);
     setShowPointModal(false);
-    alert(`${amount.toLocaleString()} 포인트가 가상 충전되었습니다!`);
+    alert(`${amount.toLocaleString()} 포인트가 충전되었습니다!`);
   };
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
 
-  // 1. 역할 선택 화면 (게이트 화면)
+  // 1. 미로그인 상태: 회원가입 / 로그인 화면
+  if (!currentUser) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-4 bg-[#f4f4f7] overflow-y-auto">
+        <AuthModal
+          onLoginSuccess={handleLoginSuccess}
+          onRegisterUser={handleRegisterUser}
+          existingUsers={users}
+        />
+      </div>
+    );
+  }
+
+  // 2. 로그인 완료 후 진입 게이트 화면 (지점 선택 & 역할 분기)
   if (role === null) {
     return (
-      <div className="flex-1 flex flex-col items-center p-6 pb-6 bg-[#ffffff]">
-        <div className="w-full flex flex-col items-center" style={{ marginTop: 'auto', marginBottom: 'auto' }}>
-          <div className="text-center space-y-3">
+      <div className="flex-1 flex flex-col items-center p-6 bg-[#ffffff]">
+        {/* 상단 프로필 헤더 */}
+        <div className="w-full flex justify-between items-center pb-4 border-b border-[#e5e5ea] shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[#b09168]/10 text-[#b09168] flex items-center justify-center font-bold text-xs">
+              {currentUser.name[0]}
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#1c1c1e]">{currentUser.name}님 환영합니다</p>
+              <p className="text-[10px] text-[#8e8e93]">
+                {currentUser.role === 'admin' ? '지점 관리자' : '일반 회원'} ({currentUser.userId})
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-[#e5e5ea] text-[#8e8e93] hover:text-[#ff3b30]"
+          >
+            로그아웃
+          </button>
+        </div>
+
+        {/* 메인 비주얼 세션 */}
+        <div className="w-full flex flex-col items-center my-auto py-6">
+          <div className="text-center space-y-2 mb-6">
             <img 
               src={logoImg} 
               alt="르하임 로고" 
               className="mx-auto"
-              style={{ width: '180px', height: 'auto' }}
+              style={{ width: '160px', height: 'auto' }}
             />
-            <div>
-              <h1 className="text-lg font-bold tracking-wide text-[#1c1c1e]">
-                여의도점 예약 관리 시스템
-              </h1>
-            </div>
+            <h1 className="text-lg font-extrabold text-[#1c1c1e] tracking-wide pt-1">
+              르하임 스터디카페 서비스
+            </h1>
+            <p className="text-xs text-[#8e8e93]">
+              {currentUser.role === 'admin' 
+                ? '관리자 전용 멀티 반응형 콘솔에 접속합니다.' 
+                : '원하시는 지점을 선택하고 스케줄을 확인하여 예약을 신청하세요.'}
+            </p>
           </div>
 
-          <div className="w-full space-y-4 mx-auto" style={{ maxWidth: '300px', marginTop: '36px' }}>
-            <div 
-              onClick={() => setRole('user')}
-              className="entrance-card"
-            >
-              <div className="w-12 h-12 rounded-full bg-[#b09168]/10 flex justify-center items-center text-[#b09168]">
-                <User size={24} />
-              </div>
-              <div className="text-center">
-                <h3 className="text-base font-bold text-[#1c1c1e]">이용자 예약하기</h3>
-                <p className="text-xs text-[#8e8e93] mt-1">실시간 공부방 스케줄을 확인하고 예약을 진행합니다.</p>
-              </div>
-            </div>
+          {/* 일반 이용자인 경우: 지점 선택 뷰 */}
+          {currentUser.role === 'user' ? (
+            <div className="w-full max-w-sm space-y-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-[#1c1c1e] flex items-center gap-1">
+                  <Building2 size={14} className="text-[#b09168]" /> 이용할 스터디카페 지점 선택
+                </label>
 
-            <div 
-              onClick={() => setRole('admin')}
-              className="entrance-card"
-            >
-              <div className="w-12 h-12 rounded-full bg-[#b09168]/10 flex justify-center items-center text-[#b09168]">
-                <Shield size={24} />
+                {/* 지점 선택 리스트 카드 */}
+                <div 
+                  onClick={() => setSelectedBranch('yeouido')}
+                  className={`p-4 rounded-2xl border cursor-pointer flex justify-between items-center transition-all ${
+                    selectedBranch === 'yeouido'
+                      ? 'border-[#b09168] bg-[#b09168]/5 shadow-sm'
+                      : 'border-[#e5e5ea] hover:border-[#b09168]/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#b09168]/10 text-[#b09168] flex justify-center items-center font-bold">
+                      <MapPin size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#1c1c1e] flex items-center gap-1">
+                        르하임 스터디카페 <span className="text-[#b09168]">여의도점</span>
+                      </h4>
+                      <p className="text-[11px] text-[#8e8e93]">서울특별시 영등포구 여의도동 24번지</p>
+                    </div>
+                  </div>
+                  {selectedBranch === 'yeouido' && (
+                    <div className="w-6 h-6 rounded-full bg-[#b09168] text-white flex items-center justify-center">
+                      <Check size={14} />
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="text-center">
-                <h3 className="text-base font-bold text-[#1c1c1e]">관리자 시스템</h3>
-                <p className="text-xs text-[#8e8e93] mt-1">공부방 생성, 출입 바코드 사진/번호 등록 및 매출을 관리합니다.</p>
-              </div>
+
+              <button
+                onClick={() => setRole('user')}
+                className="gold-btn w-full py-3 text-sm font-bold rounded-2xl shadow flex items-center justify-center gap-1"
+              >
+                <span>지점 선택 후 공부방 예약하기</span>
+                <ChevronRight size={18} />
+              </button>
             </div>
-          </div>
+          ) : (
+            /* 관리자인 경우: 관리자 시스템 접속 카드 */
+            <div className="w-full max-w-sm space-y-4">
+              <div className="border-2 border-[#b09168]/40 bg-[#f8f9fa] rounded-2xl p-5 text-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-[#b09168]/10 text-[#b09168] flex items-center justify-center mx-auto">
+                  <Shield size={26} />
+                </div>
+                <h3 className="text-base font-extrabold text-[#1c1c1e]">지점 관리자 통합 시스템</h3>
+                <p className="text-xs text-[#8e8e93] leading-relaxed">
+                  모바일 및 태블릿/PC 대형 화면에서 자유롭게 공부방, 예약, 출입 바코드 및 매출을 관제합니다.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setRole('admin')}
+                className="gold-btn w-full py-3.5 text-sm font-bold rounded-2xl shadow flex items-center justify-center gap-1.5"
+              >
+                <Shield size={18} />
+                <span>관리자 멀티 반응형 콘솔 접속</span>
+              </button>
+            </div>
+          )}
         </div>
 
         <p className="text-[10px] text-[#8e8e93] pt-6 shrink-0">
-          © 2026 L'Heux Study Cafe.
+          © 2026 L'Heux Study Cafe. All rights reserved.
         </p>
       </div>
     );
   }
 
-  // 2. 메인 애플리케이션 화면
+  // 3. 메인 애플리케이션 대시보드 화면
   return (
     <>
       {/* 헤더 바 */}
@@ -419,12 +540,12 @@ function App() {
             </h1>
             <p className="text-[10px] text-[#8e8e93] flex items-center gap-1">
               {role === 'admin' ? (
-                '관리자 통합 콘솔'
+                '관리자 멀티 콘솔 (모바일 & 태블릿 지원)'
               ) : (
                 <>
-                  <span>TEST1님 반갑습니다.</span>
+                  <span>{currentUser.name}님 반갑습니다.</span>
                   <span className="text-[9px] text-[#b09168] font-bold ml-1 flex items-center gap-0.5 bg-[#b09168]/10 px-1.5 py-0.5 rounded">
-                    <Coins size={10} /> {userPoints.toLocaleString()}P
+                    <Coins size={10} /> {(currentUser.points || 20000).toLocaleString()}P
                     <button 
                       onClick={() => setShowPointModal(true)} 
                       className="ml-1 text-[8px] bg-[#b09168] text-[#ffffff] px-1 rounded hover:bg-[#987b54]"
@@ -438,16 +559,16 @@ function App() {
           </div>
         </div>
 
-        {/* 로그아웃 */}
+        {/* 로그아웃 및 역할 전환 */}
         <button
           onClick={() => {
             setRole(null);
             setSelectedRoomId(null);
           }}
           className="flex items-center gap-1 text-[11px] font-semibold py-1.5 px-3 rounded-lg border border-[#e5e5ea] text-[#8e8e93] hover:text-[#1c1c1e] hover:bg-[#f8f9fa] transition-all"
-          title="로그아웃 / 역할 변경"
+          title="처음 게이트 화면으로 이동"
         >
-          <LogOut size={13} /> 로그아웃
+          <LogOut size={13} /> 지점/역할 변경
         </button>
       </header>
 
@@ -510,7 +631,7 @@ function App() {
             
             <p className="text-xs text-[#8e8e93] mb-4 leading-relaxed">
               원하시는 충전 금액을 선택하시면 즉시 테스트 포인트가 적립됩니다.<br/>
-              현재 보유 포인트: <strong className="text-[#b09168]">{userPoints.toLocaleString()}P</strong>
+              현재 보유 포인트: <strong className="text-[#b09168]">{(currentUser?.points || 20000).toLocaleString()}P</strong>
             </p>
 
             <div className="space-y-3">
