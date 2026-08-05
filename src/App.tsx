@@ -8,6 +8,16 @@ import { AuthModal } from './components/AuthModal';
 import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Check } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 
+import { 
+  supabase, 
+  fetchDbUsers, 
+  saveDbUser, 
+  fetchDbReservations, 
+  saveDbReservations, 
+  fetchDbMasterBarcode, 
+  saveDbMasterBarcode 
+} from './lib/supabase';
+
 function App() {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [users, setUsers] = useState<UserAccount[]>([]);
@@ -26,22 +36,12 @@ function App() {
   // 포인트 충전 모달 상태
   const [showPointModal, setShowPointModal] = useState<boolean>(false);
 
-  // 로컬 스토리지 데이터 동기화
+  // 로컬 스토리지 & Supabase DB 데이터 로드 및 연동
   useEffect(() => {
-    const savedUsers = localStorage.getItem('lheureux_users');
-    const savedCurrentUser = localStorage.getItem('lheureux_current_user');
     const savedRooms = localStorage.getItem('lheureux_rooms');
-    const savedReservations = localStorage.getItem('lheureux_reservations');
     const savedAdminBarcodes = localStorage.getItem('lheureux_admin_barcodes');
-    const savedMasterBarcode = localStorage.getItem('lheureux_master_barcode');
     const savedBankInfo = localStorage.getItem('lheureux_bank_info');
-
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
-    } else {
-      setUsers(INITIAL_USERS);
-      localStorage.setItem('lheureux_users', JSON.stringify(INITIAL_USERS));
-    }
+    const savedCurrentUser = localStorage.getItem('lheureux_current_user');
 
     if (savedCurrentUser) {
       setCurrentUser(JSON.parse(savedCurrentUser));
@@ -54,25 +54,11 @@ function App() {
       localStorage.setItem('lheureux_rooms', JSON.stringify(INITIAL_ROOMS));
     }
 
-    if (savedReservations) {
-      setReservations(JSON.parse(savedReservations));
-    } else {
-      setReservations(INITIAL_RESERVATIONS);
-      localStorage.setItem('lheureux_reservations', JSON.stringify(INITIAL_RESERVATIONS));
-    }
-
     if (savedAdminBarcodes) {
       setAdminBarcodes(JSON.parse(savedAdminBarcodes));
     } else {
       setAdminBarcodes(INITIAL_ADMIN_BARCODES);
       localStorage.setItem('lheureux_admin_barcodes', JSON.stringify(INITIAL_ADMIN_BARCODES));
-    }
-
-    if (savedMasterBarcode) {
-      setMasterBarcode(JSON.parse(savedMasterBarcode));
-    } else {
-      setMasterBarcode(INITIAL_MASTER_BARCODE);
-      localStorage.setItem('lheureux_master_barcode', JSON.stringify(INITIAL_MASTER_BARCODE));
     }
 
     if (savedBankInfo) {
@@ -81,6 +67,53 @@ function App() {
       setBankInfo(INITIAL_BANK_INFO);
       localStorage.setItem('lheureux_bank_info', JSON.stringify(INITIAL_BANK_INFO));
     }
+
+    // 🌐 Supabase 실제 DB 데이터 비동기 연동
+    const loadSupabaseData = async () => {
+      // 1. Users 로드
+      const dbUsers = await fetchDbUsers();
+      if (dbUsers.length > 0) {
+        setUsers(dbUsers);
+        localStorage.setItem('lheureux_users', JSON.stringify(dbUsers));
+      } else {
+        const savedUsers = localStorage.getItem('lheureux_users');
+        setUsers(savedUsers ? JSON.parse(savedUsers) : INITIAL_USERS);
+      }
+
+      // 2. Reservations 로드
+      const dbRes = await fetchDbReservations();
+      if (dbRes.length > 0) {
+        setReservations(dbRes);
+        localStorage.setItem('lheureux_reservations', JSON.stringify(dbRes));
+      } else {
+        const savedRes = localStorage.getItem('lheureux_reservations');
+        setReservations(savedRes ? JSON.parse(savedRes) : INITIAL_RESERVATIONS);
+      }
+
+      // 3. Master Barcode 로드
+      const dbMaster = await fetchDbMasterBarcode();
+      if (dbMaster) {
+        setMasterBarcode(dbMaster);
+        localStorage.setItem('lheureux_master_barcode', JSON.stringify(dbMaster));
+      } else {
+        const savedMaster = localStorage.getItem('lheureux_master_barcode');
+        setMasterBarcode(savedMaster ? JSON.parse(savedMaster) : INITIAL_MASTER_BARCODE);
+      }
+    };
+
+    loadSupabaseData();
+
+    // ⚡ Supabase Realtime (실시간 리스너) 구독 설정
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        loadSupabaseData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // 관리자 반응형 레이아웃 토글 (#root 엘리먼트 클래스 조절)
@@ -95,7 +128,7 @@ function App() {
     }
   }, [role]);
 
-  // 상태 업데이트 및 로컬 스토리지 동기화 헬퍼 함수
+  // 상태 업데이트 및 DB/로컬 스토리지 동기화 헬퍼 함수
   const updateUsers = (newUsers: UserAccount[]) => {
     setUsers(newUsers);
     localStorage.setItem('lheureux_users', JSON.stringify(newUsers));
@@ -119,6 +152,7 @@ function App() {
   const updateReservations = (newReservations: Reservation[]) => {
     setReservations(newReservations);
     localStorage.setItem('lheureux_reservations', JSON.stringify(newReservations));
+    saveDbReservations(newReservations); // Supabase DB 동기화
   };
 
   const updateAdminBarcodes = (newBarcodes: AdminBarcodeItem[]) => {
@@ -129,6 +163,7 @@ function App() {
   const handleUpdateMasterBarcode = (barcode: MasterBarcode) => {
     setMasterBarcode(barcode);
     localStorage.setItem('lheureux_master_barcode', JSON.stringify(barcode));
+    saveDbMasterBarcode(barcode); // Supabase DB 동기화
   };
 
   const handleUpdateBankInfo = (newInfo: BankInfo) => {
@@ -158,6 +193,7 @@ function App() {
     };
 
     updateUsers([...users, createdUser]);
+    saveDbUser(newUser); // Supabase DB에 회원 저장
     return { success: true };
   };
 
