@@ -4,6 +4,7 @@ import {
   Plus, Trash2, Calendar, Edit2, CheckCircle2, AlertCircle, 
   CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange 
 } from 'lucide-react';
+import { BarcodeView } from './BarcodeView';
 
 
 interface AdminDashboardProps {
@@ -874,19 +875,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
 
                       {/* 바코드 시각화 패널 */}
-                      <div className="bg-white p-2.5 rounded-lg border border-[#e5e5ea] text-center space-y-1">
-                        <div className="font-mono text-xs tracking-widest text-[#1c1c1e] font-bold">{res.barcodeId}</div>
-                        {/* 바코드 세로 줄무늬 그래픽 */}
-                        <div className="flex justify-center items-center gap-0.5 h-7 px-4 opacity-85">
-                          {Array.from({ length: 28 }).map((_, i) => (
-                            <div
-                              key={i}
-                              style={{ width: i % 3 === 0 ? '3px' : '1px' }}
-                              className="bg-[#1c1c1e] h-full"
-                            />
-                          ))}
-                        </div>
-                      </div>
+                      <BarcodeView value={res.barcodeId} height={60} showText={true} />
 
                       <div className="text-[10px] text-[#8e8e93] flex justify-between pt-1">
                         <span>
