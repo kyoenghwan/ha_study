@@ -1,4 +1,4 @@
-import type { Room, Reservation, BankInfo } from '../types';
+import type { Room, Reservation, BankInfo, AdminBarcodeItem } from '../types';
 
 export const getTodayDateString = () => {
   const today = new Date();
@@ -44,6 +44,60 @@ export const INITIAL_ROOMS: Room[] = [
   },
 ];
 
+// 관리자 사전 등록 바코드 초기 데이터 (*M091063684* 규격 포맷)
+export const INITIAL_ADMIN_BARCODES: AdminBarcodeItem[] = [
+  {
+    id: 'bc-1',
+    barcodeId: '*M091063684*',
+    status: 'assigned',
+    assignedToUserName: '홍길동',
+    assignedReservationId: 'res-1',
+    createdAt: '2026-08-01',
+  },
+  {
+    id: 'bc-2',
+    barcodeId: '*M091063685*',
+    status: 'assigned',
+    assignedToUserName: '김철수',
+    assignedReservationId: 'res-2',
+    createdAt: '2026-08-01',
+  },
+  {
+    id: 'bc-3',
+    barcodeId: '*M091063686*',
+    status: 'used',
+    assignedToUserName: '이영희',
+    assignedReservationId: 'res-3',
+    createdAt: '2026-08-02',
+  },
+  {
+    id: 'bc-4',
+    barcodeId: '*M091063687*',
+    status: 'assigned',
+    assignedToUserName: '박지성',
+    assignedReservationId: 'res-4',
+    createdAt: '2026-08-02',
+  },
+  {
+    id: 'bc-5',
+    barcodeId: '*M091063688*',
+    status: 'available',
+    createdAt: '2026-08-03',
+  },
+  {
+    id: 'bc-6',
+    barcodeId: '*M091063689*',
+    status: 'available',
+    createdAt: '2026-08-03',
+  },
+  {
+    id: 'bc-7',
+    barcodeId: '*M091063690*',
+    status: 'available',
+    createdAt: '2026-08-04',
+  },
+];
+
 export const INITIAL_RESERVATIONS: Reservation[] = [
   {
     id: 'res-1',
@@ -57,7 +111,7 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
     costAmount: 16000,
     paymentMethod: 'points',
     paymentStatus: 'paid',
-    barcodeId: 'LH-20260805-1029',
+    barcodeId: '*M091063684*',
     barcodeStatus: 'valid',
   },
   {
@@ -72,7 +126,7 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
     costAmount: 12000,
     paymentMethod: 'bank_transfer',
     paymentStatus: 'deposit_pending',
-    barcodeId: 'LH-20260805-4812',
+    barcodeId: '*M091063685*',
     barcodeStatus: 'valid',
   },
   {
@@ -87,13 +141,13 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
     costAmount: 16000,
     paymentMethod: 'points',
     paymentStatus: 'paid',
-    barcodeId: 'LH-20260805-7731',
+    barcodeId: '*M091063686*',
     barcodeStatus: 'used',
   },
   {
     id: 'res-4',
     roomId: 'room-3',
-    date: getOffsetDateString(1), // 내일 날짜
+    date: getOffsetDateString(1),
     startTime: '13:00',
     endTime: '15:30',
     userName: '박지성',
@@ -102,9 +156,8 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
     costAmount: 20000,
     paymentMethod: 'bank_transfer',
     paymentStatus: 'paid',
-    barcodeId: 'LH-20260805-9018',
+    barcodeId: '*M091063687*',
     barcodeStatus: 'valid',
     isLongTerm: true,
   },
 ];
-

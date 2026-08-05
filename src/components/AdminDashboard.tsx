@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Room, Reservation, BankInfo, PaymentMethod } from '../types';
+import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem } from '../types';
 import { 
   Plus, Trash2, Calendar, Edit2, CheckCircle2, AlertCircle, 
   CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange 
@@ -11,6 +11,7 @@ interface AdminDashboardProps {
   rooms: Room[];
   reservations: Reservation[];
   bankInfo: BankInfo;
+  adminBarcodes?: AdminBarcodeItem[];
   onAddRoom: (room: Omit<Room, 'id'>) => void;
   onDeleteRoom: (roomId: string) => void;
   onCancelReservation: (resId: string) => void;
@@ -22,6 +23,9 @@ interface AdminDashboardProps {
   onTogglePaymentStatus: (resId: string) => void;
   onVerifyBarcode: (barcodeId: string) => { success: boolean; message: string; reservation?: Reservation };
   onUpdateBankInfo: (newInfo: BankInfo) => void;
+  onAddAdminBarcode?: (barcodeId: string) => void;
+  onDeleteAdminBarcode?: (id: string) => void;
+  onUpdateReservationBarcode?: (resId: string, newBarcodeId: string) => void;
 }
 
 type TabType = 'rooms_reservations' | 'long_term_bulk' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
@@ -45,6 +49,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   rooms,
   reservations,
   bankInfo,
+  adminBarcodes = [],
   onAddRoom,
   onDeleteRoom,
   onCancelReservation,
@@ -53,6 +58,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onTogglePaymentStatus,
   onVerifyBarcode,
   onUpdateBankInfo,
+  onAddAdminBarcode,
+  onDeleteAdminBarcode,
+  onUpdateReservationBarcode,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('rooms_reservations');
 
@@ -87,11 +95,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [bulkConflicts, setBulkConflicts] = useState<Array<{ date: string; time: string; existingUser: string }>>([]);
   const [bulkSuccessMsg, setBulkSuccessMsg] = useState<string>('');
 
-  // 바코드 검증 상태
+  // 바코드 검증 및 관리 상태
   const [scanBarcodeId, setScanBarcodeId] = useState<string>('');
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string } | null>(null);
   const [barcodeSearchTerm, setBarcodeSearchTerm] = useState<string>('');
   const [barcodeFilterStatus, setBarcodeFilterStatus] = useState<'all' | 'valid' | 'used' | 'cancelled'>('all');
+  const [newBarcodeInputValue, setNewBarcodeInputValue] = useState<string>('*M091063691*');
+  const [editingBarcodeResId, setEditingBarcodeResId] = useState<string | null>(null);
+  const [customBarcodeResInput, setCustomBarcodeResInput] = useState<string>('');
 
   // 계좌 정보 설정 폼 상태
   const [bankName, setBankName] = useState(bankInfo.bankName);
@@ -772,14 +783,101 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* TAB 4: 바코드 검증 & 발급 관리 */}
+        {/* TAB 4: 바코드 검증 & 사전 등록 풀(Pool) 관리 */}
         {activeTab === 'barcode_management' && (
           <div className="space-y-6">
-            {/* 바코드 스캐너 시뮬레이터 */}
+            {/* 1. 관리자 고유 바코드 사전 등록 풀 (Pool) */}
+            <div className="bg-white border border-[#e5e5ea] p-5 rounded-xl shadow-sm space-y-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-sm font-bold text-[#1c1c1e] flex items-center gap-1.5">
+                    <QrCode className="text-[#b09168]" size={18} /> 관리자 바코드 등록 풀 (Pool)
+                  </h3>
+                  <p className="text-xs text-[#8e8e93]">
+                    이용자 예약 시 무작위 생성이 아닌, 아래 등록된 바코드(*M091063684* 규격)가 순서대로 발급됩니다.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#b09168] bg-[#b09168]/10 px-2.5 py-1 rounded-full">
+                  등록된 바코드: {adminBarcodes?.length || 0}개
+                </span>
+              </div>
+
+              {/* 바코드 신규 등록 폼 */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newBarcodeInputValue}
+                  onChange={(e) => setNewBarcodeInputValue(e.target.value)}
+                  placeholder="등록할 바코드 입력 (예: *M091063684*)"
+                  className="form-input flex-1 text-xs"
+                />
+                <button
+                  onClick={() => {
+                    if (!newBarcodeInputValue.trim()) return;
+                    if (onAddAdminBarcode) {
+                      onAddAdminBarcode(newBarcodeInputValue.trim());
+                      setNewBarcodeInputValue(`*M091063${Math.floor(1000 + Math.random() * 9000)}*`);
+                    }
+                  }}
+                  className="gold-btn px-4 py-2 text-xs font-bold rounded-xl shrink-0 flex items-center gap-1"
+                >
+                  <Plus size={14} /> 바코드 추가
+                </button>
+              </div>
+
+              {/* 등록된 바코드 목록 가로 스크롤 카드 */}
+              <div className="flex gap-2.5 overflow-x-auto pb-2 pt-1">
+                {adminBarcodes?.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`min-w-[170px] p-2.5 rounded-xl border text-center space-y-1.5 shrink-0 relative ${
+                      item.status === 'available'
+                        ? 'bg-[#34c759]/5 border-[#34c759]/30'
+                        : item.status === 'assigned'
+                        ? 'bg-[#b09168]/5 border-[#b09168]/30'
+                        : 'bg-[#8e8e93]/10 border-[#8e8e93]/30'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center text-[9px] font-bold">
+                      <span
+                        className={`px-1.5 py-0.5 rounded ${
+                          item.status === 'available'
+                            ? 'bg-[#34c759] text-white'
+                            : item.status === 'assigned'
+                            ? 'bg-[#b09168] text-white'
+                            : 'bg-[#8e8e93] text-white'
+                        }`}
+                      >
+                        {item.status === 'available' ? '사용 가능' : item.status === 'assigned' ? '이용자 할당' : '입장 완료'}
+                      </span>
+                      {onDeleteAdminBarcode && (
+                        <button
+                          onClick={() => onDeleteAdminBarcode(item.id)}
+                          className="text-[#ff3b30] hover:opacity-80 p-0.5"
+                          title="바코드 삭제"
+                        >
+                          &times;
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="font-mono text-xs font-extrabold text-[#1c1c1e] pt-1">
+                      {item.barcodeId}
+                    </div>
+
+                    <p className="text-[9px] text-[#8e8e93] truncate">
+                      {item.assignedToUserName ? `${item.assignedToUserName}님 이용중` : '대기 중 (미발급)'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. 바코드 스캐너 실시간 검증 */}
             <div className="bg-white border border-[#e5e5ea] p-5 rounded-xl shadow-sm space-y-4">
               <div>
                 <h3 className="text-sm font-bold text-[#1c1c1e] flex items-center gap-1.5">
-                  <QrCode className="text-[#b09168]" size={18} /> 출입 바코드 실시간 검증 / 입장 처리 (Check-In)
+                  <QrCode className="text-[#b09168]" size={18} /> 출입 바코드 실시간 스캔 검증 / 입장 처리 (Check-In)
                 </h3>
                 <p className="text-xs text-[#8e8e93]">이용자의 출입증 바코드 번호를 입력하여 입장을 승인/완료 처리합니다.</p>
               </div>
@@ -789,7 +887,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   type="text"
                   value={scanBarcodeId}
                   onChange={(e) => setScanBarcodeId(e.target.value)}
-                  placeholder="바코드 번호 입력 (예: LH-20260805-1029)"
+                  placeholder="바코드 번호 입력 (예: *M091063684*)"
                   className="form-input flex-1 text-xs"
                 />
                 <button
@@ -817,10 +915,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               )}
             </div>
 
-            {/* 발급된 바코드 리스트 */}
+            {/* 3. 예약건별 바코드 현황 및 개별 변경 */}
             <div className="bg-white border border-[#e5e5ea] p-5 rounded-xl shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h3 className="text-sm font-bold text-[#1c1c1e]">전체 발급 바코드 목록 ({filteredBarcodes.length}건)</h3>
+                <h3 className="text-sm font-bold text-[#1c1c1e]">전체 예약 바코드 현황 ({filteredBarcodes.length}건)</h3>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-48">
@@ -850,11 +948,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {filteredBarcodes.map((res) => {
                   const room = rooms.find((r) => r.id === res.roomId);
+                  const isEditing = editingBarcodeResId === res.id;
                   return (
                     <div key={res.id} className="border border-[#e5e5ea] rounded-xl p-3.5 bg-[#f8f9fa] space-y-2">
                       <div className="flex justify-between items-start">
                         <div>
-                          <span className="text-xs font-bold text-[#1c1c1e]">{res.userName}</span>
+                          <span className="text-xs font-bold text-[#1c1c1e]">{res.userName}님</span>
                           <span className="text-[10px] text-[#8e8e93] ml-2">({room?.name})</span>
                         </div>
                         <span
@@ -877,21 +976,62 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       {/* 바코드 시각화 패널 */}
                       <BarcodeView value={res.barcodeId} height={60} showText={true} />
 
-                      <div className="text-[10px] text-[#8e8e93] flex justify-between pt-1">
-                        <span>
-                          {res.date} {res.startTime}~{res.endTime}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setScanBarcodeId(res.barcodeId);
-                            const result = onVerifyBarcode(res.barcodeId);
-                            setScanResult(result);
-                          }}
-                          className="text-[#b09168] hover:underline font-semibold"
-                        >
-                          바로 입장 처리
-                        </button>
-                      </div>
+                      {/* 바코드 수동 변경 폼 */}
+                      {isEditing ? (
+                        <div className="flex gap-1.5 pt-1">
+                          <input
+                            type="text"
+                            value={customBarcodeResInput}
+                            onChange={(e) => setCustomBarcodeResInput(e.target.value)}
+                            placeholder="변경할 바코드 번호"
+                            className="form-input text-xs flex-1 py-1 px-2"
+                          />
+                          <button
+                            onClick={() => {
+                              if (customBarcodeResInput.trim() && onUpdateReservationBarcode) {
+                                onUpdateReservationBarcode(res.id, customBarcodeResInput.trim());
+                                setEditingBarcodeResId(null);
+                              }
+                            }}
+                            className="bg-[#b09168] text-white text-[10px] font-bold px-2 py-1 rounded"
+                          >
+                            저장
+                          </button>
+                          <button
+                            onClick={() => setEditingBarcodeResId(null)}
+                            className="bg-[#e5e5ea] text-[#1c1c1e] text-[10px] px-2 py-1 rounded"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-[#8e8e93] flex justify-between items-center pt-1">
+                          <span>
+                            {res.date} {res.startTime}~{res.endTime}
+                          </span>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingBarcodeResId(res.id);
+                                setCustomBarcodeResInput(res.barcodeId);
+                              }}
+                              className="text-[#8e8e93] hover:text-[#1c1c1e] font-medium"
+                            >
+                              바코드 변경
+                            </button>
+                            <button
+                              onClick={() => {
+                                setScanBarcodeId(res.barcodeId);
+                                const result = onVerifyBarcode(res.barcodeId);
+                                setScanResult(result);
+                              }}
+                              className="text-[#b09168] hover:underline font-semibold"
+                            >
+                              바로 입장 처리
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

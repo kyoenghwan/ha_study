@@ -32,5 +32,14 @@ export interface BankInfo {
   accountHolder: string;
 }
 
+export interface AdminBarcodeItem {
+  id: string;
+  barcodeId: string; // 예: '*M091063684*'
+  status: 'available' | 'assigned' | 'used';
+  assignedToUserName?: string;
+  assignedReservationId?: string;
+  createdAt: string;
+}
+
 export type Role = 'admin' | 'user';
 
