@@ -5,7 +5,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
 import { AuthModal } from './components/AuthModal';
-import { Shield, User, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Check } from 'lucide-react';
+import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Check } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 
 function App() {
