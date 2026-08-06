@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode, UserAccount } from './types';
+import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction } from './types';
 import { INITIAL_ROOMS, INITIAL_RESERVATIONS, INITIAL_BANK_INFO, INITIAL_ADMIN_BARCODES, INITIAL_MASTER_BARCODE, INITIAL_USERS } from './utils/mockData';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
 import { AuthModal } from './components/AuthModal';
+import { AdminAuthModal } from './components/AdminAuthModal';
 import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Check } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 
@@ -15,7 +16,9 @@ import {
   fetchDbReservations, 
   saveDbReservations, 
   fetchDbMasterBarcode, 
-  saveDbMasterBarcode 
+  saveDbMasterBarcode,
+  fetchDbPointTransactions,
+  saveDbPointTransaction
 } from './lib/supabase';
 
 function App() {
@@ -27,9 +30,13 @@ function App() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [adminBarcodes, setAdminBarcodes] = useState<AdminBarcodeItem[]>([]);
   const [masterBarcode, setMasterBarcode] = useState<MasterBarcode>(INITIAL_MASTER_BARCODE);
+  const [pointTransactions, setPointTransactions] = useState<PointTransaction[]>([]);
   const [bankInfo, setBankInfo] = useState<BankInfo>(INITIAL_BANK_INFO);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   
+  // 관리자 전용 인증 모달 상태
+  const [showAdminAuthModal, setShowAdminAuthModal] = useState<boolean>(false);
+
   // 지점 선택 상태
   const [selectedBranch, setSelectedBranch] = useState<string>('yeouido');
 
@@ -99,6 +106,16 @@ function App() {
         const savedMaster = localStorage.getItem('lheureux_master_barcode');
         setMasterBarcode(savedMaster ? JSON.parse(savedMaster) : INITIAL_MASTER_BARCODE);
       }
+
+      // 4. Point Transactions 로드
+      const dbTx = await fetchDbPointTransactions();
+      if (dbTx.length > 0) {
+        setPointTransactions(dbTx);
+        localStorage.setItem('lheureux_point_tx', JSON.stringify(dbTx));
+      } else {
+        const savedTx = localStorage.getItem('lheureux_point_tx');
+        if (savedTx) setPointTransactions(JSON.parse(savedTx));
+      }
     };
 
     loadSupabaseData();
@@ -155,6 +172,11 @@ function App() {
     saveDbReservations(newReservations); // Supabase DB 동기화
   };
 
+  const updatePointTransactions = (newTxList: PointTransaction[]) => {
+    setPointTransactions(newTxList);
+    localStorage.setItem('lheureux_point_tx', JSON.stringify(newTxList));
+  };
+
   const updateAdminBarcodes = (newBarcodes: AdminBarcodeItem[]) => {
     setAdminBarcodes(newBarcodes);
     localStorage.setItem('lheureux_admin_barcodes', JSON.stringify(newBarcodes));
@@ -178,6 +200,136 @@ function App() {
     
     const updatedUsers = users.map(u => u.id === currentUser.id ? updatedUser : u);
     updateUsers(updatedUsers);
+  };
+
+  // 무통장 입금 포인트 충전 신청 처리 (이용자용)
+  const handleApplyPointCharge = (amount: number) => {
+    if (!currentUser) return;
+    const newTx: PointTransaction = {
+      id: `tx-${Date.now()}`,
+      userId: currentUser.userId,
+      userName: currentUser.name,
+      type: 'charge_request',
+      amount,
+      description: `무통장 입금 포인트 충전 신청 (${amount.toLocaleString()}원)`,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedTx = [newTx, ...pointTransactions];
+    updatePointTransactions(updatedTx);
+    saveDbPointTransaction(newTx);
+    setShowPointModal(false);
+    alert(`무통장 입금 충전 신청이 완료되었습니다.\n입금계좌: ${bankInfo.bankName} ${bankInfo.accountNumber} (${bankInfo.accountHolder})\n관리자 입금 확인 후 포인트가 즉시 지급됩니다.`);
+  };
+
+  // 관리자 포인트 무통장 입금 확인 승인 처리
+  const handleApprovePointCharge = (txId: string) => {
+    const targetTx = pointTransactions.find(t => t.id === txId);
+    if (!targetTx) return;
+
+    // 1. 해당 유저 포인트 증액
+    const targetUser = users.find(u => u.userId === targetTx.userId);
+    if (targetUser) {
+      const updatedUser = { ...targetUser, points: (targetUser.points || 0) + targetTx.amount };
+      const updatedUsers = users.map(u => u.id === targetUser.id ? updatedUser : u);
+      updateUsers(updatedUsers);
+      saveDbUser(updatedUser);
+
+      // 현재 로그인 유저라면 즉시 세션 반영
+      if (currentUser?.id === targetUser.id) {
+        setCurrentUser(updatedUser);
+      }
+    }
+
+    // 2. 트랜잭션 상태 completed 변경
+    const updatedTxList = pointTransactions.map(t => {
+      if (t.id === txId) {
+        return { ...t, status: 'completed' as const, type: 'charge_approved' as const };
+      }
+      return t;
+    });
+
+    updatePointTransactions(updatedTxList);
+    saveDbPointTransaction({ ...targetTx, status: 'completed', type: 'charge_approved' });
+    alert(`'${targetTx.userName}' 회원님의 ${targetTx.amount.toLocaleString()}P 입금 승인 및 포인트 적립이 완료되었습니다!`);
+  };
+
+  // 관리자 회원 포인트 수동 지급 / 차감 조율
+  const handleManualAdjustPoint = (userId: string, amount: number, reason: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+
+    const nextPoints = Math.max(0, (targetUser.points || 0) + amount);
+    const updatedUser = { ...targetUser, points: nextPoints };
+    const updatedUsers = users.map(u => u.id === userId ? updatedUser : u);
+    updateUsers(updatedUsers);
+    saveDbUser(updatedUser);
+
+    if (currentUser?.id === targetUser.id) {
+      setCurrentUser(updatedUser);
+    }
+
+    // 히스토리 트랜잭션 기록
+    const newTx: PointTransaction = {
+      id: `tx-manual-${Date.now()}`,
+      userId: targetUser.userId,
+      userName: targetUser.name,
+      type: amount > 0 ? 'charge_approved' : 'use',
+      amount: Math.abs(amount),
+      description: `[관리자 수동 조율] ${reason}`,
+      status: 'completed',
+      createdAt: new Date().toISOString(),
+    };
+
+    updatePointTransactions([newTx, ...pointTransactions]);
+    saveDbPointTransaction(newTx);
+    alert(`'${targetUser.name}' 회원님의 포인트가 ${amount > 0 ? '+' : ''}${amount.toLocaleString()}P 조율되었습니다. (현재 잔액: ${nextPoints.toLocaleString()}P)`);
+  };
+
+  // 예약 취소 및 포인트 자동 환불
+  const handleCancelAndRefundReservation = (resId: string) => {
+    const targetRes = reservations.find(r => r.id === resId);
+    if (!targetRes) return;
+
+    // 1. 예약 상태 취소 변경
+    const updatedRes = reservations.map(r => r.id === resId ? { ...r, barcodeStatus: 'cancelled' as const } : r);
+    updateReservations(updatedRes);
+
+    // 2. 포인트 결제 건이었다면 포인트 자동 환불
+    if (targetRes.paymentMethod === 'points') {
+      const refundAmount = targetRes.costPoints || 4000;
+      const targetUser = users.find(u => u.phone === targetRes.userPhone || u.name === targetRes.userName) || currentUser;
+      
+      if (targetUser) {
+        const nextPoints = (targetUser.points || 0) + refundAmount;
+        const updatedUser = { ...targetUser, points: nextPoints };
+        const updatedUsers = users.map(u => u.id === targetUser.id ? updatedUser : u);
+        updateUsers(updatedUsers);
+        saveDbUser(updatedUser);
+
+        if (currentUser?.id === targetUser.id) {
+          setCurrentUser(updatedUser);
+        }
+
+        // 환불 트랜잭션 저장
+        const refundTx: PointTransaction = {
+          id: `tx-refund-${Date.now()}`,
+          userId: targetUser.userId,
+          userName: targetUser.name,
+          type: 'refund',
+          amount: refundAmount,
+          description: `예약 취소에 따른 포인트 자동 환불 (${targetRes.date} ${targetRes.startTime})`,
+          status: 'completed',
+          createdAt: new Date().toISOString(),
+        };
+
+        updatePointTransactions([refundTx, ...pointTransactions]);
+        saveDbPointTransaction(refundTx);
+      }
+    }
+
+    alert('예약 취소 및 결제 포인트 환불 처리가 완료되었습니다.');
   };
 
   // 신규 회원가입 처리
@@ -299,8 +451,25 @@ function App() {
 
     updateReservations([...reservations, ...newReservations]);
     
+    // 포인트 결제 시 사용 트랜잭션 기록
     if (paymentMethod === 'points') {
       handleUpdatePoints(currentPoints - totalCost);
+
+      if (currentUser) {
+        const useTx: PointTransaction = {
+          id: `tx-use-${Date.now()}`,
+          userId: currentUser.userId,
+          userName: currentUser.name,
+          type: 'use',
+          amount: totalCost,
+          description: `공부방 예약 포인트 차감 (${slots.length}개 슬롯)`,
+          status: 'completed',
+          createdAt: new Date().toISOString(),
+        };
+
+        updatePointTransactions([useTx, ...pointTransactions]);
+        saveDbPointTransaction(useTx);
+      }
     }
 
     return { success: true, createdReservations: newReservations };
@@ -406,22 +575,7 @@ function App() {
 
   // 예약 취소 (관리자 전용)
   const handleCancelReservation = (resId: string) => {
-    const filteredReservations = reservations.map((r) => {
-      if (r.id === resId) {
-        return { ...r, barcodeStatus: 'cancelled' as const };
-      }
-      return r;
-    }).filter((r) => r.id !== resId);
-    
-    updateReservations(filteredReservations);
-  };
-
-  // 포인트 가상 충전 처리
-  const handleChargePoints = (amount: number) => {
-    const currentPoints = currentUser?.points || 20000;
-    handleUpdatePoints(currentPoints + amount);
-    setShowPointModal(false);
-    alert(`${amount.toLocaleString()} 포인트가 충전되었습니다!`);
+    handleCancelAndRefundReservation(resId);
   };
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
@@ -529,24 +683,24 @@ function App() {
               </button>
             </div>
           ) : (
-            /* 관리자인 경우: 관리자 시스템 접속 카드 */
+            /* 관리자인 경우: 관리자 전용 보안 접속 카드 */
             <div className="w-full max-w-sm space-y-4">
               <div className="border-2 border-[#b09168]/40 bg-[#f8f9fa] rounded-2xl p-5 text-center space-y-2">
                 <div className="w-12 h-12 rounded-full bg-[#b09168]/10 text-[#b09168] flex items-center justify-center mx-auto">
                   <Shield size={26} />
                 </div>
-                <h3 className="text-base font-extrabold text-[#1c1c1e]">지점 관리자 통합 시스템</h3>
+                <h3 className="text-base font-extrabold text-[#1c1c1e]">최고 관리자 통합 전용 콘솔</h3>
                 <p className="text-xs text-[#8e8e93] leading-relaxed">
-                  모바일 및 태블릿/PC 대형 화면에서 자유롭게 공부방, 예약, 출입 바코드 및 매출을 관제합니다.
+                  보안 로그인 후 대형 화면에서 공부방, 예약, 무통장 승인, 포인트 환불 및 매출을 관제합니다.
                 </p>
               </div>
 
               <button
-                onClick={() => setRole('admin')}
+                onClick={() => setShowAdminAuthModal(true)}
                 className="gold-btn w-full py-3.5 text-sm font-bold rounded-2xl shadow flex items-center justify-center gap-1.5"
               >
                 <Shield size={18} />
-                <span>관리자 멀티 반응형 콘솔 접속</span>
+                <span>최고 관리자 보안 인증 후 접속</span>
               </button>
             </div>
           )}
@@ -555,6 +709,17 @@ function App() {
         <p className="text-[10px] text-[#8e8e93] pt-6 shrink-0">
           © 2026 L'Heux Study Cafe. All rights reserved.
         </p>
+
+        {/* 최고 관리자 보안 로그인 모달 */}
+        {showAdminAuthModal && (
+          <AdminAuthModal
+            onSuccess={() => {
+              setShowAdminAuthModal(false);
+              setRole('admin');
+            }}
+            onCancel={() => setShowAdminAuthModal(false)}
+          />
+        )}
       </div>
     );
   }
@@ -576,12 +741,12 @@ function App() {
             </h1>
             <p className="text-[10px] text-[#8e8e93] flex items-center gap-1">
               {role === 'admin' ? (
-                '관리자 멀티 콘솔 (모바일 & 태블릿 지원)'
+                '최고 관리자 전용 콘솔 (모바일 & 태블릿 지원)'
               ) : (
                 <>
                   <span>{currentUser.name}님 반갑습니다.</span>
                   <span className="text-[9px] text-[#b09168] font-bold ml-1 flex items-center gap-0.5 bg-[#b09168]/10 px-1.5 py-0.5 rounded">
-                    <Coins size={10} /> {(currentUser.points || 20000).toLocaleString()}P
+                    <Coins size={10} /> {(currentUser.points || 0).toLocaleString()}P
                     <button 
                       onClick={() => setShowPointModal(true)} 
                       className="ml-1 text-[8px] bg-[#b09168] text-[#ffffff] px-1 rounded hover:bg-[#987b54]"
@@ -615,6 +780,8 @@ function App() {
             rooms={rooms}
             reservations={reservations}
             bankInfo={bankInfo}
+            users={users}
+            pointTransactions={pointTransactions}
             adminBarcodes={adminBarcodes}
             masterBarcode={masterBarcode}
             onAddRoom={handleAddRoom}
@@ -629,6 +796,8 @@ function App() {
             onDeleteAdminBarcode={handleDeleteAdminBarcode}
             onUpdateReservationBarcode={handleUpdateReservationBarcode}
             onUpdateMasterBarcode={handleUpdateMasterBarcode}
+            onApprovePointCharge={handleApprovePointCharge}
+            onManualAdjustPoint={handleManualAdjustPoint}
           />
         ) : selectedRoomId && selectedRoom ? (
           <Scheduler
@@ -644,7 +813,10 @@ function App() {
             reservations={reservations}
             bankInfo={bankInfo}
             masterBarcode={masterBarcode}
+            pointTransactions={pointTransactions}
             onSelectRoom={(roomId) => setSelectedRoomId(roomId)}
+            onApplyPointCharge={handleApplyPointCharge}
+            onCancelAndRefundReservation={handleCancelAndRefundReservation}
           />
         )}
       </main>
@@ -654,32 +826,38 @@ function App() {
         © 2026 L'Heux Study Cafe. All rights reserved.
       </footer>
 
-      {/* 가상 포인트 충전 모달 */}
+      {/* 무통장 입금 포인트 충전 모달 */}
       {showPointModal && (
         <div className="modal-overlay" onClick={() => setShowPointModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-4">
               <h3 className="text-base font-bold text-[#1c1c1e] flex items-center gap-1">
-                <Coins size={18} className="text-[#b09168]" /> 가상 포인트 충전
+                <Coins size={18} className="text-[#b09168]" /> 무통장 입금 포인트 충전 신청
               </h3>
               <button onClick={() => setShowPointModal(false)} className="text-[#8e8e93] hover:text-[#1c1c1e] text-xl">&times;</button>
             </div>
             
-            <p className="text-xs text-[#8e8e93] mb-4 leading-relaxed">
-              원하시는 충전 금액을 선택하시면 즉시 테스트 포인트가 적립됩니다.<br/>
-              현재 보유 포인트: <strong className="text-[#b09168]">{(currentUser?.points || 20000).toLocaleString()}P</strong>
-            </p>
+            <div className="bg-[#b09168]/10 border border-[#b09168]/30 p-3.5 rounded-xl text-xs space-y-1.5 mb-4">
+              <p className="font-bold text-[#b09168]">입금 계좌 안내</p>
+              <p className="text-[#1c1c1e] font-mono">은행: <strong>{bankInfo.bankName}</strong></p>
+              <p className="text-[#1c1c1e] font-mono">계좌번호: <strong>{bankInfo.accountNumber}</strong></p>
+              <p className="text-[#1c1c1e]">예금주: <strong>{bankInfo.accountHolder}</strong></p>
+              <p className="text-[10px] text-[#8e8e93] pt-1">
+                * 입금 신청 후 계좌로 입금해 주시면 관리자 확인 후 포인트가 즉시 지급됩니다.
+              </p>
+            </div>
 
             <div className="space-y-3">
-              {[10000, 30000, 50000].map((amount) => (
+              <p className="text-xs font-bold text-[#1c1c1e]">충전할 포인트 금액 선택</p>
+              {[10000, 30000, 50000, 100000].map((amount) => (
                 <button
                   key={amount}
-                  onClick={() => handleChargePoints(amount)}
-                  className="w-full bg-[#f8f9fa] hover:bg-[#b09168]/10 border border-[#e5e5ea] hover:border-[#b09168]/50 p-4 rounded-xl flex justify-between items-center text-sm font-bold text-[#1c1c1e] transition-all"
+                  onClick={() => handleApplyPointCharge(amount)}
+                  className="w-full bg-[#f8f9fa] hover:bg-[#b09168]/10 border border-[#e5e5ea] hover:border-[#b09168]/50 p-3.5 rounded-xl flex justify-between items-center text-xs font-bold text-[#1c1c1e] transition-all"
                 >
                   <span>+{amount.toLocaleString()} P</span>
-                  <span className="text-xs text-[#b09168] flex items-center gap-0.5">
-                    충전하기 <Plus size={12} />
+                  <span className="text-[11px] text-[#b09168] flex items-center gap-0.5">
+                    입금 신청하기 <Plus size={12} />
                   </span>
                 </button>
               ))}
@@ -687,7 +865,7 @@ function App() {
 
             <button
               onClick={() => setShowPointModal(false)}
-              className="gold-btn-outline w-full py-3 mt-5"
+              className="gold-btn-outline w-full py-2.5 mt-4 text-xs font-bold rounded-xl"
             >
               닫기
             </button>

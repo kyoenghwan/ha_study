@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode } from '../types';
+import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction } from '../types';
 import { 
   Plus, Trash2, Calendar, Edit2, CheckCircle2, AlertCircle, 
-  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload 
+  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users 
 } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
 
@@ -10,6 +10,8 @@ interface AdminDashboardProps {
   rooms: Room[];
   reservations: Reservation[];
   bankInfo: BankInfo;
+  users?: UserAccount[];
+  pointTransactions?: PointTransaction[];
   adminBarcodes?: AdminBarcodeItem[];
   masterBarcode?: MasterBarcode;
   onAddRoom: (room: Omit<Room, 'id'>) => void;
@@ -27,9 +29,11 @@ interface AdminDashboardProps {
   onDeleteAdminBarcode?: (id: string) => void;
   onUpdateReservationBarcode?: (resId: string, newBarcodeId: string) => void;
   onUpdateMasterBarcode?: (barcode: MasterBarcode) => void;
+  onApprovePointCharge?: (txId: string) => void;
+  onManualAdjustPoint?: (userId: string, amount: number, reason: string) => void;
 }
 
-type TabType = 'rooms_reservations' | 'long_term_bulk' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
+type TabType = 'rooms_reservations' | 'long_term_bulk' | 'point_management' | 'user_management' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
 
 const generateTimeOptions = () => {
   const options: string[] = [];
@@ -49,6 +53,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   rooms,
   reservations,
   bankInfo,
+  users = [],
+  pointTransactions = [],
   adminBarcodes = [],
   masterBarcode,
   onAddRoom,
@@ -63,6 +69,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onDeleteAdminBarcode,
   onUpdateReservationBarcode,
   onUpdateMasterBarcode,
+  onApprovePointCharge,
+  onManualAdjustPoint,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('rooms_reservations');
 
@@ -343,6 +351,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           }`}
         >
           <CalendarRange size={14} /> 장기 일괄 예약
+        </button>
+
+        <button
+          onClick={() => setActiveTab('point_management')}
+          className={`px-3 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+            activeTab === 'point_management'
+              ? 'border-[#b09168] text-[#b09168]'
+              : 'border-transparent text-[#8e8e93] hover:text-[#1c1c1e]'
+          }`}
+        >
+          <Coins size={14} /> 포인트/입금 승인
+          {pointTransactions.filter(t => t.status === 'pending').length > 0 && (
+            <span className="bg-[#ff3b30] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">
+              {pointTransactions.filter(t => t.status === 'pending').length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('user_management')}
+          className={`px-3 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+            activeTab === 'user_management'
+              ? 'border-[#b09168] text-[#b09168]'
+              : 'border-transparent text-[#8e8e93] hover:text-[#1c1c1e]'
+          }`}
+        >
+          <Users size={14} /> 회원 통합 관제
         </button>
 
         <button
@@ -703,6 +738,176 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 중복 검사 및 장기 일괄 예약 확정 등록
               </button>
             </form>
+          </div>
+        )}
+
+        {/* TAB 3: 포인트 / 무통장 입금 승인 & 환불 내역 관제 */}
+        {activeTab === 'point_management' && (
+          <div className="space-y-6">
+            <div className="bg-white border border-[#e5e5ea] p-5 rounded-2xl shadow-sm space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-bold text-[#1c1c1e] flex items-center gap-2">
+                    <Coins className="text-[#b09168]" size={20} /> 포인트 충전 & 무통장 입금 승인 관리
+                  </h3>
+                  <p className="text-xs text-[#8e8e93] mt-1">
+                    이용자의 무통장 입금을 확인한 후 승인 버튼을 누르시면 해당 회원 계정으로 포인트가 즉시 지급됩니다.
+                  </p>
+                </div>
+                <span className="text-xs font-bold bg-[#b09168]/10 text-[#b09168] px-3 py-1.5 rounded-full border border-[#b09168]/30">
+                  승인 대기: {pointTransactions.filter(t => t.status === 'pending').length}건
+                </span>
+              </div>
+
+              {/* 포인트 신청 & 환불 내역 목록 테이블 */}
+              <div className="overflow-x-auto border border-[#e5e5ea] rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#f8f9fa] border-b border-[#e5e5ea] text-[#1c1c1e]">
+                    <tr>
+                      <th className="p-3">신청 일시</th>
+                      <th className="p-3">회원명 (아이디)</th>
+                      <th className="p-3">유형</th>
+                      <th className="p-3">신청 금액</th>
+                      <th className="p-3">내용 / 메모</th>
+                      <th className="p-3">상태</th>
+                      <th className="p-3 text-center">관리 조치</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e5e5ea]">
+                    {pointTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-[#8e8e93]">
+                          포인트 충전 또는 환불 신청 내역이 없습니다.
+                        </td>
+                      </tr>
+                    ) : (
+                      pointTransactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-[#f8f9fa]">
+                          <td className="p-3 text-[#8e8e93] font-mono">{tx.createdAt.split('T')[0]}</td>
+                          <td className="p-3 font-bold text-[#1c1c1e]">
+                            {tx.userName} <span className="text-[10px] text-[#8e8e93] font-normal">({tx.userId})</span>
+                          </td>
+                          <td className="p-3 font-bold">
+                            {tx.type === 'charge_request' && <span className="text-[#007aff]">무통장 충전 신청</span>}
+                            {tx.type === 'charge_approved' && <span className="text-[#34c759]">충전 승인 완료</span>}
+                            {tx.type === 'use' && <span className="text-[#ff9500]">포인트 사용</span>}
+                            {tx.type === 'refund' && <span className="text-[#ff3b30]">포인트 환불</span>}
+                          </td>
+                          <td className="p-3 font-extrabold text-[#1c1c1e]">
+                            {tx.amount.toLocaleString()} P
+                          </td>
+                          <td className="p-3 text-[#8e8e93] max-w-[200px] truncate">{tx.description}</td>
+                          <td className="p-3 font-bold">
+                            {tx.status === 'pending' && <span className="text-[#ff9500] bg-[#ff9500]/10 px-2 py-0.5 rounded">입금대기</span>}
+                            {tx.status === 'completed' && <span className="text-[#34c759] bg-[#34c759]/10 px-2 py-0.5 rounded">처리완료</span>}
+                            {tx.status === 'cancelled' && <span className="text-[#8e8e93] bg-[#8e8e93]/10 px-2 py-0.5 rounded">취소됨</span>}
+                          </td>
+                          <td className="p-3 text-center">
+                            {tx.status === 'pending' && onApprovePointCharge && (
+                              <button
+                                onClick={() => onApprovePointCharge(tx.id)}
+                                className="gold-btn py-1.5 px-3 text-[11px] font-bold rounded-lg shadow-sm"
+                              >
+                                입금확인 & 승인
+                              </button>
+                            )}
+                            {tx.status === 'completed' && (
+                              <span className="text-[10px] text-[#8e8e93]">완료됨</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: 회원 통합 관제 & 포인트 수동 지급/차감 */}
+        {activeTab === 'user_management' && (
+          <div className="space-y-6">
+            <div className="bg-white border border-[#e5e5ea] p-5 rounded-2xl shadow-sm space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-bold text-[#1c1c1e] flex items-center gap-2">
+                    <Users className="text-[#b09168]" size={20} /> 회원 통합 관제 & 포인트 수동 조율
+                  </h3>
+                  <p className="text-xs text-[#8e8e93] mt-1">
+                    등록된 모든 회원 목록 및 포인트 잔액을 확인하고, 필요 시 수동으로 포인트를 지급하거나 차감할 수 있습니다.
+                  </p>
+                </div>
+                <span className="text-xs font-bold bg-[#b09168]/10 text-[#b09168] px-3 py-1.5 rounded-full border border-[#b09168]/30">
+                  총 회원: {users.length}명
+                </span>
+              </div>
+
+              {/* 회원 목록 데이터 테이블 */}
+              <div className="overflow-x-auto border border-[#e5e5ea] rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#f8f9fa] border-b border-[#e5e5ea] text-[#1c1c1e]">
+                    <tr>
+                      <th className="p-3">성함</th>
+                      <th className="p-3">아이디</th>
+                      <th className="p-3">연락처</th>
+                      <th className="p-3">회원 권한</th>
+                      <th className="p-3">보유 포인트 잔액</th>
+                      <th className="p-3 text-center">포인트 수동 지급/차감</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e5e5ea]">
+                    {users.map((u) => (
+                      <tr key={u.id} className="hover:bg-[#f8f9fa]">
+                        <td className="p-3 font-bold text-[#1c1c1e]">{u.name}</td>
+                        <td className="p-3 font-mono text-[#8e8e93]">{u.userId}</td>
+                        <td className="p-3 text-[#8e8e93]">{u.phone}</td>
+                        <td className="p-3 font-bold">
+                          {u.role === 'admin' ? (
+                            <span className="text-[#b09168] bg-[#b09168]/10 px-2 py-0.5 rounded text-[10px]">지점 관리자</span>
+                          ) : (
+                            <span className="text-[#8e8e93] bg-[#f0f0f2] px-2 py-0.5 rounded text-[10px]">일반 회원</span>
+                          )}
+                        </td>
+                        <td className="p-3 font-extrabold text-[#b09168]">
+                          {(u.points || 0).toLocaleString()} P
+                        </td>
+                        <td className="p-3 text-center space-x-1">
+                          <button
+                            onClick={() => {
+                              const amountStr = prompt(`'${u.name}' 회원님에게 지급할 포인트 금액을 입력해 주세요:`, '10000');
+                              if (amountStr) {
+                                const amt = parseInt(amountStr, 10);
+                                if (!isNaN(amt) && amt > 0 && onManualAdjustPoint) {
+                                  onManualAdjustPoint(u.id, amt, '관리자 수동 지급');
+                                }
+                              }
+                            }}
+                            className="bg-[#34c759]/10 text-[#34c759] border border-[#34c759]/30 py-1 px-2.5 rounded-lg font-bold text-[11px] hover:bg-[#34c759]/20"
+                          >
+                            + 지급
+                          </button>
+                          <button
+                            onClick={() => {
+                              const amountStr = prompt(`'${u.name}' 회원님에게서 차감할 포인트 금액을 입력해 주세요:`, '5000');
+                              if (amountStr) {
+                                const amt = parseInt(amountStr, 10);
+                                if (!isNaN(amt) && amt > 0 && onManualAdjustPoint) {
+                                  onManualAdjustPoint(u.id, -amt, '관리자 수동 차감');
+                                }
+                              }
+                            }}
+                            className="bg-[#ff3b30]/10 text-[#ff3b30] border border-[#ff3b30]/30 py-1 px-2.5 rounded-lg font-bold text-[11px] hover:bg-[#ff3b30]/20"
+                          >
+                            - 차감
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 

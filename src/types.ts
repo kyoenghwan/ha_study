@@ -57,5 +57,16 @@ export interface UserAccount {
   points: number;
 }
 
+export interface PointTransaction {
+  id: string;
+  userId: string;
+  userName: string;
+  type: 'charge_request' | 'charge_approved' | 'use' | 'refund';
+  amount: number;
+  description: string;
+  status: 'pending' | 'completed' | 'cancelled';
+  createdAt: string;
+}
+
 export type Role = 'admin' | 'user';
 

@@ -38,3 +38,14 @@
 - `barcode_status`: TEXT ('valid' | 'used' | 'cancelled')
 - `is_long_term`: BOOLEAN
 - `created_at`: TIMESTAMPTZ
+
+## 5. point_transactions (포인트 입출금 및 환불 트랜잭션)
+- `id`: TEXT (PK)
+- `user_id`: TEXT
+- `user_name`: TEXT
+- `type`: TEXT ('charge_request' | 'charge_approved' | 'use' | 'refund')
+- `amount`: INTEGER
+- `description`: TEXT
+- `status`: TEXT ('pending' | 'completed' | 'cancelled')
+- `created_at`: TIMESTAMPTZ
+

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Room, Reservation, BankInfo, MasterBarcode } from '../types';
+import type { Room, Reservation, BankInfo, MasterBarcode, PointTransaction } from '../types';
 import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
 
@@ -8,7 +8,10 @@ interface UserDashboardProps {
   reservations: Reservation[];
   bankInfo: BankInfo;
   masterBarcode?: MasterBarcode;
+  pointTransactions?: PointTransaction[];
   onSelectRoom: (roomId: string) => void;
+  onApplyPointCharge?: (amount: number) => void;
+  onCancelAndRefundReservation?: (resId: string) => void;
 }
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({
@@ -16,7 +19,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   reservations,
   bankInfo,
   masterBarcode,
+  pointTransactions = [],
   onSelectRoom,
+  onApplyPointCharge,
+  onCancelAndRefundReservation,
 }) => {
   const [showMyReservationsModal, setShowMyReservationsModal] = useState(false);
   const [activeBarcodeReservation, setActiveBarcodeReservation] = useState<Reservation | null>(null);
@@ -248,13 +254,27 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                         </div>
                       )}
 
-                      <div className="text-[10px] text-[#8e8e93] flex justify-between items-center pt-0.5">
+                      <div className="text-[10px] text-[#8e8e93] flex justify-between items-center pt-1 border-t border-[#e5e5ea]/60">
                         <span className="flex items-center gap-1">
                           <Calendar size={11} /> {res.date} ({res.startTime} ~ {res.endTime})
                         </span>
-                        <span className="text-[#b09168] font-bold">
-                          {res.paymentMethod === 'points' ? '포인트 결제' : '무통장 입금'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#b09168] font-bold">
+                            {res.paymentMethod === 'points' ? '포인트 결제' : '무통장 입금'}
+                          </span>
+                          {onCancelAndRefundReservation && res.barcodeStatus === 'valid' && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`'${room?.name}' 예약을 취소하시겠습니까? 결제하신 포인트(4,000P)가 즉시 환불됩니다.`)) {
+                                  onCancelAndRefundReservation(res.id);
+                                }
+                              }}
+                              className="text-[10px] text-[#ff3b30] font-bold border border-[#ff3b30]/30 bg-[#ff3b30]/5 px-2 py-0.5 rounded hover:bg-[#ff3b30]/10"
+                            >
+                              예약 취소/환불
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -264,7 +284,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
             <button
               onClick={() => setShowMyReservationsModal(false)}
-              className="gold-btn-outline w-full py-2.5 text-xs font-bold mt-4"
+              className="gold-btn-outline w-full py-2.5 text-xs font-bold rounded-xl mt-4"
             >
               닫기
             </button>

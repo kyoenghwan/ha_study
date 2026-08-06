@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { UserAccount, Reservation, MasterBarcode } from '../types';
+import type { UserAccount, Reservation, MasterBarcode, PointTransaction } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://aonpiwzphpngucrtrnmq.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvbnBpd3pwaHBuZ3VjcnRybm1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzM2NTksImV4cCI6MjEwMTUwOTY1OX0.A2W5VENnUQL6GDROVzNtK3orR6OX8GupKRTfts4e4PI';
@@ -133,3 +133,43 @@ export const saveDbMasterBarcode = async (master: MasterBarcode) => {
     console.error('Supabase master barcode save error:', err);
   }
 };
+
+// 4. 포인트 입출금 및 환불 트랜잭션 조회 & 저장
+export const fetchDbPointTransactions = async (): Promise<PointTransaction[]> => {
+  try {
+    const { data, error } = await supabase.from('point_transactions').select('*').order('created_at', { ascending: false });
+    if (error || !data) return [];
+    return data.map((t) => ({
+      id: t.id,
+      userId: t.user_id,
+      userName: t.user_name,
+      type: t.type as any,
+      amount: t.amount,
+      description: t.description,
+      status: t.status as any,
+      createdAt: t.created_at,
+    }));
+  } catch (err) {
+    console.warn('Supabase point_transactions fetch failed:', err);
+    return [];
+  }
+};
+
+export const saveDbPointTransaction = async (tx: PointTransaction) => {
+  try {
+    const { error } = await supabase.from('point_transactions').upsert({
+      id: tx.id,
+      user_id: tx.userId,
+      user_name: tx.userName,
+      type: tx.type,
+      amount: tx.amount,
+      description: tx.description,
+      status: tx.status,
+      created_at: tx.createdAt,
+    });
+    if (error) console.error('Supabase point_transaction save error:', error);
+  } catch (err) {
+    console.error('Supabase point_transaction save failed:', err);
+  }
+};
+
