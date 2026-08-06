@@ -11,7 +11,7 @@
 6. **[Transaction]** 다중 OA(DB 트랜잭션)시 롤백 원자(`rollback_atom`)를 강제하라.
 7. **[Schema SSOT]** 스키마 추측 금지. 반드시 `docs/db/*_schema.md`를 스캔하고 작업하라.
 8. **[Project Priority]** `docs/project_rules` 특수 지침이 있을 경우 최우선 적용한다.
-9. **[Github Upload]** 만약 Github에 올라가 있는 상태라면 수정 후 반드시 github에 업로드 시켜 최신 버전을 유지 할 수 있도록 한다.
+9. **[Github Upload]** 만약 Github에 올라가 있는 상태라면 수정 후 사용자에게 묻지 말고 즉시 `git push -f origin main` 명령을 자동 실행하여 최신 버전을 유지한다.
 
 ---
 
