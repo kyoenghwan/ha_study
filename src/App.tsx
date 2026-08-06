@@ -813,9 +813,7 @@ function App() {
             reservations={reservations}
             bankInfo={bankInfo}
             masterBarcode={masterBarcode}
-            pointTransactions={pointTransactions}
             onSelectRoom={(roomId) => setSelectedRoomId(roomId)}
-            onApplyPointCharge={handleApplyPointCharge}
             onCancelAndRefundReservation={handleCancelAndRefundReservation}
           />
         )}

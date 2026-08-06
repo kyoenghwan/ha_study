@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Room, Reservation, BankInfo, MasterBarcode, PointTransaction } from '../types';
+import type { Room, Reservation, BankInfo, MasterBarcode } from '../types';
 import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
 
@@ -8,9 +8,7 @@ interface UserDashboardProps {
   reservations: Reservation[];
   bankInfo: BankInfo;
   masterBarcode?: MasterBarcode;
-  pointTransactions?: PointTransaction[];
   onSelectRoom: (roomId: string) => void;
-  onApplyPointCharge?: (amount: number) => void;
   onCancelAndRefundReservation?: (resId: string) => void;
 }
 
@@ -19,9 +17,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   reservations,
   bankInfo,
   masterBarcode,
-  pointTransactions = [],
   onSelectRoom,
-  onApplyPointCharge,
   onCancelAndRefundReservation,
 }) => {
   const [showMyReservationsModal, setShowMyReservationsModal] = useState(false);
