@@ -85,14 +85,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="w-full max-w-[320px] mx-auto px-1 space-y-5">
+    <div className="w-full max-w-[280px] mx-auto space-y-6 py-2">
       {/* 르하임 브랜드 로고 & 타이틀 */}
-      <div className="text-center space-y-1.5">
+      <div className="text-center space-y-2">
         <img
           src={logoImg}
           alt="르하임 로고"
           className="mx-auto"
-          style={{ width: '150px', height: 'auto' }}
+          style={{ width: '140px', height: 'auto' }}
         />
         <h2 className="text-base font-extrabold text-[#1c1c1e] tracking-wide pt-1">
           스터디카페 여의도점
@@ -103,7 +103,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       </div>
 
       {/* 탭 메뉴 (로그인 / 회원가입) */}
-      <div className="flex border-b border-[#e5e5ea]">
+      <div className="flex border-b border-[#e5e5ea] pt-1 pb-0.5">
         <button
           onClick={() => {
             setTab('login');
@@ -132,14 +132,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </button>
       </div>
 
-      {/* 1. 로그인 폼 (아이콘 라벨 텍스트 앞 배치 + 슬림 레이아웃) */}
+      {/* 1. 로그인 폼 (수직 여백 넉넉 + 280px 슬림 중앙 레이아웃) */}
       {tab === 'login' && (
-        <form onSubmit={handleLoginSubmit} className="space-y-3.5 pt-1">
-          <div className="space-y-2.5">
+        <form onSubmit={handleLoginSubmit} className="space-y-5 pt-2">
+          <div className="space-y-4">
             {/* 아이디 Row */}
             <div className="flex items-center gap-2">
-              <label className="w-20 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1 pr-1">
-                <User size={14} className="text-[#b09168]" /> 아이디
+              <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
+                <User size={13} className="text-[#b09168]" /> 아이디
               </label>
               <input
                 type="text"
@@ -152,8 +152,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             {/* 비밀번호 Row */}
             <div className="flex items-center gap-2">
-              <label className="w-20 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1 pr-1">
-                <Lock size={14} className="text-[#b09168]" /> 비밀번호
+              <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
+                <Lock size={13} className="text-[#b09168]" /> 비밀번호
               </label>
               <input
                 type="password"
@@ -166,21 +166,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
 
           {loginError && (
-            <p className="text-xs text-[#ff3b30] font-bold bg-[#ff3b30]/10 p-2 rounded-xl text-center">
+            <p className="text-xs text-[#ff3b30] font-bold bg-[#ff3b30]/10 p-2.5 rounded-xl text-center">
               {loginError}
             </p>
           )}
 
-          <button type="submit" className="gold-btn w-full py-2.5 text-xs font-bold rounded-xl shadow mt-1">
-            로그인하기
-          </button>
+          <div className="pt-2">
+            <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
+              로그인하기
+            </button>
+          </div>
 
           {/* 테스트 빠른 접속 가이드 */}
-          <div className="bg-[#f8f9fa] p-2.5 rounded-xl border border-[#e5e5ea] text-[11px] text-[#8e8e93] space-y-1 mt-3">
+          <div className="bg-[#f8f9fa] p-3.5 rounded-xl border border-[#e5e5ea] text-[11px] text-[#8e8e93] space-y-2 mt-5">
             <p className="font-bold text-[#b09168] flex items-center gap-1 text-[11px]">
               <Sparkles size={12} /> 빠른 테스트 계정
             </p>
-            <div className="flex justify-between items-center text-[10px] pt-0.5">
+            <div className="flex justify-between items-center text-[10px] pt-1 border-t border-[#e5e5ea]/60">
               <span>이용자: <strong>user1</strong> (비밀번호: 123)</span>
               <button
                 type="button"
@@ -210,19 +212,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </form>
       )}
 
-      {/* 2. 회원가입 폼 (아이콘 라벨 텍스트 앞 배치 + 슬림 레이아웃) */}
+      {/* 2. 회원가입 폼 (수직 여백 넉넉 + 280px 슬림 중앙 레이아웃) */}
       {tab === 'register' && (
-        <form onSubmit={handleRegisterSubmit} className="space-y-2.5 pt-1">
+        <form onSubmit={handleRegisterSubmit} className="space-y-4 pt-2">
           {/* 가입 유형 선택 Row */}
           <div className="flex items-center gap-2">
-            <label className="w-20 shrink-0 text-xs font-bold text-[#1c1c1e] text-right pr-1">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right">
               가입 유형
             </label>
             <div className="flex-1 grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => setRegRole('user')}
-                className={`py-1.5 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
+                className={`py-2 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
                   regRole === 'user'
                     ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
                     : 'border-[#e5e5ea] text-[#8e8e93]'
@@ -233,7 +235,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="button"
                 onClick={() => setRegRole('admin')}
-                className={`py-1.5 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
+                className={`py-2 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
                   regRole === 'admin'
                     ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
                     : 'border-[#e5e5ea] text-[#8e8e93]'
@@ -246,7 +248,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* 아이디 Row */}
           <div className="flex items-center gap-2">
-            <label className="w-20 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1 pr-1">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
               <User size={13} className="text-[#b09168]" /> 아이디
             </label>
             <input
@@ -260,7 +262,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* 비밀번호 Row */}
           <div className="flex items-center gap-2">
-            <label className="w-20 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1 pr-1">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
               <Lock size={13} className="text-[#b09168]" /> 비밀번호
             </label>
             <input
@@ -274,7 +276,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* 이름 Row */}
           <div className="flex items-center gap-2">
-            <label className="w-20 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1 pr-1">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
               <User size={13} className="text-[#b09168]" /> 성함
             </label>
             <input
@@ -288,7 +290,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* 휴대폰 번호 Row */}
           <div className="flex items-center gap-2">
-            <label className="w-20 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1 pr-1">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
               <Phone size={13} className="text-[#b09168]" /> 연락처
             </label>
             <input
@@ -312,9 +314,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </p>
           )}
 
-          <button type="submit" className="gold-btn w-full py-2.5 text-xs font-bold rounded-xl shadow mt-1">
-            회원가입 완료
-          </button>
+          <div className="pt-2">
+            <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
+              회원가입 완료
+            </button>
+          </div>
         </form>
       )}
     </div>
