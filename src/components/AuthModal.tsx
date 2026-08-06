@@ -85,10 +85,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    /* 📌 좌우 폭(Width)을 안쪽으로 팍 줄이고(max-w-[250px]), 위아래는 시원하게 유지(space-y-6) */
-    <div className="w-full max-w-[250px] mx-auto space-y-6 py-4">
+    /* 📌 스마트폰 규격(340px) 고정 카드: 반응형으로 커지지 않고 단단하게 고정 */
+    <div className="w-[340px] max-w-[340px] shrink-0 mx-auto p-5 bg-white rounded-3xl border border-[#e5e5ea] shadow-md space-y-5">
       {/* 르하임 브랜드 로고 & 타이틀 */}
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-1.5">
         <img
           src={logoImg}
           alt="르하임 로고"
@@ -98,19 +98,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <h2 className="text-base font-extrabold text-[#1c1c1e] tracking-wide pt-1">
           스터디카페 여의도점
         </h2>
-        <p className="text-xs text-[#8e8e93]">
+        <p className="text-[11px] text-[#8e8e93]">
           로그인 후 공부방 예약 및 시스템을 이용하세요.
         </p>
       </div>
 
       {/* 탭 메뉴 (로그인 / 회원가입) */}
-      <div className="flex border-b border-[#e5e5ea] pb-1">
+      <div className="flex border-b border-[#e5e5ea] pb-0.5">
         <button
           onClick={() => {
             setTab('login');
             setLoginError('');
           }}
-          className={`flex-1 py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
+          className={`flex-1 py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
             tab === 'login'
               ? 'text-[#b09168] border-b-2 border-[#b09168]'
               : 'text-[#8e8e93] hover:text-[#1c1c1e]'
@@ -123,7 +123,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setTab('register');
             setRegError('');
           }}
-          className={`flex-1 py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
+          className={`flex-1 py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
             tab === 'register'
               ? 'text-[#b09168] border-b-2 border-[#b09168]'
               : 'text-[#8e8e93] hover:text-[#1c1c1e]'
@@ -133,10 +133,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </button>
       </div>
 
-      {/* 1. 로그인 폼 (좌우 폭은 250px로 좁히고 상하 간격은 시원하게 띄움) */}
+      {/* 1. 로그인 폼 (스마트폰 고정 폭 내 정교한 가로배치) */}
       {tab === 'login' && (
-        <form onSubmit={handleLoginSubmit} className="space-y-5 pt-2">
-          <div className="space-y-4">
+        <form onSubmit={handleLoginSubmit} className="space-y-4 pt-1">
+          <div className="space-y-3">
             {/* 아이디 Row */}
             <div className="flex items-center gap-2">
               <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
@@ -147,7 +147,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={loginUserId}
                 onChange={(e) => setLoginUserId(e.target.value)}
                 placeholder="user1 / admin"
-                className="form-input text-xs flex-1 py-2.5 px-3"
+                className="form-input text-xs flex-1 py-2 px-3"
               />
             </div>
 
@@ -161,7 +161,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="비밀번호 (123)"
-                className="form-input text-xs flex-1 py-2.5 px-3"
+                className="form-input text-xs flex-1 py-2 px-3"
               />
             </div>
           </div>
@@ -172,14 +172,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </p>
           )}
 
-          <div className="pt-2">
+          <div className="pt-1">
             <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
               로그인하기
             </button>
           </div>
 
           {/* 테스트 빠른 접속 가이드 */}
-          <div className="bg-[#f8f9fa] p-3 rounded-xl border border-[#e5e5ea] text-[11px] text-[#8e8e93] space-y-2 mt-5">
+          <div className="bg-[#f8f9fa] p-3 rounded-xl border border-[#e5e5ea] text-[11px] text-[#8e8e93] space-y-1.5 mt-4">
             <p className="font-bold text-[#b09168] flex items-center gap-1 text-[11px]">
               <Sparkles size={12} /> 빠른 테스트 계정
             </p>
@@ -191,7 +191,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   setLoginUserId('user1');
                   setLoginPassword('123');
                 }}
-                className="text-[#b09168] font-bold underline ml-1"
+                className="text-[#b09168] font-bold underline"
               >
                 입력
               </button>
@@ -204,7 +204,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   setLoginUserId('admin');
                   setLoginPassword('123');
                 }}
-                className="text-[#b09168] font-bold underline ml-1"
+                className="text-[#b09168] font-bold underline"
               >
                 입력
               </button>
@@ -213,19 +213,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </form>
       )}
 
-      {/* 2. 회원가입 폼 (좌우 폭은 250px로 좁히고 상하 간격은 시원하게 띄움) */}
+      {/* 2. 회원가입 폼 */}
       {tab === 'register' && (
-        <form onSubmit={handleRegisterSubmit} className="space-y-4 pt-2">
+        <form onSubmit={handleRegisterSubmit} className="space-y-3.5 pt-1">
           {/* 가입 유형 선택 Row */}
           <div className="flex items-center gap-2">
-            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right pr-1">
               가입 유형
             </label>
             <div className="flex-1 grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => setRegRole('user')}
-                className={`py-2 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
+                className={`py-1.5 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
                   regRole === 'user'
                     ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
                     : 'border-[#e5e5ea] text-[#8e8e93]'
@@ -236,7 +236,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="button"
                 onClick={() => setRegRole('admin')}
-                className={`py-2 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
+                className={`py-1.5 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
                   regRole === 'admin'
                     ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
                     : 'border-[#e5e5ea] text-[#8e8e93]'
@@ -257,7 +257,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               value={regUserId}
               onChange={(e) => setRegUserId(e.target.value)}
               placeholder="아이디 입력"
-              className="form-input text-xs flex-1 py-2.5 px-3"
+              className="form-input text-xs flex-1 py-2 px-3"
             />
           </div>
 
@@ -271,7 +271,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               value={regPassword}
               onChange={(e) => setRegPassword(e.target.value)}
               placeholder="비밀번호 입력"
-              className="form-input text-xs flex-1 py-2.5 px-3"
+              className="form-input text-xs flex-1 py-2 px-3"
             />
           </div>
 
@@ -285,7 +285,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               value={regName}
               onChange={(e) => setRegName(e.target.value)}
               placeholder="예: 홍길동"
-              className="form-input text-xs flex-1 py-2.5 px-3"
+              className="form-input text-xs flex-1 py-2 px-3"
             />
           </div>
 
@@ -299,7 +299,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               value={regPhone}
               onChange={(e) => setRegPhone(e.target.value)}
               placeholder="010-1234-5678"
-              className="form-input text-xs flex-1 py-2.5 px-3"
+              className="form-input text-xs flex-1 py-2 px-3"
             />
           </div>
 
@@ -315,7 +315,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </p>
           )}
 
-          <div className="pt-2">
+          <div className="pt-1">
             <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
               회원가입 완료
             </button>
