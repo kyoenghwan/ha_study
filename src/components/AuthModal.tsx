@@ -85,105 +85,105 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    /* 📌 2번 영역 크기로 대폭 좁힌 슬림 폼 컨테이너 (max-w-[220px]) */
-    <div className="w-full max-w-[220px] mx-auto space-y-5 py-2">
+    /* 📌 좌우 폭(Width)을 안쪽으로 팍 줄이고(max-w-[250px]), 위아래는 시원하게 유지(space-y-6) */
+    <div className="w-full max-w-[250px] mx-auto space-y-6 py-4">
       {/* 르하임 브랜드 로고 & 타이틀 */}
-      <div className="text-center space-y-1.5">
+      <div className="text-center space-y-2">
         <img
           src={logoImg}
           alt="르하임 로고"
           className="mx-auto"
-          style={{ width: '130px', height: 'auto' }}
+          style={{ width: '150px', height: 'auto' }}
         />
-        <h2 className="text-sm font-extrabold text-[#1c1c1e] tracking-wide pt-1">
+        <h2 className="text-base font-extrabold text-[#1c1c1e] tracking-wide pt-1">
           스터디카페 여의도점
         </h2>
-        <p className="text-[10px] text-[#8e8e93]">
+        <p className="text-xs text-[#8e8e93]">
           로그인 후 공부방 예약 및 시스템을 이용하세요.
         </p>
       </div>
 
       {/* 탭 메뉴 (로그인 / 회원가입) */}
-      <div className="flex border-b border-[#e5e5ea]">
+      <div className="flex border-b border-[#e5e5ea] pb-1">
         <button
           onClick={() => {
             setTab('login');
             setLoginError('');
           }}
-          className={`flex-1 py-2 text-[11px] font-bold transition-all flex items-center justify-center gap-1 relative ${
+          className={`flex-1 py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
             tab === 'login'
               ? 'text-[#b09168] border-b-2 border-[#b09168]'
               : 'text-[#8e8e93] hover:text-[#1c1c1e]'
           }`}
         >
-          <LogIn size={13} /> 로그인
+          <LogIn size={14} /> 로그인
         </button>
         <button
           onClick={() => {
             setTab('register');
             setRegError('');
           }}
-          className={`flex-1 py-2 text-[11px] font-bold transition-all flex items-center justify-center gap-1 relative ${
+          className={`flex-1 py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
             tab === 'register'
               ? 'text-[#b09168] border-b-2 border-[#b09168]'
               : 'text-[#8e8e93] hover:text-[#1c1c1e]'
           }`}
         >
-          <UserPlus size={13} /> 회원가입
+          <UserPlus size={14} /> 회원가입
         </button>
       </div>
 
-      {/* 1. 로그인 폼 (2번 영역 크기에 맞춘 아담한 컴팩트 레이아웃) */}
+      {/* 1. 로그인 폼 (좌우 폭은 250px로 좁히고 상하 간격은 시원하게 띄움) */}
       {tab === 'login' && (
-        <form onSubmit={handleLoginSubmit} className="space-y-4 pt-1">
-          <div className="space-y-3">
+        <form onSubmit={handleLoginSubmit} className="space-y-5 pt-2">
+          <div className="space-y-4">
             {/* 아이디 Row */}
-            <div className="flex items-center gap-1.5">
-              <label className="w-14 shrink-0 text-[11px] font-bold text-[#1c1c1e] flex items-center justify-end gap-0.5">
-                <User size={12} className="text-[#b09168]" /> 아이디
+            <div className="flex items-center gap-2">
+              <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
+                <User size={13} className="text-[#b09168]" /> 아이디
               </label>
               <input
                 type="text"
                 value={loginUserId}
                 onChange={(e) => setLoginUserId(e.target.value)}
                 placeholder="user1 / admin"
-                className="form-input text-[11px] flex-1 py-1.5 px-2"
+                className="form-input text-xs flex-1 py-2.5 px-3"
               />
             </div>
 
             {/* 비밀번호 Row */}
-            <div className="flex items-center gap-1.5">
-              <label className="w-14 shrink-0 text-[11px] font-bold text-[#1c1c1e] flex items-center justify-end gap-0.5">
-                <Lock size={12} className="text-[#b09168]" /> 비밀번호
+            <div className="flex items-center gap-2">
+              <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
+                <Lock size={13} className="text-[#b09168]" /> 비밀번호
               </label>
               <input
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="비밀번호 (123)"
-                className="form-input text-[11px] flex-1 py-1.5 px-2"
+                className="form-input text-xs flex-1 py-2.5 px-3"
               />
             </div>
           </div>
 
           {loginError && (
-            <p className="text-[10px] text-[#ff3b30] font-bold bg-[#ff3b30]/10 p-2 rounded-lg text-center">
+            <p className="text-xs text-[#ff3b30] font-bold bg-[#ff3b30]/10 p-2.5 rounded-xl text-center">
               {loginError}
             </p>
           )}
 
-          <div className="pt-1">
-            <button type="submit" className="gold-btn w-full py-2.5 text-xs font-bold rounded-xl shadow">
+          <div className="pt-2">
+            <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
               로그인하기
             </button>
           </div>
 
           {/* 테스트 빠른 접속 가이드 */}
-          <div className="bg-[#f8f9fa] p-2.5 rounded-xl border border-[#e5e5ea] text-[10px] text-[#8e8e93] space-y-1 mt-3">
-            <p className="font-bold text-[#b09168] flex items-center gap-1 text-[10px]">
-              <Sparkles size={11} /> 빠른 테스트 계정
+          <div className="bg-[#f8f9fa] p-3 rounded-xl border border-[#e5e5ea] text-[11px] text-[#8e8e93] space-y-2 mt-5">
+            <p className="font-bold text-[#b09168] flex items-center gap-1 text-[11px]">
+              <Sparkles size={12} /> 빠른 테스트 계정
             </p>
-            <div className="flex justify-between items-center text-[9px] pt-0.5 border-t border-[#e5e5ea]/60">
+            <div className="flex justify-between items-center text-[10px] pt-1 border-t border-[#e5e5ea]/60">
               <span>이용자: <strong>user1</strong> (비밀번호: 123)</span>
               <button
                 type="button"
@@ -196,7 +196,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 입력
               </button>
             </div>
-            <div className="flex justify-between items-center text-[9px]">
+            <div className="flex justify-between items-center text-[10px]">
               <span>관리자: <strong>admin</strong> (비밀번호: 123)</span>
               <button
                 type="button"
@@ -213,110 +213,110 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </form>
       )}
 
-      {/* 2. 회원가입 폼 (2번 영역 크기에 맞춘 아담한 컴팩트 레이아웃) */}
+      {/* 2. 회원가입 폼 (좌우 폭은 250px로 좁히고 상하 간격은 시원하게 띄움) */}
       {tab === 'register' && (
-        <form onSubmit={handleRegisterSubmit} className="space-y-3 pt-1">
+        <form onSubmit={handleRegisterSubmit} className="space-y-4 pt-2">
           {/* 가입 유형 선택 Row */}
-          <div className="flex items-center gap-1.5">
-            <label className="w-14 shrink-0 text-[11px] font-bold text-[#1c1c1e] text-right">
-              유형
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] text-right">
+              가입 유형
             </label>
-            <div className="flex-1 grid grid-cols-2 gap-1">
+            <div className="flex-1 grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => setRegRole('user')}
-                className={`py-1.5 px-1 rounded-lg border text-[9px] font-bold flex items-center justify-center gap-0.5 ${
+                className={`py-2 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
                   regRole === 'user'
                     ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
                     : 'border-[#e5e5ea] text-[#8e8e93]'
                 }`}
               >
-                <User size={11} /> 이용자
+                <User size={12} /> 일반 이용자
               </button>
               <button
                 type="button"
                 onClick={() => setRegRole('admin')}
-                className={`py-1.5 px-1 rounded-lg border text-[9px] font-bold flex items-center justify-center gap-0.5 ${
+                className={`py-2 px-1 rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1 ${
                   regRole === 'admin'
                     ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
                     : 'border-[#e5e5ea] text-[#8e8e93]'
                 }`}
               >
-                <Shield size={11} /> 관리자
+                <Shield size={12} /> 지점 관리자
               </button>
             </div>
           </div>
 
           {/* 아이디 Row */}
-          <div className="flex items-center gap-1.5">
-            <label className="w-14 shrink-0 text-[11px] font-bold text-[#1c1c1e] flex items-center justify-end gap-0.5">
-              <User size={11} className="text-[#b09168]" /> 아이디
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
+              <User size={13} className="text-[#b09168]" /> 아이디
             </label>
             <input
               type="text"
               value={regUserId}
               onChange={(e) => setRegUserId(e.target.value)}
               placeholder="아이디 입력"
-              className="form-input text-[11px] flex-1 py-1.5 px-2"
+              className="form-input text-xs flex-1 py-2.5 px-3"
             />
           </div>
 
           {/* 비밀번호 Row */}
-          <div className="flex items-center gap-1.5">
-            <label className="w-14 shrink-0 text-[11px] font-bold text-[#1c1c1e] flex items-center justify-end gap-0.5">
-              <Lock size={11} className="text-[#b09168]" /> 비밀번호
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
+              <Lock size={13} className="text-[#b09168]" /> 비밀번호
             </label>
             <input
               type="password"
               value={regPassword}
               onChange={(e) => setRegPassword(e.target.value)}
               placeholder="비밀번호 입력"
-              className="form-input text-[11px] flex-1 py-1.5 px-2"
+              className="form-input text-xs flex-1 py-2.5 px-3"
             />
           </div>
 
           {/* 이름 Row */}
-          <div className="flex items-center gap-1.5">
-            <label className="w-14 shrink-0 text-[11px] font-bold text-[#1c1c1e] flex items-center justify-end gap-0.5">
-              <User size={11} className="text-[#b09168]" /> 성함
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
+              <User size={13} className="text-[#b09168]" /> 성함
             </label>
             <input
               type="text"
               value={regName}
               onChange={(e) => setRegName(e.target.value)}
               placeholder="예: 홍길동"
-              className="form-input text-[11px] flex-1 py-1.5 px-2"
+              className="form-input text-xs flex-1 py-2.5 px-3"
             />
           </div>
 
           {/* 휴대폰 번호 Row */}
-          <div className="flex items-center gap-1.5">
-            <label className="w-14 shrink-0 text-[11px] font-bold text-[#1c1c1e] flex items-center justify-end gap-0.5">
-              <Phone size={11} className="text-[#b09168]" /> 연락처
+          <div className="flex items-center gap-2">
+            <label className="w-16 shrink-0 text-xs font-bold text-[#1c1c1e] flex items-center justify-end gap-1">
+              <Phone size={13} className="text-[#b09168]" /> 연락처
             </label>
             <input
               type="text"
               value={regPhone}
               onChange={(e) => setRegPhone(e.target.value)}
               placeholder="010-1234-5678"
-              className="form-input text-[11px] flex-1 py-1.5 px-2"
+              className="form-input text-xs flex-1 py-2.5 px-3"
             />
           </div>
 
           {regError && (
-            <p className="text-[10px] text-[#ff3b30] font-bold bg-[#ff3b30]/10 p-2 rounded-lg text-center">
+            <p className="text-xs text-[#ff3b30] font-bold bg-[#ff3b30]/10 p-2.5 rounded-xl text-center">
               {regError}
             </p>
           )}
 
           {regSuccessMsg && (
-            <p className="text-[10px] text-[#34c759] font-bold bg-[#34c759]/10 p-2 rounded-lg text-center flex items-center justify-center gap-1">
-              <CheckCircle2 size={13} /> {regSuccessMsg}
+            <p className="text-xs text-[#34c759] font-bold bg-[#34c759]/10 p-2.5 rounded-xl text-center flex items-center justify-center gap-1">
+              <CheckCircle2 size={14} /> {regSuccessMsg}
             </p>
           )}
 
-          <div className="pt-1">
-            <button type="submit" className="gold-btn w-full py-2.5 text-xs font-bold rounded-xl shadow">
+          <div className="pt-2">
+            <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
               회원가입 완료
             </button>
           </div>
