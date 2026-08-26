@@ -26,7 +26,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
  * 쓰기 작업의 결과. 실패를 조용히 넘기지 않기 위해 항상 이 형태로 반환한다.
  * 호출부는 ok === false 를 반드시 사용자에게 알려야 한다.
  */
-export type DbResult = { ok: true } | { ok: false; error: string };
+export type DbResult =
+  | { ok: true; error?: undefined }
+  | { ok: false; error: string };
 
 const ok = (): DbResult => ({ ok: true });
 
