@@ -54,7 +54,6 @@ export interface Branch {
   fullName: string;
   address: string;
   description: string;
-  badge: string;
 }
 
 export const BRANCHES: Branch[] = [
@@ -64,7 +63,6 @@ export const BRANCHES: Branch[] = [
     fullName: '르하임 스터디카페 여의도점',
     address: '서울특별시 영등포구 여의도동 24번지',
     description: '화이트보드 완비 4인실 & 그룹 스터디 6인실 집중존',
-    badge: '1호점 (운영중)',
   },
   {
     id: 'mapo',
@@ -72,7 +70,6 @@ export const BRANCHES: Branch[] = [
     fullName: '르하임 스터디카페 마포점',
     address: '서울특별시 마포구 도화동 18번지',
     description: '대형 빔프로젝터 세미나룸 & 몰입형 프리미엄 스터디존',
-    badge: '2호점 (운영중)',
   },
   {
     id: 'gangnam',
@@ -80,7 +77,6 @@ export const BRANCHES: Branch[] = [
     fullName: '르하임 스터디카페 강남점',
     address: '서울특별시 강남구 역삼동 825번지',
     description: '개별 방음 부스 & 1인 몰입 스터디룸',
-    badge: '3호점 (오픈예정)',
   },
   {
     id: 'pangyo',
@@ -88,7 +84,6 @@ export const BRANCHES: Branch[] = [
     fullName: '르하임 스터디카페 판교점',
     address: '경기도 성남시 분당구 판교역로 146',
     description: '초고속 기가 Wi-Fi & IT 개발자 전용 스터디존',
-    badge: '4호점 (오픈예정)',
   },
 ];
 
@@ -917,14 +912,9 @@ function App() {
                         <MapPin size={20} />
                       </div>
                       <div>
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="text-sm font-bold text-[#191f28] group-hover:text-[#a67c48] transition-colors">
-                            {currentBranchObj.fullName}
-                          </h4>
-                          <span className="text-[11px] font-semibold text-[#a67c48] bg-white border border-[#a67c48]/30 px-1.5 py-0.2 rounded">
-                            {currentBranchObj.badge}
-                          </span>
-                        </div>
+                        <h4 className="text-sm font-bold text-[#191f28] group-hover:text-[#a67c48] transition-colors">
+                          {currentBranchObj.fullName}
+                        </h4>
                         <p className="text-xs text-[#8b95a1] pt-0.5">{currentBranchObj.address}</p>
                       </div>
                     </div>

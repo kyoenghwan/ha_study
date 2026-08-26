@@ -28,8 +28,7 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
     return (
       branch.name.toLowerCase().includes(term) ||
       branch.fullName.toLowerCase().includes(term) ||
-      branch.address.toLowerCase().includes(term) ||
-      branch.badge.toLowerCase().includes(term)
+      branch.address.toLowerCase().includes(term)
     );
   });
 
@@ -63,28 +62,31 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
           </button>
         </div>
 
-        {/* 상단: 지점 검색창 */}
+        {/* 상단: 지점 검색창 (돋보기를 오른쪽 끝에 완벽 정렬) */}
         <div className="relative shrink-0">
-          <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8b95a1]" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="지점명 또는 주소를 검색하세요 (예: 여의도, 마포)"
-            className="form-input w-full pl-10 pr-9 py-2.5 text-sm rounded-xl border border-[#e5e8eb] focus:border-[#a67c48]"
+            className="form-input w-full pl-4 pr-11 py-3 text-sm rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] shadow-sm"
             autoFocus
           />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b95a1] hover:text-[#191f28] p-1"
-            >
-              <X size={15} />
-            </button>
-          )}
+          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-[#8b95a1]">
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="hover:text-[#191f28] p-0.5 rounded transition-colors"
+                title="검색어 지우기"
+              >
+                <X size={15} />
+              </button>
+            )}
+            <Search size={18} className="text-[#a67c48]" />
+          </div>
         </div>
 
-        {/* 하단: 정사각형 지점 그리드 목록 */}
+        {/* 하단: 정사각형 지점 그리드 목록 (호점 표시 제거) */}
         <div className="flex-1 overflow-y-auto pr-1">
           {filteredBranches.length === 0 ? (
             <div className="text-center py-12 text-[#8b95a1] space-y-2 border border-dashed border-[#e5e8eb] rounded-2xl bg-[#f8f9fc]">
@@ -106,15 +108,13 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
                         : 'border-[#e5e8eb] bg-[#f8f9fc] hover:bg-white hover:border-[#a67c48]/50 hover:shadow-sm'
                     }`}
                   >
-                    {/* 상단: 지점 배지 & 선택 체크마크 */}
-                    <div className="flex justify-between items-start">
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                        isSelected 
-                          ? 'bg-[#a67c48] text-white' 
-                          : 'bg-[#a67c48]/10 text-[#a67c48]'
+                    {/* 상단: 지점 아이콘 & 선택 체크마크 (호점 배지 제거) */}
+                    <div className="flex justify-between items-center">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                        isSelected ? 'bg-[#a67c48] text-white' : 'bg-[#a67c48]/10 text-[#a67c48]'
                       }`}>
-                        {branch.badge}
-                      </span>
+                        <MapPin size={16} />
+                      </div>
                       
                       {isSelected ? (
                         <div className="w-6 h-6 rounded-full bg-[#a67c48] text-white flex items-center justify-center shadow-sm">
@@ -125,12 +125,9 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
                       )}
                     </div>
 
-                    {/* 중앙: 지점명 및 아이콘 */}
-                    <div className="space-y-1 my-auto text-left">
-                      <div className="flex items-center gap-1 text-[#a67c48]">
-                        <MapPin size={15} />
-                        <span className="text-xs font-semibold">르하임 스터디카페</span>
-                      </div>
+                    {/* 중앙: 지점명 */}
+                    <div className="space-y-0.5 my-auto text-left">
+                      <p className="text-[11px] text-[#a67c48] font-medium">르하임 스터디카페</p>
                       <h4 className="text-base font-bold text-[#191f28] tracking-tight group-hover:text-[#a67c48] transition-colors">
                         {branch.name}
                       </h4>
@@ -138,7 +135,7 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
 
                     {/* 하단: 주소 정보 */}
                     <div className="text-left pt-2 border-t border-[#e5e8eb]/70">
-                      <p className="text-[11px] text-[#8b95a1] line-clamp-2 leading-tight">
+                      <p className="text-xs text-[#8b95a1] line-clamp-2 leading-snug">
                         {branch.address}
                       </p>
                     </div>
@@ -153,7 +150,7 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
         <div className="pt-2 border-t border-[#e5e8eb] shrink-0">
           <button
             onClick={onClose}
-            className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow"
+            className="gold-btn w-full py-3.5 text-xs font-bold rounded-xl shadow"
           >
             선택 완료
           </button>
