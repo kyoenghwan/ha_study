@@ -328,42 +328,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[#fafafa]">
+    <div className="flex-1 flex flex-col overflow-hidden bg-[#eef0f4]">
       {/* 관리자 탭 서브 네비게이션 */}
-      <div className="bg-[#ffffff] border-b border-[#e5e5ea] px-4 pt-3 flex gap-1 overflow-x-auto shrink-0">
+      <div className="bg-[#ffffff] border-b border-[#e5e8eb] px-4 pt-2.5 flex gap-1 overflow-x-auto shrink-0 shadow-sm">
         <button
           onClick={() => setActiveTab('rooms_reservations')}
-          className={`px-3 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'rooms_reservations'
-              ? 'border-[#b09168] text-[#b09168]'
-              : 'border-transparent text-[#8e8e93] hover:text-[#1c1c1e]'
+              ? 'border-[#a67c48] text-[#a67c48]'
+              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
           }`}
         >
-          <Calendar size={14} /> 룸 & 예약 관리
+          <Calendar size={15} /> 룸 & 예약 관리
         </button>
 
         <button
           onClick={() => setActiveTab('long_term_bulk')}
-          className={`px-3 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'long_term_bulk'
-              ? 'border-[#b09168] text-[#b09168]'
-              : 'border-transparent text-[#8e8e93] hover:text-[#1c1c1e]'
+              ? 'border-[#a67c48] text-[#a67c48]'
+              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
           }`}
         >
-          <CalendarRange size={14} /> 장기 일괄 예약
+          <CalendarRange size={15} /> 장기 일괄 예약
         </button>
 
         <button
           onClick={() => setActiveTab('point_management')}
-          className={`px-3 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'point_management'
-              ? 'border-[#b09168] text-[#b09168]'
-              : 'border-transparent text-[#8e8e93] hover:text-[#1c1c1e]'
+              ? 'border-[#a67c48] text-[#a67c48]'
+              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
           }`}
         >
-          <Coins size={14} /> 포인트/입금 승인
+          <Coins size={15} /> 포인트/입금 승인
           {pointTransactions.filter(t => t.status === 'pending').length > 0 && (
-            <span className="bg-[#ff3b30] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">
+            <span className="bg-[#e93d3d] text-white text-xs font-bold px-1.5 py-0.2 rounded-full ml-1">
               {pointTransactions.filter(t => t.status === 'pending').length}
             </span>
           )}
@@ -371,64 +371,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <button
           onClick={() => setActiveTab('user_management')}
-          className={`px-3 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'user_management'
-              ? 'border-[#b09168] text-[#b09168]'
-              : 'border-transparent text-[#8e8e93] hover:text-[#1c1c1e]'
+              ? 'border-[#a67c48] text-[#a67c48]'
+              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
           }`}
         >
-          <Users size={14} /> 회원 통합 관제
+          <Users size={15} /> 회원 통합 관제
         </button>
 
         <button
           onClick={() => setActiveTab('revenue_analytics')}
-          className={`px-3 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'revenue_analytics'
-              ? 'border-[#b09168] text-[#b09168]'
-              : 'border-transparent text-[#8e8e93] hover:text-[#1c1c1e]'
+              ? 'border-[#a67c48] text-[#a67c48]'
+              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
           }`}
         >
-          <BarChart3 size={14} /> 매출 & 시간대 통계
+          <BarChart3 size={15} /> 매출 & 시간대 통계
         </button>
 
         <button
           onClick={() => setActiveTab('barcode_management')}
-          className={`px-3 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'barcode_management'
-              ? 'border-[#b09168] text-[#b09168]'
-              : 'border-transparent text-[#8e8e93] hover:text-[#1c1c1e]'
+              ? 'border-[#a67c48] text-[#a67c48]'
+              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
           }`}
         >
-          <QrCode size={14} /> 바코드 검증 / 발급
+          <QrCode size={15} /> 바코드 검증 / 발급
         </button>
 
         <button
           onClick={() => setActiveTab('bank_settings')}
-          className={`px-3 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
             activeTab === 'bank_settings'
-              ? 'border-[#b09168] text-[#b09168]'
-              : 'border-transparent text-[#8e8e93] hover:text-[#1c1c1e]'
+              ? 'border-[#a67c48] text-[#a67c48]'
+              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
           }`}
         >
-          <Settings size={14} /> 통장 계좌 설정
+          <Settings size={15} /> 통장 계좌 설정
         </button>
       </div>
 
       {/* 탭 콘텐츠 영역 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-5 space-y-6">
         {/* TAB 1: 룸 및 예약 관리 */}
         {activeTab === 'rooms_reservations' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
+          <div className="space-y-5">
+            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#e5e8eb] shadow-sm">
               <div>
-                <h2 className="text-base font-bold text-[#1c1c1e]">스터디룸 및 예약 목록</h2>
-                <p className="text-xs text-[#8e8e93]">공부방을 추가/삭제하거나 실제 예약자의 예약을 변경/취소합니다.</p>
+                <h2 className="text-base font-bold text-[#191f28]">스터디룸 및 예약 목록</h2>
+                <p className="text-xs text-[#8b95a1] pt-0.5">공부방을 추가/삭제하거나 실제 예약자의 예약을 변경/취소합니다.</p>
               </div>
               <button
                 onClick={() => setShowAddRoomModal(true)}
-                className="gold-btn flex items-center gap-1 text-xs py-2 px-3 rounded-lg"
+                className="gold-btn flex items-center gap-1.5 text-xs py-2.5 px-3.5 rounded-xl shadow"
               >
-                <Plus size={14} /> 새 룸 추가
+                <Plus size={15} /> 새 룸 추가
               </button>
             </div>
 

@@ -1,0 +1,23 @@
+version: 1
+project_rule: docs/project_rules/ha_study_project.md
+
+domains:
+  reservation_v1:
+    process: docs/processes/reservation_v1_process.md
+    schema: docs/db/schema.md
+    atoms:
+      data: src/atoms/reservation/DA_reservation.ts
+      config: src/atoms/reservation/CA_reservation.ts
+      rules: src/atoms/reservation/RA_reservation.ts
+      flow: src/atoms/reservation/FA_create_reservations.ts
+    ui:
+      scheduler:
+        file: src/components/Scheduler.tsx
+        responsive_variants: [mobile, desktop]
+      customer_dashboard:
+        file: src/components/UserDashboard.tsx
+        responsive_variants: [mobile, desktop]
+      admin_dashboard:
+        file: src/components/AdminDashboard.tsx
+        responsive_variants: [mobile, desktop]
+

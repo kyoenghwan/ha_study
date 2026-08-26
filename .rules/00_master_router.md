@@ -19,7 +19,7 @@
 모델 컨텍스트 보호를 위해, 필요 작업에 맞춰 **도구(view_file)**를 통해 아래 파일들만 선별적으로 지연 로딩(Lazy Load) 하십시오. 
 
 - **기본 가동**: `00_master_router` (현재 파일)
-- **UI 및 속성 수정**: `00` + `04_data_process_index.md`
+- **UI 및 디자인 작업**: `00` + `04_data_process_index.md` + `05_design_system.md`
 - **React 컴포넌트 개발**: `00` + `03_integration_logging.md` + `docs/templates/react_boilerplate_templates.md`
 - **시스템 로직 (8-Atom) 추가/수정**: `00` + `01_complexity_protocols.md` + `02_atom_specifications.md` + `docs/templates/atom_boilerplate_templates.md`
 

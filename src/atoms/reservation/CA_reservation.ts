@@ -1,0 +1,3 @@
+export const RESERVATION_SLOT_MINUTES = 30;
+export const RESERVATION_SLOT_PRICE = 4_000;
+

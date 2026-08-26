@@ -1,5 +1,16 @@
 # Supabase Database Schema (SSOT)
 
+**Version: 1.1.0 (예약 v1 설계)**
+
+## 예약 v1 멀티테넌트 확장 원칙
+
+- 계층은 `brands -> branches -> spaces`이며 모든 운영 데이터는 `branch_id`를 가진다.
+- 기존 `rooms`는 운영 마이그레이션에서 `spaces`로 전환한다. 프론트엔드 호환 기간에는 `Room` 명칭을 유지한다.
+- `reservations`에는 `branch_id`, `customer_id`, `status`, `created_by`, `updated_at`을 추가한다.
+- 동일 공간의 활성 예약 시간 중복은 PostgreSQL exclusion constraint로 최종 차단한다.
+- 예약 생성·포인트 차감·`reservation_events` 기록은 `create_reservations_v1` RPC 한 트랜잭션에서 처리한다.
+- RLS는 고객 본인 데이터, 관리자의 소속 브랜드/지점 데이터만 허용한다.
+
 ## 1. users (회원 테이블)
 - `id`: UUID (PK)
 - `user_id`: TEXT (UNIQUE)
@@ -48,4 +59,3 @@
 - `description`: TEXT
 - `status`: TEXT ('pending' | 'completed' | 'cancelled')
 - `created_at`: TIMESTAMPTZ
-

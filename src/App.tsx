@@ -8,6 +8,7 @@ import { AuthModal } from './components/AuthModal';
 import { AdminAuthModal } from './components/AdminAuthModal';
 import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Check } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
+import { FA_CREATE_RESERVATIONS } from './atoms/reservation/FA_create_reservations';
 
 import { 
   supabase, 
@@ -20,6 +21,35 @@ import {
   fetchDbPointTransactions,
   saveDbPointTransaction
 } from './lib/supabase';
+
+// 르하임 v1 2개 지점 목록 정의 (멀티테넌트 확장 지점)
+export interface Branch {
+  id: string;
+  name: string;
+  fullName: string;
+  address: string;
+  description: string;
+  badge: string;
+}
+
+export const BRANCHES: Branch[] = [
+  {
+    id: 'yeouido',
+    name: '여의도점',
+    fullName: '르하임 스터디카페 여의도점',
+    address: '서울특별시 영등포구 여의도동 24번지',
+    description: '화이트보드 완비 4인실 & 그룹 스터디 6인실 집중존',
+    badge: '1호점 (운영중)',
+  },
+  {
+    id: 'mapo',
+    name: '마포점',
+    fullName: '르하임 스터디카페 마포점',
+    address: '서울특별시 마포구 도화동 18번지',
+    description: '대형 빔프로젝터 세미나룸 & 몰입형 프리미엄 스터디존',
+    badge: '2호점 (운영중)',
+  },
+];
 
 function App() {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
@@ -37,7 +67,7 @@ function App() {
   // 관리자 전용 인증 모달 상태
   const [showAdminAuthModal, setShowAdminAuthModal] = useState<boolean>(false);
 
-  // 지점 선택 상태
+  // 지점 선택 상태 (기본: 여의도점)
   const [selectedBranch, setSelectedBranch] = useState<string>('yeouido');
 
   // 포인트 충전 모달 상태
@@ -49,9 +79,14 @@ function App() {
     const savedAdminBarcodes = localStorage.getItem('lheureux_admin_barcodes');
     const savedBankInfo = localStorage.getItem('lheureux_bank_info');
     const savedCurrentUser = localStorage.getItem('lheureux_current_user');
+    const savedBranch = localStorage.getItem('lheureux_selected_branch');
 
     if (savedCurrentUser) {
       setCurrentUser(JSON.parse(savedCurrentUser));
+    }
+
+    if (savedBranch) {
+      setSelectedBranch(savedBranch);
     }
 
     if (savedRooms) {
@@ -191,6 +226,11 @@ function App() {
   const handleUpdateBankInfo = (newInfo: BankInfo) => {
     setBankInfo(newInfo);
     localStorage.setItem('lheureux_bank_info', JSON.stringify(newInfo));
+  };
+
+  const handleSelectBranch = (branchId: string) => {
+    setSelectedBranch(branchId);
+    localStorage.setItem('lheureux_selected_branch', branchId);
   };
 
   const handleUpdatePoints = (nextPoints: number) => {
@@ -419,35 +459,22 @@ function App() {
       return { success: false, message: '선택된 공부방이 없습니다.' };
     }
 
-    const totalCost = slots.length * 4000;
-    const currentPoints = currentUser?.points || 20000;
-    
-    // 포인트 결제 시 포인트 잔액 검사
-    if (paymentMethod === 'points' && currentPoints < totalCost) {
-      alert(`보유 포인트가 부족합니다. (필요: ${totalCost.toLocaleString()}P / 보유: ${currentPoints.toLocaleString()}P)`);
-      return { success: false, message: '보유 포인트가 부족합니다.' };
-    }
-
-    const newReservations: Reservation[] = slots.map((slot, index) => {
-      const resId = `res-${Date.now()}-${index}`;
-      const assignedBarcode = masterBarcode?.value || '*M091063684*';
-      
-      return {
-        id: resId,
-        roomId: targetRoomId,
-        date: slot.date,
-        startTime: slot.start,
-        endTime: slot.end,
-        userName: currentUser?.name || userName,
-        userPhone: currentUser?.phone || userPhone,
-        costPoints: 4000,
-        costAmount: 4000,
-        paymentMethod,
-        paymentStatus: paymentMethod === 'points' ? 'paid' : 'deposit_pending',
-        barcodeId: assignedBarcode,
-        barcodeStatus: 'valid',
-      };
+    const currentPoints = currentUser?.points ?? 0;
+    const flowResult = FA_CREATE_RESERVATIONS({
+      authContext: { userId: currentUser?.id ?? '', roles: currentUser ? [currentUser.role] : [] },
+      roomId: targetRoomId,
+      slots,
+      reservations,
+      userName: currentUser?.name || userName,
+      userPhone: currentUser?.phone || userPhone,
+      paymentMethod,
+      availablePoints: currentPoints,
+      barcodeId: masterBarcode?.value || '*M091063684*',
     });
+    if (!flowResult.success || !flowResult.data) {
+      return { success: false, message: flowResult.message };
+    }
+    const { reservations: newReservations, totalCost } = flowResult.data;
 
     updateReservations([...reservations, ...newReservations]);
     
@@ -495,6 +522,7 @@ function App() {
 
     const conflict = reservations.find((r) => {
       if (r.id === resId) return false;
+      if (r.barcodeStatus === 'cancelled') return false;
       if (r.roomId !== updated.roomId || r.date !== updated.date) return false;
       const rStart = toMinutes(r.startTime);
       const rEnd = toMinutes(r.endTime);
@@ -578,12 +606,13 @@ function App() {
     handleCancelAndRefundReservation(resId);
   };
 
+  const currentBranchObj = BRANCHES.find((b) => b.id === selectedBranch) || BRANCHES[0];
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
 
   // 1. 미로그인 상태: 회원가입 / 로그인 화면
   if (!currentUser) {
     return (
-      <div className="flex-1 flex items-center justify-center p-4 bg-[#f4f4f7] overflow-y-auto">
+      <div className="flex-1 flex items-center justify-center p-4 bg-[#eef0f4] overflow-y-auto">
         <AuthModal
           onLoginSuccess={handleLoginSuccess}
           onRegisterUser={handleRegisterUser}
@@ -593,27 +622,27 @@ function App() {
     );
   }
 
-  // 2. 로그인 완료 후 진입 게이트 화면 (지점 선택 & 역할 분기)
+  // 2. 로그인 완료 후 진입 게이트 화면 (2개 지점 선택 & 역할 분기)
   if (role === null) {
     return (
-      <div className="flex-1 flex flex-col items-center p-6 bg-[#ffffff]">
+      <div className="flex-1 flex flex-col justify-between p-5 bg-[#ffffff] overflow-y-auto">
         {/* 상단 프로필 헤더 */}
-        <div className="w-full flex justify-between items-center pb-4 border-b border-[#e5e5ea] shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#b09168]/10 text-[#b09168] flex items-center justify-center font-bold text-xs">
+        <div className="w-full flex justify-between items-center pb-4 border-b border-[#e5e8eb] shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full bg-[#a67c48]/10 text-[#a67c48] flex items-center justify-center font-bold text-sm">
               {currentUser.name[0]}
             </div>
             <div>
-              <p className="text-xs font-bold text-[#1c1c1e]">{currentUser.name}님 환영합니다</p>
-              <p className="text-[10px] text-[#8e8e93]">
-                {currentUser.role === 'admin' ? '지점 관리자' : '일반 회원'} ({currentUser.userId})
+              <p className="text-sm font-bold text-[#191f28]">{currentUser.name}님 환영합니다</p>
+              <p className="text-xs text-[#8b95a1]">
+                {currentUser.role === 'admin' ? '최고 관리자' : '일반 회원'} ({currentUser.userId})
               </p>
             </div>
           </div>
 
           <button
             onClick={handleLogout}
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-[#e5e5ea] text-[#8e8e93] hover:text-[#ff3b30]"
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#e5e8eb] text-[#8b95a1] hover:text-[#e93d3d] hover:border-[#e93d3d]/30 transition-colors"
           >
             로그아웃
           </button>
@@ -626,72 +655,87 @@ function App() {
               src={logoImg} 
               alt="르하임 로고" 
               className="mx-auto"
-              style={{ width: '160px', height: 'auto' }}
+              style={{ width: '150px', height: 'auto' }}
             />
-            <h1 className="text-lg font-extrabold text-[#1c1c1e] tracking-wide pt-1">
-              르하임 스터디카페 서비스
+            <h1 className="text-lg font-bold text-[#191f28] tracking-tight">
+              르하임 스터디카페 플랫폼
             </h1>
-            <p className="text-xs text-[#8e8e93]">
+            <p className="text-xs text-[#8b95a1]">
               {currentUser.role === 'admin' 
-                ? '관리자 전용 멀티 반응형 콘솔에 접속합니다.' 
-                : '원하시는 지점을 선택하고 스케줄을 확인하여 예약을 신청하세요.'}
+                ? '관리자 전용 대시보드 콘솔에 접속하여 지점 운영 현황을 관리합니다.' 
+                : '방문하실 지점을 선택하고 실시간 스케줄을 확인하여 예약하세요.'}
             </p>
           </div>
 
-          {/* 일반 이용자인 경우: 지점 선택 뷰 */}
+          {/* 일반 이용자인 경우: 2개 지점 선택 뷰 */}
           {currentUser.role === 'user' ? (
             <div className="w-full max-w-sm space-y-4">
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-[#1c1c1e] flex items-center gap-1">
-                  <Building2 size={14} className="text-[#b09168]" /> 이용할 스터디카페 지점 선택
+              <div className="space-y-2.5">
+                <label className="block text-xs font-bold text-[#191f28] flex items-center gap-1">
+                  <Building2 size={15} className="text-[#a67c48]" /> 이용하실 지점 선택 (2개 지점 운영 중)
                 </label>
 
-                {/* 지점 선택 리스트 카드 */}
-                <div 
-                  onClick={() => setSelectedBranch('yeouido')}
-                  className={`p-4 rounded-2xl border cursor-pointer flex justify-between items-center transition-all ${
-                    selectedBranch === 'yeouido'
-                      ? 'border-[#b09168] bg-[#b09168]/5 shadow-sm'
-                      : 'border-[#e5e5ea] hover:border-[#b09168]/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#b09168]/10 text-[#b09168] flex justify-center items-center font-bold">
-                      <MapPin size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-[#1c1c1e] flex items-center gap-1">
-                        르하임 스터디카페 <span className="text-[#b09168]">여의도점</span>
-                      </h4>
-                      <p className="text-[11px] text-[#8e8e93]">서울특별시 영등포구 여의도동 24번지</p>
-                    </div>
-                  </div>
-                  {selectedBranch === 'yeouido' && (
-                    <div className="w-6 h-6 rounded-full bg-[#b09168] text-white flex items-center justify-center">
-                      <Check size={14} />
-                    </div>
-                  )}
+                {/* 르하임 2개 지점 카드 목록 */}
+                <div className="space-y-2">
+                  {BRANCHES.map((branch) => {
+                    const isSelected = selectedBranch === branch.id;
+                    return (
+                      <div
+                        key={branch.id}
+                        onClick={() => handleSelectBranch(branch.id)}
+                        className={`p-3.5 rounded-2xl border cursor-pointer flex justify-between items-center transition-all ${
+                          isSelected
+                            ? 'border-[#a67c48] bg-[#a67c48]/5 shadow-sm ring-1 ring-[#a67c48]'
+                            : 'border-[#e5e8eb] bg-[#f8f9fc] hover:border-[#a67c48]/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex justify-center items-center font-bold ${
+                            isSelected ? 'bg-[#a67c48] text-white' : 'bg-[#a67c48]/10 text-[#a67c48]'
+                          }`}>
+                            <MapPin size={20} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="text-sm font-bold text-[#191f28]">
+                                {branch.fullName}
+                              </h4>
+                              <span className="text-[11px] font-semibold text-[#a67c48] bg-[#a67c48]/10 px-1.5 py-0.5 rounded">
+                                {branch.badge}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#8b95a1] pt-0.5">{branch.address}</p>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className="w-6 h-6 rounded-full bg-[#a67c48] text-white flex items-center justify-center shrink-0">
+                            <Check size={14} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               <button
                 onClick={() => setRole('user')}
-                className="gold-btn w-full py-3 text-sm font-bold rounded-2xl shadow flex items-center justify-center gap-1"
+                className="gold-btn w-full py-3.5 text-sm font-bold rounded-2xl shadow flex items-center justify-center gap-1.5 mt-2"
               >
-                <span>지점 선택 후 공부방 예약하기</span>
+                <span>{currentBranchObj.name} 공부방 예약하기</span>
                 <ChevronRight size={18} />
               </button>
             </div>
           ) : (
             /* 관리자인 경우: 관리자 전용 보안 접속 카드 */
             <div className="w-full max-w-sm space-y-4">
-              <div className="border-2 border-[#b09168]/40 bg-[#f8f9fa] rounded-2xl p-5 text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-[#b09168]/10 text-[#b09168] flex items-center justify-center mx-auto">
+              <div className="border border-[#a67c48]/30 bg-[#f8f9fc] rounded-2xl p-5 text-center space-y-2.5">
+                <div className="w-12 h-12 rounded-full bg-[#a67c48]/10 text-[#a67c48] flex items-center justify-center mx-auto">
                   <Shield size={26} />
                 </div>
-                <h3 className="text-base font-extrabold text-[#1c1c1e]">최고 관리자 통합 전용 콘솔</h3>
-                <p className="text-xs text-[#8e8e93] leading-relaxed">
-                  보안 로그인 후 대형 화면에서 공부방, 예약, 무통장 승인, 포인트 환불 및 매출을 관제합니다.
+                <h3 className="text-base font-bold text-[#191f28]">최고 관리자 통합 관제 콘솔</h3>
+                <p className="text-xs text-[#8b95a1] leading-relaxed">
+                  보안 로그인 후 대형 화면에서 공부방, 예약, 무통장 승인, 포인트 환불 및 매출 분석을 통합 관제합니다.
                 </p>
               </div>
 
@@ -706,8 +750,8 @@ function App() {
           )}
         </div>
 
-        <p className="text-[10px] text-[#8e8e93] pt-6 shrink-0">
-          © 2026 L'Heux Study Cafe. All rights reserved.
+        <p className="text-xs text-[#8b95a1] text-center pt-4 shrink-0">
+          © 2026 HA-STUDY Platform. L'Heux Study Cafe.
         </p>
 
         {/* 최고 관리자 보안 로그인 모달 */}
@@ -728,48 +772,48 @@ function App() {
   return (
     <>
       {/* 헤더 바 */}
-      <header className="p-4 bg-[#ffffff] border-b border-[#e5e5ea] flex items-center justify-between z-10 shrink-0">
-        <div className="flex items-center gap-2">
+      <header className="p-4 bg-[#ffffff] border-b border-[#e5e8eb] flex items-center justify-between z-10 shrink-0">
+        <div className="flex items-center gap-2.5">
           <img 
             src={logoImg} 
             alt="르하임 로고" 
             style={{ height: '36px', width: 'auto' }}
           />
           <div>
-            <h1 className="text-sm font-bold tracking-wide text-[#1c1c1e] flex items-center gap-1">
-              르하임 <span className="text-[#b09168] text-[9px] font-semibold border border-[#b09168]/30 px-1 rounded">여의도점</span>
+            <h1 className="text-sm font-bold text-[#191f28] flex items-center gap-1.5">
+              르하임 <span className="text-[#a67c48] text-xs font-semibold bg-[#a67c48]/10 border border-[#a67c48]/20 px-1.5 py-0.5 rounded">{currentBranchObj.name}</span>
             </h1>
-            <p className="text-[10px] text-[#8e8e93] flex items-center gap-1">
+            <div className="text-xs text-[#8b95a1] flex items-center gap-1.5 pt-0.5">
               {role === 'admin' ? (
-                '최고 관리자 전용 콘솔 (모바일 & 태블릿 지원)'
+                <span className="text-[#a67c48] font-semibold">최고 관리자 통합 콘솔</span>
               ) : (
                 <>
-                  <span>{currentUser.name}님 반갑습니다.</span>
-                  <span className="text-[9px] text-[#b09168] font-bold ml-1 flex items-center gap-0.5 bg-[#b09168]/10 px-1.5 py-0.5 rounded">
-                    <Coins size={10} /> {(currentUser.points || 0).toLocaleString()}P
+                  <span>{currentUser.name}님</span>
+                  <span className="text-xs text-[#a67c48] font-bold flex items-center gap-1 bg-[#a67c48]/10 px-2 py-0.5 rounded-full">
+                    <Coins size={12} /> {(currentUser.points || 0).toLocaleString()}P
                     <button 
                       onClick={() => setShowPointModal(true)} 
-                      className="ml-1 text-[8px] bg-[#b09168] text-[#ffffff] px-1 rounded hover:bg-[#987b54]"
+                      className="ml-1 text-xs bg-[#a67c48] text-[#ffffff] px-1.5 py-0.2 rounded hover:bg-[#8f6735] transition-colors"
                     >
                       충전
                     </button>
                   </span>
                 </>
               )}
-            </p>
+            </div>
           </div>
         </div>
 
-        {/* 로그아웃 및 역할 전환 */}
+        {/* 로그아웃 및 역할/지점 전환 */}
         <button
           onClick={() => {
             setRole(null);
             setSelectedRoomId(null);
           }}
-          className="flex items-center gap-1 text-[11px] font-semibold py-1.5 px-3 rounded-lg border border-[#e5e5ea] text-[#8e8e93] hover:text-[#1c1c1e] hover:bg-[#f8f9fa] transition-all"
+          className="flex items-center gap-1 text-xs font-semibold py-2 px-3 rounded-lg border border-[#e5e8eb] text-[#8b95a1] hover:text-[#191f28] hover:bg-[#f8f9fc] transition-all"
           title="처음 게이트 화면으로 이동"
         >
-          <LogOut size={13} /> 지점/역할 변경
+          <LogOut size={14} /> 지점/역할 변경
         </button>
       </header>
 
@@ -820,42 +864,42 @@ function App() {
       </main>
 
       {/* 푸터 */}
-      <footer className="p-3 bg-[#f8f9fa] border-t border-[#e5e5ea] text-center text-[10px] text-[#8e8e93] shrink-0">
-        © 2026 L'Heux Study Cafe. All rights reserved.
+      <footer className="py-2.5 px-4 bg-[#f8f9fc] border-t border-[#e5e8eb] text-center text-xs text-[#8b95a1] shrink-0">
+        © 2026 HA-STUDY Platform. L'Heux Study Cafe.
       </footer>
 
       {/* 무통장 입금 포인트 충전 모달 */}
       {showPointModal && (
         <div className="modal-overlay" onClick={() => setShowPointModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content max-w-sm" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-base font-bold text-[#1c1c1e] flex items-center gap-1">
-                <Coins size={18} className="text-[#b09168]" /> 무통장 입금 포인트 충전 신청
+              <h3 className="text-base font-bold text-[#191f28] flex items-center gap-1.5">
+                <Coins size={20} className="text-[#a67c48]" /> 무통장 입금 포인트 충전
               </h3>
-              <button onClick={() => setShowPointModal(false)} className="text-[#8e8e93] hover:text-[#1c1c1e] text-xl">&times;</button>
+              <button onClick={() => setShowPointModal(false)} className="text-[#8b95a1] hover:text-[#191f28] text-2xl">&times;</button>
             </div>
             
-            <div className="bg-[#b09168]/10 border border-[#b09168]/30 p-3.5 rounded-xl text-xs space-y-1.5 mb-4">
-              <p className="font-bold text-[#b09168]">입금 계좌 안내</p>
-              <p className="text-[#1c1c1e] font-mono">은행: <strong>{bankInfo.bankName}</strong></p>
-              <p className="text-[#1c1c1e] font-mono">계좌번호: <strong>{bankInfo.accountNumber}</strong></p>
-              <p className="text-[#1c1c1e]">예금주: <strong>{bankInfo.accountHolder}</strong></p>
-              <p className="text-[10px] text-[#8e8e93] pt-1">
-                * 입금 신청 후 계좌로 입금해 주시면 관리자 확인 후 포인트가 즉시 지급됩니다.
+            <div className="bg-[#a67c48]/10 border border-[#a67c48]/30 p-4 rounded-xl text-xs space-y-1.5 mb-4">
+              <p className="font-bold text-[#a67c48] text-sm">입금 계좌 안내</p>
+              <p className="text-[#191f28]">은행명: <strong>{bankInfo.bankName}</strong></p>
+              <p className="text-[#191f28]">계좌번호: <strong className="font-mono text-[#a67c48] text-sm">{bankInfo.accountNumber}</strong></p>
+              <p className="text-[#191f28]">예금주: <strong>{bankInfo.accountHolder}</strong></p>
+              <p className="text-xs text-[#8b95a1] pt-1">
+                * 충전 금액 선택 후 계좌로 입금해 주시면 관리자 확인 즉시 포인트가 적립됩니다.
               </p>
             </div>
 
-            <div className="space-y-3">
-              <p className="text-xs font-bold text-[#1c1c1e]">충전할 포인트 금액 선택</p>
+            <div className="space-y-2.5">
+              <p className="text-xs font-bold text-[#191f28]">충전할 포인트 금액 선택</p>
               {[10000, 30000, 50000, 100000].map((amount) => (
                 <button
                   key={amount}
                   onClick={() => handleApplyPointCharge(amount)}
-                  className="w-full bg-[#f8f9fa] hover:bg-[#b09168]/10 border border-[#e5e5ea] hover:border-[#b09168]/50 p-3.5 rounded-xl flex justify-between items-center text-xs font-bold text-[#1c1c1e] transition-all"
+                  className="w-full bg-[#f8f9fc] hover:bg-[#a67c48]/10 border border-[#e5e8eb] hover:border-[#a67c48]/50 p-3.5 rounded-xl flex justify-between items-center text-sm font-bold text-[#191f28] transition-all"
                 >
                   <span>+{amount.toLocaleString()} P</span>
-                  <span className="text-[11px] text-[#b09168] flex items-center gap-0.5">
-                    입금 신청하기 <Plus size={12} />
+                  <span className="text-xs text-[#a67c48] flex items-center gap-1 font-semibold">
+                    충전 신청 <Plus size={14} />
                   </span>
                 </button>
               ))}
@@ -863,7 +907,7 @@ function App() {
 
             <button
               onClick={() => setShowPointModal(false)}
-              className="gold-btn-outline w-full py-2.5 mt-4 text-xs font-bold rounded-xl"
+              className="gold-btn-outline w-full py-3 mt-4 text-xs font-bold rounded-xl"
             >
               닫기
             </button>
