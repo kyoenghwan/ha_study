@@ -1221,7 +1221,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     예: *M091063684* 번호를 입력하시면 표준 막대 바코드로 자동 렌더링됩니다.
                   </p>
                   
-                  <div className="flex gap-2 w-full min-w-0">
+                  <div className="flex items-center gap-2 w-full">
                     <input
                       type="text"
                       defaultValue={masterBarcode?.type === 'number' ? masterBarcode.value : '*M091063684*'}
@@ -1243,9 +1243,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           alert(`대표 바코드 번호가 '${formatted}'(으)로 저장되었습니다!`);
                         }
                       }}
-                      className="gold-btn-outline px-3.5 py-2.5 text-xs font-bold rounded-xl shrink-0 whitespace-nowrap shadow-sm"
+                      className="gold-btn px-4 py-2.5 text-xs font-bold rounded-xl shrink-0 whitespace-nowrap shadow-sm"
                     >
-                      번호 저장
+                      저장
                     </button>
                   </div>
                 </div>
