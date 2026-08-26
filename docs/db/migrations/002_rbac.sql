@@ -24,9 +24,9 @@ begin
   end if;
 
   if id_type <> 'uuid' then
-    raise exception
-      'public.users.id 가 uuid 가 아니라 %% 입니다. user_roles.user_id FK 를 만들 수 없습니다. '
-      'docs/db/schema.md 1.3.0 기준으로 users.id 를 uuid 로 정렬한 뒤 다시 실행하세요.', id_type;
+    -- RAISE 의 포맷 문자열은 리터럴만 허용한다 (|| 연결 불가).
+    -- 자리표시자는 % 하나다. %% 는 리터럴 퍼센트 기호이므로 인자와 개수가 어긋난다.
+    raise exception 'public.users.id 가 uuid 가 아니라 % 입니다. user_roles.user_id FK 를 만들 수 없습니다. docs/db/schema.md 1.3.0 기준으로 users.id 를 uuid 로 정렬한 뒤 다시 실행하세요.', id_type;
   end if;
 end $$;
 
