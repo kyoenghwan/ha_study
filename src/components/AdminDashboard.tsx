@@ -17,6 +17,7 @@ interface AdminDashboardProps {
   adminBarcodes?: AdminBarcodeItem[];
   masterBarcode?: MasterBarcode;
   onAddRoom: (room: Omit<Room, 'id'>) => void;
+  onEditRoom?: (roomId: string, room: Omit<Room, 'id'>) => void;
   onDeleteRoom: (roomId: string) => void;
   onCancelReservation: (resId: string) => void;
   onEditReservation: (
@@ -70,6 +71,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   adminBarcodes = [],
   masterBarcode,
   onAddRoom,
+  onEditRoom,
   onDeleteRoom,
   onCancelReservation,
   onEditReservation,
@@ -89,6 +91,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRevokeRole,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('rooms_reservations');
+
+  // 룸 수정 모달 상태
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [editRoomName, setEditRoomName] = useState('');
+  const [editRoomCapacity, setEditRoomCapacity] = useState(4);
+  const [editRoomDescription, setEditRoomDescription] = useState('');
+
+  // 룸별 예약 내역 접기/펼치기 상태 (기본: 모두 접힘)
+  const [expandedRoomIds, setExpandedRoomIds] = useState<Record<string, boolean>>({});
+
+  const toggleRoomReservations = (roomId: string) => {
+    setExpandedRoomIds((prev) => ({
+      ...prev,
+      [roomId]: !prev[roomId],
+    }));
+  };
+
+  const handleStartEditRoom = (room: Room) => {
+    setEditingRoom(room);
+    setEditRoomName(room.name);
+    setEditRoomCapacity(room.capacity);
+    setEditRoomDescription(room.description);
+  };
+
+  const handleSaveEditRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRoom || !onEditRoom) return;
+    if (!editRoomName.trim()) {
+      alert('공부방 이름을 입력해 주세요.');
+      return;
+    }
+    onEditRoom(editingRoom.id, {
+      name: editRoomName.trim(),
+      capacity: editRoomCapacity,
+      description: editRoomDescription.trim(),
+    });
+    setEditingRoom(null);
+  };
 
   // 권한 변경 진행 중인 계정. 다중 클릭을 프레임워크 단계에서 차단한다.
   const [pendingRoleUserId, setPendingRoleUserId] = useState<string | null>(null);
@@ -500,103 +540,134 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   const roomResList = reservations
                     .filter((r) => r.roomId === room.id)
                     .sort((a, b) => `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`));
+                  const isExpanded = expandedRoomIds[room.id] ?? false;
 
                   return (
-                    <div key={room.id} className="bg-[#ffffff] border border-[#e5e5ea] rounded-xl overflow-hidden shadow-sm">
-                      <div className="p-4 flex justify-between items-start border-b border-[#f0f0f2] bg-[#fdfdfd]">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-base font-bold text-[#1c1c1e]">{room.name}</h3>
-                            <span className="text-[10px] text-[#b09168] bg-[#b09168]/10 px-2 py-0.5 rounded font-semibold">
+                    <div key={room.id} className="bg-[#ffffff] border border-[#e5e8eb] rounded-2xl overflow-hidden shadow-sm">
+                      {/* 룸 정보 및 수정/삭제/예약확인 헤더 */}
+                      <div className="p-4 flex justify-between items-start bg-[#fdfdfd] border-b border-[#f0f0f2]">
+                        <div className="space-y-1.5 flex-1 pr-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base font-bold text-[#191f28]">{room.name}</h3>
+                            <span className="text-[11px] text-[#a67c48] bg-[#a67c48]/10 px-2.5 py-0.5 rounded-full font-bold">
                               정원 {room.capacity}명
                             </span>
                           </div>
-                          <p className="text-xs text-[#8e8e93]">{room.description}</p>
+                          <p className="text-xs text-[#8b95a1] leading-relaxed">{room.description}</p>
                         </div>
 
+                        {/* 룸 컨트롤 버튼 그룹: 수정 & 삭제 */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => handleStartEditRoom(room)}
+                            className="text-xs font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all"
+                            title="룸 정보 수정"
+                          >
+                            <Edit2 size={13} />
+                            <span>수정</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`'${room.name}'을(를) 삭제하시겠습니까? 관련된 전체 예약 내역도 삭제됩니다.`)) {
+                                onDeleteRoom(room.id);
+                              }
+                            }}
+                            className="text-xs font-bold text-[#e93d3d] bg-[#e93d3d]/10 hover:bg-[#e93d3d]/20 border border-[#e93d3d]/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all"
+                            title="룸 삭제"
+                          >
+                            <Trash2 size={13} />
+                            <span>삭제</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 📅 예약 내역 접기/펼치기 토글 바 */}
+                      <div className="px-4 py-3 bg-[#f8f9fc] flex justify-between items-center">
+                        <span className="text-xs font-bold text-[#4e5968] flex items-center gap-1.5">
+                          <Calendar size={14} className="text-[#a67c48]" />
+                          <span>예약 내역</span>
+                          <strong className={`px-2 py-0.5 rounded-full text-[11px] ${roomResList.length > 0 ? 'bg-[#a67c48] text-white font-bold' : 'bg-[#8b95a1]/20 text-[#8b95a1]'}`}>
+                            {roomResList.length}건
+                          </strong>
+                        </span>
+
                         <button
-                          onClick={() => {
-                            if (confirm(`'${room.name}'을(를) 삭제하시겠습니까? 관련된 전체 예약 내역도 삭제됩니다.`)) {
-                              onDeleteRoom(room.id);
-                            }
-                          }}
-                          className="text-[#8e8e93] hover:text-[#ff3b30] p-1.5 rounded-lg hover:bg-[#ff3b30]/10 transition-all"
-                          title="방 삭제"
+                          onClick={() => toggleRoomReservations(room.id)}
+                          className="text-xs font-bold text-[#a67c48] bg-white border border-[#a67c48]/30 px-3 py-1.5 rounded-xl hover:bg-[#a67c48]/10 transition-all flex items-center gap-1 shadow-sm"
                         >
-                          <Trash2 size={16} />
+                          <span>{isExpanded ? '예약 내역 접기 ▲' : '예약 내역 보기 ▼'}</span>
                         </button>
                       </div>
 
-                      {/* 예약 내역 리스트 */}
-                      <div className="p-4 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <h4 className="text-xs font-bold text-[#b09168] uppercase tracking-wider flex items-center gap-1">
-                            <Calendar size={13} /> 예약 내역 ({roomResList.length}건)
-                          </h4>
-                        </div>
-
-                        {roomResList.length === 0 ? (
-                          <p className="text-xs text-[#8e8e93] py-2 italic">현재 등록된 예약이 없습니다.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {roomResList.map((res) => (
-                              <div
-                                key={res.id}
-                                className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#f8f9fa] border border-[#e5e5ea] p-3 rounded-lg gap-2"
-                              >
-                                <div className="text-xs space-y-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-bold text-[#1c1c1e]">{res.userName}</span>
-                                    <span className="text-[#8e8e93]">({res.userPhone})</span>
-                                    {res.isLongTerm && (
-                                      <span className="text-[9px] bg-[#34c759]/10 text-[#34c759] font-bold px-1.5 py-0.5 rounded">
-                                        장기 과외
+                      {/* 펼쳤을 때만 노출되는 예약 내역 리스트 */}
+                      {isExpanded && (
+                        <div className="p-4 border-t border-[#e5e8eb] bg-[#ffffff] space-y-3">
+                          {roomResList.length === 0 ? (
+                            <p className="text-xs text-[#8b95a1] py-4 text-center italic bg-[#f8f9fc] rounded-xl border border-dashed border-[#e5e8eb]">
+                              현재 등록된 예약이 없습니다.
+                            </p>
+                          ) : (
+                            <div className="space-y-2.5">
+                              {roomResList.map((res) => (
+                                <div
+                                  key={res.id}
+                                  className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#f8f9fc] border border-[#e5e8eb] p-3 rounded-xl gap-2"
+                                >
+                                  <div className="text-xs space-y-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-bold text-[#191f28]">{res.userName}</span>
+                                      <span className="text-[#8b95a1]">({res.userPhone})</span>
+                                      {res.isLongTerm && (
+                                        <span className="text-[10px] bg-[#28a745]/10 text-[#28a745] font-bold px-2 py-0.5 rounded-full">
+                                          장기 과외
+                                        </span>
+                                      )}
+                                      <span
+                                        onClick={() => onTogglePaymentStatus(res.id)}
+                                        className={`cursor-pointer text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 transition-all ${
+                                          res.paymentStatus === 'paid'
+                                            ? 'bg-[#28a745]/10 text-[#28a745]'
+                                            : 'bg-[#f59e0b]/10 text-[#f59e0b]'
+                                        }`}
+                                        title="결제 상태 변경 (클릭)"
+                                      >
+                                        {res.paymentStatus === 'paid' ? '결제/입금 완료' : '무통장 입금 대기'}
                                       </span>
-                                    )}
-                                    <span
-                                      onClick={() => onTogglePaymentStatus(res.id)}
-                                      className={`cursor-pointer text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-all ${
-                                        res.paymentStatus === 'paid'
-                                          ? 'bg-[#34c759]/10 text-[#34c759]'
-                                          : 'bg-[#ff9500]/10 text-[#ff9500]'
-                                      }`}
-                                      title="클릭하여 입금 상태 토글"
+                                    </div>
+                                    <p className="text-[#8b95a1] flex items-center gap-1 pt-0.5">
+                                      <Calendar size={12} className="text-[#a67c48]" />
+                                      <span>{res.date}</span>
+                                      <span className="font-bold text-[#191f28]">{res.startTime} ~ {res.endTime}</span>
+                                      <span className="text-[10px] text-[#8b95a1] pl-2 font-mono">
+                                        | 바코드: {res.barcodeId}
+                                      </span>
+                                    </p>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                                    <button
+                                      onClick={() => openEditModal(res)}
+                                      className="gold-btn-outline text-xs py-1 px-2.5 rounded-lg flex items-center gap-1 font-semibold"
                                     >
-                                      {res.paymentStatus === 'paid' ? '결제/입금 완료' : '무통장 입금 대기'}
-                                    </span>
-                                  </div>
-
-                                  <div className="text-[#8e8e93] flex items-center gap-2">
-                                    <span>{res.date}</span>
-                                    <span className="text-[#b09168] font-bold">{res.startTime} ~ {res.endTime}</span>
-                                    <span className="text-[10px] text-[#8e8e93]">| 바코드: {res.barcodeId}</span>
+                                      <Edit2 size={12} /> 시간/룸 변경
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (confirm(`'${res.userName}'님의 예약을 취소하시겠습니까?`)) {
+                                          onCancelReservation(res.id);
+                                        }
+                                      }}
+                                      className="text-xs text-[#e93d3d] hover:bg-[#e93d3d]/10 border border-[#e93d3d]/30 font-semibold py-1 px-2.5 rounded-lg transition-colors"
+                                    >
+                                      취소
+                                    </button>
                                   </div>
                                 </div>
-
-                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                                  <button
-                                    onClick={() => openEditModal(res)}
-                                    className="text-xs font-semibold text-[#b09168] border border-[#b09168]/30 hover:bg-[#b09168]/10 px-2.5 py-1 rounded flex items-center gap-1"
-                                  >
-                                    <Edit2 size={12} /> 시간/룸 변경
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      if (confirm(`'${res.userName}'님의 예약을 취소하시겠습니까?`)) {
-                                        onCancelReservation(res.id);
-                                      }
-                                    }}
-                                    className="text-xs font-semibold text-[#ff3b30] hover:bg-[#ff3b30]/10 px-2.5 py-1 rounded"
-                                  >
-                                    취소
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -1668,6 +1739,73 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
                 <button type="submit" className="gold-btn flex-1 py-2.5 text-xs">
                   변경 저장
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* 🏢 스터디룸 정보 수정 모달 */}
+      {editingRoom && (
+        <div className="modal-overlay" onClick={() => setEditingRoom(null)}>
+          <div className="modal-content max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-3 border-b border-[#e5e8eb]">
+              <h3 className="text-base font-bold text-[#191f28] flex items-center gap-1.5">
+                <Edit2 size={18} className="text-[#a67c48]" /> 스터디룸 정보 수정
+              </h3>
+              <button onClick={() => setEditingRoom(null)} className="text-[#8b95a1] hover:text-[#191f28] text-2xl">&times;</button>
+            </div>
+
+            <form onSubmit={handleSaveEditRoom} className="space-y-4 pt-3">
+              <div className="form-group space-y-1">
+                <label className="text-xs font-semibold text-[#191f28]">룸 이름</label>
+                <input
+                  type="text"
+                  required
+                  value={editRoomName}
+                  onChange={(e) => setEditRoomName(e.target.value)}
+                  placeholder="예: 스터디 존 A (4인실)"
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48] outline-none"
+                />
+              </div>
+
+              <div className="form-group space-y-1">
+                <label className="text-xs font-semibold text-[#191f28]">수용 정원 (명)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  required
+                  value={editRoomCapacity}
+                  onChange={(e) => setEditRoomCapacity(parseInt(e.target.value, 10) || 1)}
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48] outline-none"
+                />
+              </div>
+
+              <div className="form-group space-y-1">
+                <label className="text-xs font-semibold text-[#191f28]">설명 및 편의시설</label>
+                <textarea
+                  rows={3}
+                  value={editRoomDescription}
+                  onChange={(e) => setEditRoomDescription(e.target.value)}
+                  placeholder="예: 조명, 화이트보드, 콘센트 완비"
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48] outline-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingRoom(null)}
+                  className="gold-btn-outline flex-1 py-3 text-xs font-bold rounded-xl"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="gold-btn flex-1 py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1"
+                >
+                  <Check size={14} /> 수정 완료
                 </button>
               </div>
             </form>

@@ -680,6 +680,12 @@ function App() {
     updateRooms([...rooms, newRoom]);
   };
 
+  // 공부방 정보 수정
+  const handleEditRoom = (roomId: string, updated: Omit<Room, 'id'>) => {
+    const newRooms = rooms.map((r) => (r.id === roomId ? { ...r, ...updated } : r));
+    updateRooms(newRooms);
+  };
+
   // 공부방 삭제
   const handleDeleteRoom = (roomId: string) => {
     const filteredRooms = rooms.filter((r) => r.id !== roomId);
@@ -1071,6 +1077,7 @@ function App() {
             adminBarcodes={adminBarcodes}
             masterBarcode={masterBarcode}
             onAddRoom={handleAddRoom}
+            onEditRoom={handleEditRoom}
             onDeleteRoom={handleDeleteRoom}
             onCancelReservation={handleCancelReservation}
             onEditReservation={handleEditReservation}
