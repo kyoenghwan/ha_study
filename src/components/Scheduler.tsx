@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Room, Reservation, BankInfo, PaymentMethod } from '../types';
-import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Clock, User, Phone, Check, CreditCard, Landmark, CheckCircle2, Navigation } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Clock, User, Phone, Check, CreditCard, Landmark, CheckCircle2 } from 'lucide-react';
 import { getTodayDateString, getOffsetDateString } from '../utils/mockData';
 
 interface SchedulerProps {
@@ -16,13 +16,14 @@ interface SchedulerProps {
   ) => { success: boolean; createdReservations?: Reservation[]; message?: string };
 }
 
-// 06:00 ~ 24:00 (30분 단위) 슬롯 목록 생성
+// 24시간 (00:00 ~ 24:00, 30분 단위 48개 슬롯) 생성
 const generateTimeSlots = () => {
   const slots: { start: string; end: string }[] = [];
-  for (let hour = 6; hour < 24; hour++) {
+  for (let hour = 0; hour < 24; hour++) {
     const hStr = String(hour).padStart(2, '0');
+    const nextHStr = String(hour + 1).padStart(2, '0');
     slots.push({ start: `${hStr}:00`, end: `${hStr}:30` });
-    slots.push({ start: `${hStr}:30`, end: `${String(hour + 1).padStart(2, '0')}:00` });
+    slots.push({ start: `${hStr}:30`, end: `${nextHStr}:00` });
   }
   return slots;
 };
@@ -77,9 +78,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({
       return currentTotalMinutes >= sStart && currentTotalMinutes < sEnd;
     });
     if (matching) return matching.start;
-    // 현재 시각이 06:00 이전이면 06:00, 24:00 이후면 마지막 슬롯
-    if (currentTotalMinutes < 360) return '06:00';
-    return '23:30';
+    return '00:00';
   };
 
   const currentSlotStart = getCurrentSlotStart();
@@ -277,15 +276,6 @@ export const Scheduler: React.FC<SchedulerProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
-              {isToday && (
-                <button
-                  onClick={() => scrollToCurrentTime('smooth')}
-                  className="text-xs font-semibold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                  title="현재 시간 위치로 스크롤 이동"
-                >
-                  <Navigation size={12} /> 지금
-                </button>
-              )}
               <button onClick={() => changeDate(1)} className="p-1 hover:text-[#a67c48] transition-colors" title="다음 날짜">
                 <ChevronRight size={20} />
               </button>
