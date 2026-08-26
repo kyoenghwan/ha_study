@@ -6,12 +6,19 @@ import logoImg from '../assets/르하임로고.jfif';
 interface AdminAuthModalProps {
   /** 현재 로그인한 계정. 이 계정의 자격 증명으로만 관제 콘솔에 진입할 수 있다. */
   adminUser: UserAccount | null;
+  /**
+   * 관리 콘솔 접근 권한 보유 여부. user_roles(RBAC) 판정 결과를 받는다.
+   * 레거시 users.role 을 직접 보지 않는다. 두 값이 어긋나면 권한을 부여받은
+   * 계정이 게이트는 통과하고 이 모달에서 막히는 불일치가 생긴다.
+   */
+  isAuthorized: boolean;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
   adminUser,
+  isAuthorized,
   onSuccess,
   onCancel,
 }) => {
@@ -27,7 +34,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
     // 고정 계정 비교(하드코딩)는 클라이언트 번들에 노출되므로 사용하지 않는다.
     const isOwnAdminCredential =
       adminUser !== null &&
-      adminUser.role === 'admin' &&
+      isAuthorized &&
       adminId.trim() === adminUser.userId &&
       adminPw === adminUser.password;
 

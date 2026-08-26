@@ -2,9 +2,37 @@ version: 1
 project_rule: docs/project_rules/ha_study_project.md
 
 domains:
+  auth_rbac:
+    schema: docs/db/schema.md
+    migrations:
+      - docs/db/migrations/002_rbac.sql
+    atoms:
+      data: src/atoms/auth/DA_auth.ts
+      config: src/atoms/auth/CA_auth.ts
+      rules: src/atoms/auth/RA_auth.ts
+      query: src/atoms/auth/QA_fetch_user_roles.ts
+      operation:
+        - src/atoms/auth/OA_grant_role.ts
+        - src/atoms/auth/OA_revoke_role.ts
+      flow: src/atoms/auth/FA_manage_role.ts
+    ui:
+      admin_gate:
+        file: src/components/AdminAuthModal.tsx
+        note: 관리 콘솔 2차 인증. 권한 판정은 isAuthorized prop 으로 주입받는다.
+      role_management:
+        file: src/components/AdminDashboard.tsx
+        selector: 회원 통합 관제 탭 > 회원 권한 컬럼
+        note: 권한 부여/회수 UI. 현재 platform 범위(PLATFORM_ADMIN)만 부여 가능.
+    notes:
+      - users.role 은 deprecated 다. 권한 판정은 user_roles(RBAC)를 근거로 한다.
+      - brand/branch 범위 권한은 brands/branches 테이블 도입 후 활성화한다.
+      - RLS 미적용. 이 테이블은 화면 분기의 근거이며 아직 보안 경계가 아니다.
+
   reservation_v1:
     process: docs/processes/reservation_v1_process.md
     schema: docs/db/schema.md
+    migrations:
+      - docs/db/migrations/001_write_path.sql
     atoms:
       data: src/atoms/reservation/DA_reservation.ts
       config: src/atoms/reservation/CA_reservation.ts
@@ -20,4 +48,12 @@ domains:
       admin_dashboard:
         file: src/components/AdminDashboard.tsx
         responsive_variants: [mobile, desktop]
+    notes:
+      - AuthContext 는 auth_rbac 도메인(DA_auth.ts)이 SSOT 다.
 
+data_layer:
+  file: src/lib/supabase.ts
+  note: |
+    Supabase 클라이언트와 저수준 CRUD. 레거시 경로이며 8-Atom 미적용 구간이다.
+    신규 도메인은 QA/OA 원자로 작성한다. 쓰기 결과는 DbResult 로 반환하고
+    App.tsx 의 persist() 헬퍼가 실패를 사용자에게 알린다.

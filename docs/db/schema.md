@@ -1,6 +1,17 @@
 # Supabase Database Schema (SSOT)
 
-**Version: 1.2.0 (DB 쓰기 경로 정상화)**
+**Version: 1.3.0 (권한 테이블 도입)**
+
+## 1.3.0 변경 사항
+
+- `role_definitions`, `user_roles` 테이블을 신설한다. 권한은 코드에 하드코딩하지 않고
+  데이터로 관리하며, 아이디별 권한 부여는 `user_roles` INSERT 한 건으로 처리한다.
+- 권한은 `scope_type`(platform | brand | branch)과 `scope_id`로 범위를 갖는다.
+  `brands`/`branches` 테이블이 아직 없으므로 현재는 `platform` 범위만 동작하며,
+  `scope_id`는 FK 없는 UUID 컬럼으로 준비만 해 둔다.
+- 권한 회수는 삭제가 아니라 `revoked_at` 설정이다. 부여·회수 이력을 보존한다.
+- `users.role`은 호환용으로 유지하되 deprecated다. `user_roles`에 행이 없는 계정은
+  `users.role`을 fallback으로 해석한다(`admin` -> `PLATFORM_ADMIN`, `user` -> `CUSTOMER`).
 
 ## 1.2.0 변경 사항
 
@@ -91,3 +102,33 @@
 ```
 
 향후 지점별 설정이 필요해지면 `branch_id`를 추가하고 PK를 `(branch_id, key)`로 확장한다.
+
+## 8. role_definitions (권한 정의)
+- `code`: TEXT (PK) — `PLATFORM_ADMIN` | `BRAND_ADMIN` | `BRANCH_OWNER` | `BRANCH_ADMIN` | `STAFF` | `CUSTOMER`
+- `name`: TEXT — 표시용 한국어 명칭
+- `scope_level`: TEXT ('platform' | 'brand' | 'branch') — 이 권한이 가질 수 있는 범위
+- `rank`: INTEGER — 클수록 상위 권한. 권한 부여 가능 여부 판정에 사용
+
+## 9. user_roles (아이디별 권한 부여)
+- `id`: UUID (PK)
+- `user_id`: UUID (FK -> users.id, ON DELETE CASCADE)
+- `role_code`: TEXT (FK -> role_definitions.code)
+- `scope_type`: TEXT ('platform' | 'brand' | 'branch')
+- `scope_id`: UUID NULL — `platform`이면 NULL. 향후 `branches.id` 등을 FK로 연결
+- `granted_by`: UUID NULL (FK -> users.id) — 부여한 관리자
+- `granted_at`: TIMESTAMPTZ
+- `revoked_at`: TIMESTAMPTZ NULL — NULL이면 활성 권한
+- `memo`: TEXT NULL
+
+제약:
+
+- `CHECK`: `scope_type = 'platform'`이면 `scope_id IS NULL`, 그 외에는 `NOT NULL`
+- `UNIQUE INDEX (user_id, role_code, scope_type, coalesce(scope_id, '0000…')) WHERE revoked_at IS NULL`
+  — 동일 범위의 활성 권한 중복 방지
+
+관리자 부여 예:
+
+```sql
+insert into user_roles (user_id, role_code, scope_type)
+select id, 'PLATFORM_ADMIN', 'platform' from users where user_id = 'admin';
+```

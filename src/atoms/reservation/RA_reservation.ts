@@ -1,9 +1,11 @@
 import type { Reservation } from '../../types';
 import { RESERVATION_SLOT_MINUTES } from './CA_reservation';
 import type { AuthContext, ReservationSlotInput } from './DA_reservation';
+import { RA_AUTH_IS_AUTHENTICATED } from '../auth/RA_auth';
 
+// 예약 생성은 인증된 계정이면 가능하다. 권한 판정 규칙은 auth 도메인이 SSOT다.
 export const RA_RESERVATION_CAN_CREATE = (authContext: AuthContext): boolean =>
-  Boolean(authContext.userId) && authContext.roles.some((role) => role === 'user' || role === 'admin');
+  RA_AUTH_IS_AUTHENTICATED(authContext);
 
 export const RA_RESERVATION_TIME_TO_MINUTES = (time: string): number | null => {
   if (!/^([01]\d|2[0-3]):[0-5]\d$|^24:00$/.test(time)) return null;

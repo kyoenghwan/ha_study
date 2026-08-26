@@ -5,6 +5,8 @@ import {
   CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users 
 } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
+import type { RoleCode, RoleGrant } from '../atoms/auth/DA_auth';
+import { CURRENTLY_ASSIGNABLE_ROLE_CODES, ROLE_LABEL } from '../atoms/auth/CA_auth';
 
 interface AdminDashboardProps {
   rooms: Room[];
@@ -31,6 +33,16 @@ interface AdminDashboardProps {
   onUpdateMasterBarcode?: (barcode: MasterBarcode) => void;
   onApprovePointCharge?: (txId: string) => void;
   onManualAdjustPoint?: (userId: string, amount: number, reason: string) => void;
+  /** 계정별 활성 권한 맵 (user_roles). key = users.id */
+  userGrants?: Record<string, RoleGrant[]>;
+  /** 요청자가 해당 권한을 부여·회수할 수 있는지. RA_AUTH_CAN_GRANT_ROLE 결과 */
+  canManageRole?: (roleCode: RoleCode) => boolean;
+  onGrantRole?: (targetUserId: string, roleCode: RoleCode) => Promise<{ success: boolean; message?: string }>;
+  onRevokeRole?: (
+    grantId: string,
+    targetUserId: string,
+    roleCode: RoleCode,
+  ) => Promise<{ success: boolean; message?: string }>;
 }
 
 type TabType = 'rooms_reservations' | 'long_term_bulk' | 'point_management' | 'user_management' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
@@ -71,8 +83,50 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateMasterBarcode,
   onApprovePointCharge,
   onManualAdjustPoint,
+  userGrants = {},
+  canManageRole,
+  onGrantRole,
+  onRevokeRole,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('rooms_reservations');
+
+  // 권한 변경 진행 중인 계정. 다중 클릭을 프레임워크 단계에서 차단한다.
+  const [pendingRoleUserId, setPendingRoleUserId] = useState<string | null>(null);
+
+  /** 현재 요청자가 UI에서 부여할 수 있는 권한 목록. */
+  const assignableRoles = CURRENTLY_ASSIGNABLE_ROLE_CODES.filter(
+    (code) => canManageRole?.(code) ?? false,
+  );
+
+  const handleGrantRoleClick = async (user: UserAccount, roleCode: RoleCode) => {
+    if (pendingRoleUserId) return;
+    if (!onGrantRole) return;
+    if (!confirm(`'${user.name}'(${user.userId}) 계정에 ${ROLE_LABEL[roleCode]} 권한을 부여할까요?`)) return;
+    setPendingRoleUserId(user.id);
+    try {
+      const res = await onGrantRole(user.id, roleCode);
+      alert(res.success
+        ? `'${user.name}' 계정에 ${ROLE_LABEL[roleCode]} 권한을 부여했습니다.`
+        : res.message ?? '권한 부여에 실패했습니다.');
+    } finally {
+      setPendingRoleUserId(null);
+    }
+  };
+
+  const handleRevokeRoleClick = async (user: UserAccount, grant: RoleGrant) => {
+    if (pendingRoleUserId) return;
+    if (!onRevokeRole) return;
+    if (!confirm(`'${user.name}'(${user.userId}) 계정의 ${ROLE_LABEL[grant.roleCode]} 권한을 회수할까요?`)) return;
+    setPendingRoleUserId(user.id);
+    try {
+      const res = await onRevokeRole(grant.id, user.id, grant.roleCode);
+      alert(res.success
+        ? `'${user.name}' 계정의 ${ROLE_LABEL[grant.roleCode]} 권한을 회수했습니다.`
+        : res.message ?? '권한 회수에 실패했습니다.');
+    } finally {
+      setPendingRoleUserId(null);
+    }
+  };
 
   // 방 추가 모달
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
@@ -863,11 +917,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <td className="p-3 font-mono text-[#8e8e93]">{u.userId}</td>
                         <td className="p-3 text-[#8e8e93]">{u.phone}</td>
                         <td className="p-3 font-bold">
-                          {u.role === 'admin' ? (
-                            <span className="text-[#b09168] bg-[#b09168]/10 px-2 py-0.5 rounded text-[10px]">지점 관리자</span>
-                          ) : (
-                            <span className="text-[#8e8e93] bg-[#f0f0f2] px-2 py-0.5 rounded text-[10px]">일반 회원</span>
-                          )}
+                          <div className="flex flex-wrap items-center gap-1">
+                            {(userGrants[u.id] ?? []).filter((g) => g.roleCode !== 'CUSTOMER').length === 0 ? (
+                              <span className="text-[#8e8e93] bg-[#f0f0f2] px-2 py-0.5 rounded text-[10px]">
+                                일반 회원
+                              </span>
+                            ) : (
+                              (userGrants[u.id] ?? [])
+                                .filter((g) => g.roleCode !== 'CUSTOMER')
+                                .map((g) => (
+                                  <span
+                                    key={g.id}
+                                    className="inline-flex items-center gap-1 text-[#b09168] bg-[#b09168]/10 px-2 py-0.5 rounded text-[10px]"
+                                  >
+                                    {ROLE_LABEL[g.roleCode] ?? g.roleCode}
+                                    {(canManageRole?.(g.roleCode) ?? false) && onRevokeRole && (
+                                      <button
+                                        type="button"
+                                        disabled={pendingRoleUserId !== null}
+                                        onClick={() => void handleRevokeRoleClick(u, g)}
+                                        title={`${ROLE_LABEL[g.roleCode] ?? g.roleCode} 권한 회수`}
+                                        className="text-[#ff3b30] font-extrabold px-0.5"
+                                      >
+                                        ×
+                                      </button>
+                                    )}
+                                  </span>
+                                ))
+                            )}
+                            {assignableRoles
+                              .filter((code) => !(userGrants[u.id] ?? []).some((g) => g.roleCode === code))
+                              .map((code) => (
+                                <button
+                                  key={code}
+                                  type="button"
+                                  disabled={pendingRoleUserId !== null}
+                                  onClick={() => void handleGrantRoleClick(u, code)}
+                                  className="text-[#8e8e93] border border-[#e5e5ea] bg-[#f8f9fa] px-2 py-0.5 rounded text-[10px] font-bold"
+                                >
+                                  + {ROLE_LABEL[code] ?? code}
+                                </button>
+                              ))}
+                          </div>
                         </td>
                         <td className="p-3 font-extrabold text-[#b09168]">
                           {(u.points || 0).toLocaleString()} P

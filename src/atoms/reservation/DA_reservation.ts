@@ -1,9 +1,8 @@
-import type { PaymentMethod, Reservation, Role } from '../../types';
+import type { PaymentMethod, Reservation } from '../../types';
+import type { AuthContext } from '../auth/DA_auth';
 
-export interface AuthContext {
-  userId: string;
-  roles: Role[];
-}
+// 권한 컨텍스트는 auth 도메인이 SSOT다. 도메인마다 따로 정의하지 않는다.
+export type { AuthContext };
 
 export interface ReservationSlotInput {
   date: string;

@@ -9,6 +9,18 @@ import { AdminAuthModal } from './components/AdminAuthModal';
 import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Check } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 import { FA_CREATE_RESERVATIONS } from './atoms/reservation/FA_create_reservations';
+import type { AuthContext, RoleCode, RoleGrant } from './atoms/auth/DA_auth';
+import { ROLE_SCOPE_LEVEL } from './atoms/auth/CA_auth';
+import {
+  RA_AUTH_CAN_ACCESS_ADMIN_CONSOLE,
+  RA_AUTH_CAN_GRANT_ROLE,
+  RA_AUTH_GRANTS_FROM_LEGACY_ROLE,
+} from './atoms/auth/RA_auth';
+import {
+  QA_AUTH_FETCH_ALL_ROLES,
+  QA_AUTH_FETCH_USER_ROLES,
+} from './atoms/auth/QA_fetch_user_roles';
+import { FA_AUTH_GRANT_ROLE, FA_AUTH_REVOKE_ROLE } from './atoms/auth/FA_manage_role';
 
 import {
   supabase,
@@ -84,6 +96,10 @@ function App() {
   // 포인트 충전 모달 상태
   const [showPointModal, setShowPointModal] = useState<boolean>(false);
 
+  // 권한(user_roles) 상태. 로그인 계정의 활성 권한과 전체 계정의 권한 맵.
+  const [authGrants, setAuthGrants] = useState<RoleGrant[]>([]);
+  const [allUserGrants, setAllUserGrants] = useState<Record<string, RoleGrant[]>>({});
+
   /**
    * DB 쓰기를 실행하고 실패를 사용자에게 알린다.
    * 이전에는 결과를 확인하지 않아(fire-and-forget) 저장 실패가 조용히 묻혔고,
@@ -98,6 +114,82 @@ function App() {
         );
       }
     });
+  };
+
+  // 권한 로드 effect 의 의존성. currentUser 객체는 포인트 변경마다 새 참조가 되므로
+  // 실제로 바뀌었을 때만 재조회하도록 원시값으로 분리한다.
+  const currentUserId = currentUser?.id ?? null;
+  const currentUserLegacyRole = currentUser?.role ?? null;
+
+  /**
+   * 실제 판정에 사용할 권한 목록.
+   *
+   * user_roles 조회는 비동기이므로 로그인 직후 authGrants 가 잠시 빈 배열이다.
+   * 그 사이 예약이 PERMISSION_DENIED 로 거부되는 것을 막기 위해,
+   * 조회 결과가 도착하기 전에는 users.role 을 fallback 으로 해석한다.
+   *
+   * 주의: 이 fallback 은 DB 조회가 실패한 경우에도 적용된다. RLS 적용 후에는
+   * 서버가 최종 판정을 하므로 문제가 없지만, 그 전까지는 화면 분기만의 근거다.
+   */
+  const effectiveGrants: RoleGrant[] =
+    authGrants.length > 0
+      ? authGrants
+      : currentUserId
+        ? RA_AUTH_GRANTS_FROM_LEGACY_ROLE(currentUserId, currentUserLegacyRole ?? 'user')
+        : [];
+
+  /** 요청자의 권한 컨텍스트. 모든 FA 호출에 전달한다. */
+  const authContext: AuthContext = {
+    userId: currentUser?.id ?? '',
+    grants: effectiveGrants,
+  };
+
+  /** 관리 콘솔 접근 가능 여부. users.role 직접 비교를 대체한다. */
+  const canAccessAdminConsole = RA_AUTH_CAN_ACCESS_ADMIN_CONSOLE(effectiveGrants);
+
+  /** 요청자가 특정 권한을 부여·회수할 수 있는지. */
+  const canManageRole = (roleCode: RoleCode): boolean =>
+    RA_AUTH_CAN_GRANT_ROLE(
+      authContext,
+      roleCode,
+      ROLE_SCOPE_LEVEL[roleCode],
+      ROLE_SCOPE_LEVEL[roleCode] === 'platform' ? null : selectedBranch,
+    );
+
+  /** 권한 변경 후 화면 상태를 DB 기준으로 다시 맞춘다. */
+  const refreshRoleGrants = async () => {
+    setAllUserGrants(await QA_AUTH_FETCH_ALL_ROLES());
+    if (currentUserId) {
+      const mine = await QA_AUTH_FETCH_USER_ROLES(currentUserId);
+      if (mine.length > 0) setAuthGrants(mine);
+    }
+  };
+
+  const handleGrantRole = async (targetUserId: string, roleCode: RoleCode) => {
+    const scopeType = ROLE_SCOPE_LEVEL[roleCode];
+    const result = await FA_AUTH_GRANT_ROLE({
+      authContext,
+      targetUserId,
+      roleCode,
+      scopeType,
+      scopeId: scopeType === 'platform' ? null : selectedBranch,
+    });
+    if (result.success) await refreshRoleGrants();
+    return { success: result.success, message: result.message };
+  };
+
+  const handleRevokeRole = async (grantId: string, targetUserId: string, roleCode: RoleCode) => {
+    const scopeType = ROLE_SCOPE_LEVEL[roleCode];
+    const result = await FA_AUTH_REVOKE_ROLE({
+      authContext,
+      grantId,
+      targetUserId,
+      roleCode,
+      scopeType,
+      scopeId: scopeType === 'platform' ? null : selectedBranch,
+    });
+    if (result.success) await refreshRoleGrants();
+    return { success: result.success, message: result.message };
   };
 
   // 로컬 스토리지 & Supabase DB 데이터 로드 및 연동
@@ -199,6 +291,9 @@ function App() {
         setBankInfo(dbBank);
         localStorage.setItem('lheureux_bank_info', JSON.stringify(dbBank));
       }
+
+      // 8. 전체 계정의 활성 권한 로드 (관리자 회원 목록 표시용)
+      setAllUserGrants(await QA_AUTH_FETCH_ALL_ROLES());
     };
 
     loadSupabaseData();
@@ -215,6 +310,29 @@ function App() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // 로그인 계정의 활성 권한 로드.
+  // user_roles 에 행이 없는 레거시 계정은 users.role 을 fallback 으로 해석한다.
+  // setState 는 async 콜백 안에서만 호출한다 (effect 본문 동기 호출은 연쇄 렌더를 유발).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!currentUserId) {
+        if (!cancelled) setAuthGrants([]);
+        return;
+      }
+      const grants = await QA_AUTH_FETCH_USER_ROLES(currentUserId);
+      if (cancelled) return;
+      setAuthGrants(
+        grants.length > 0
+          ? grants
+          : RA_AUTH_GRANTS_FROM_LEGACY_ROLE(currentUserId, currentUserLegacyRole ?? 'user'),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId, currentUserLegacyRole]);
 
   // 관리자 반응형 레이아웃 토글 (#root 엘리먼트 클래스 조절)
   useEffect(() => {
@@ -530,7 +648,7 @@ function App() {
 
     const currentPoints = currentUser?.points ?? 0;
     const flowResult = FA_CREATE_RESERVATIONS({
-      authContext: { userId: currentUser?.id ?? '', roles: currentUser ? [currentUser.role] : [] },
+      authContext,
       roomId: targetRoomId,
       slots,
       reservations,
@@ -704,7 +822,7 @@ function App() {
             <div>
               <p className="text-sm font-bold text-[#191f28]">{currentUser.name}님 환영합니다</p>
               <p className="text-xs text-[#8b95a1]">
-                {currentUser.role === 'admin' ? '최고 관리자' : '일반 회원'} ({currentUser.userId})
+                {canAccessAdminConsole ? '관리자' : '일반 회원'} ({currentUser.userId})
               </p>
             </div>
           </div>
@@ -730,14 +848,14 @@ function App() {
               르하임 스터디카페 플랫폼
             </h1>
             <p className="text-xs text-[#8b95a1]">
-              {currentUser.role === 'admin' 
-                ? '관리자 전용 대시보드 콘솔에 접속하여 지점 운영 현황을 관리합니다.' 
+              {canAccessAdminConsole
+                ? '관리자 전용 대시보드 콘솔에 접속하여 지점 운영 현황을 관리합니다.'
                 : '방문하실 지점을 선택하고 실시간 스케줄을 확인하여 예약하세요.'}
             </p>
           </div>
 
           {/* 일반 이용자인 경우: 2개 지점 선택 뷰 */}
-          {currentUser.role === 'user' ? (
+          {!canAccessAdminConsole ? (
             <div className="w-full max-w-sm space-y-4">
               <div className="space-y-2.5">
                 <label className="block text-xs font-bold text-[#191f28] flex items-center gap-1">
@@ -827,6 +945,7 @@ function App() {
         {showAdminAuthModal && (
           <AdminAuthModal
             adminUser={currentUser}
+            isAuthorized={canAccessAdminConsole}
             onSuccess={() => {
               setShowAdminAuthModal(false);
               setRole('admin');
@@ -912,6 +1031,10 @@ function App() {
             onUpdateMasterBarcode={handleUpdateMasterBarcode}
             onApprovePointCharge={handleApprovePointCharge}
             onManualAdjustPoint={handleManualAdjustPoint}
+            userGrants={allUserGrants}
+            canManageRole={canManageRole}
+            onGrantRole={handleGrantRole}
+            onRevokeRole={handleRevokeRole}
           />
         ) : selectedRoomId && selectedRoom ? (
           <Scheduler
