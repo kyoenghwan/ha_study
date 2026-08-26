@@ -2,10 +2,17 @@ import React, { useState } from 'react';
 import type { UserAccount } from '../types';
 import { User, LogIn, UserPlus, Phone, Lock, Sparkles, CheckCircle2 } from 'lucide-react';
 import logoImg from '../assets/르하임로고.jfif';
+import { RA_PHONE_FORMAT, RA_PHONE_IS_VALID } from '../atoms/common/RA_phone';
 
 interface AuthModalProps {
   onLoginSuccess: (user: UserAccount) => void;
-  onRegisterUser: (newUser: Omit<UserAccount, 'id'>) => { success: boolean; message?: string };
+  /**
+   * 회원 등록. DB 저장까지 끝난 뒤 결과를 반환한다.
+   * 저장 실패 시 가입 완료 안내를 띄우지 않기 위해 비동기로 대기한다.
+   */
+  onRegisterUser: (
+    newUser: Omit<UserAccount, 'id'>,
+  ) => Promise<{ success: boolean; message?: string }>;
   existingUsers: UserAccount[];
 }
 
@@ -24,10 +31,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // 회원가입 폼
   const [regUserId, setRegUserId] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [regPasswordConfirm, setRegPasswordConfirm] = useState('');
   const [regName, setRegName] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regError, setRegError] = useState('');
   const [regSuccessMsg, setRegSuccessMsg] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,37 +58,56 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isRegistering) return; // 다중 제출 차단
     setRegError('');
     setRegSuccessMsg('');
 
-    if (!regUserId.trim() || !regPassword.trim() || !regName.trim() || !regPhone.trim()) {
+    if (!regUserId.trim() || !regPassword || !regName.trim() || !regPhone.trim()) {
       setRegError('모든 필드를 입력해 주세요.');
       return;
     }
 
-    const res = onRegisterUser({
-      userId: regUserId.trim(),
-      password: regPassword.trim(),
-      name: regName.trim(),
-      phone: regPhone.trim(),
-      role: 'user', // 관리자 계정은 가입 화면에서 생성할 수 없다 (권한 상승 방지)
-      points: 20000,
-    });
+    if (regPassword !== regPasswordConfirm) {
+      setRegError('비밀번호가 일치하지 않습니다. 다시 확인해 주세요.');
+      return;
+    }
 
-    if (res.success) {
+    if (!RA_PHONE_IS_VALID(regPhone)) {
+      setRegError('휴대폰 번호를 올바르게 입력해 주세요. (예: 010-1234-5678)');
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const res = await onRegisterUser({
+        userId: regUserId.trim(),
+        password: regPassword,
+        name: regName.trim(),
+        // 저장 형식을 하이픈 포함으로 통일한다. 예약 검증 규칙과 동일한 형태다.
+        phone: RA_PHONE_FORMAT(regPhone),
+        role: 'user', // 관리자 계정은 가입 화면에서 생성할 수 없다 (권한 상승 방지)
+        points: 20000,
+      });
+
+      if (!res.success) {
+        setRegError(res.message || '가입에 실패했습니다.');
+        return;
+      }
+
       setRegSuccessMsg('회원가입이 완료되었습니다! 로그인해 주세요.');
       setTimeout(() => {
         setTab('login');
         setLoginUserId(regUserId);
         setRegUserId('');
         setRegPassword('');
+        setRegPasswordConfirm('');
         setRegName('');
         setRegPhone('');
       }, 1200);
-    } else {
-      setRegError(res.message || '가입에 실패했습니다.');
+    } finally {
+      setIsRegistering(false); // 성공/실패 무관 반드시 해제
     }
   };
 
@@ -240,6 +268,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           <div className="form-group">
             <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
+              <Lock size={14} className="text-[#b09168]" /> 비밀번호 확인
+            </label>
+            <input
+              type="password"
+              value={regPasswordConfirm}
+              onChange={(e) => setRegPasswordConfirm(e.target.value)}
+              placeholder="비밀번호를 다시 입력하세요"
+              className="form-input text-sm w-full"
+            />
+            {regPasswordConfirm.length > 0 && regPassword !== regPasswordConfirm && (
+              <p className="text-[11px] text-[#ff3b30] font-bold pt-1">
+                비밀번호가 일치하지 않습니다.
+              </p>
+            )}
+            {regPasswordConfirm.length > 0 && regPassword === regPasswordConfirm && (
+              <p className="text-[11px] text-[#34c759] font-bold pt-1">
+                비밀번호가 일치합니다.
+              </p>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
               <User size={14} className="text-[#b09168]" /> 성함
             </label>
             <input
@@ -257,9 +308,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </label>
             <input
               type="tel"
+              inputMode="numeric"
               value={regPhone}
-              onChange={(e) => setRegPhone(e.target.value)}
+              // 숫자만 입력해도 자동으로 하이픈이 붙는다. (01012341234 -> 010-1234-1234)
+              onChange={(e) => setRegPhone(RA_PHONE_FORMAT(e.target.value))}
               placeholder="010-1234-5678"
+              maxLength={13}
               className="form-input text-sm w-full"
             />
           </div>
@@ -277,8 +331,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           <div className="pt-2">
-            <button type="submit" className="gold-btn w-full py-3.5 text-sm font-bold rounded-xl shadow">
-              회원가입 완료
+            <button
+              type="submit"
+              disabled={isRegistering}
+              className="gold-btn w-full py-3.5 text-sm font-bold rounded-xl shadow"
+            >
+              {isRegistering ? '가입 처리 중...' : '회원가입 완료'}
             </button>
           </div>
         </form>

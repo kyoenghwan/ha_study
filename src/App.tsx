@@ -499,6 +499,45 @@ function App() {
     alert(`'${targetUser.name}' 회원님의 포인트가 ${amount > 0 ? '+' : ''}${amount.toLocaleString()}P 조율되었습니다. (현재 잔액: ${nextPoints.toLocaleString()}P)`);
   };
 
+  // 신규 회원가입 처리.
+  // DB 저장 결과를 기다린 뒤 반환한다. 저장이 실패했는데 화면에 "가입 완료"가
+  // 뜨는 모순을 막기 위해 persist() 대신 결과를 직접 확인한다.
+  const handleRegisterUser = async (
+    newUser: Omit<UserAccount, 'id'>,
+  ): Promise<{ success: boolean; message?: string }> => {
+    // 1. 실시간 DB 최신 회원 목록 조회 및 동기화
+    const dbUsers = await fetchDbUsers();
+    const currentUsers = dbUsers.length > 0 ? dbUsers : users;
+
+    const exists = currentUsers.some(u => u.userId.toLowerCase() === newUser.userId.trim().toLowerCase());
+    if (exists) {
+      return { success: false, message: '이미 존재하는 아이디입니다.' };
+    }
+
+    // users.id는 UUID 컬럼이다. DB와 로컬이 같은 id를 갖도록 클라이언트에서 발급한다.
+    const createdUser: UserAccount = {
+      ...newUser,
+      userId: newUser.userId.trim(),
+      id: crypto.randomUUID(),
+    };
+
+    const res = await insertDbUser(createdUser);
+    if (!res.ok) {
+      // Supabase UNIQUE 제약 조건 위반인 경우
+      if (res.error?.includes('duplicate key') || res.error?.includes('users_user_id_uniq')) {
+        return { success: false, message: '이미 존재하는 아이디입니다.' };
+      }
+      return {
+        success: false,
+        message: '회원 정보를 서버에 저장하지 못했습니다.\n\n' + res.error,
+      };
+    }
+
+    // DB 저장 성공 시에만 로컬 상태 및 localStorage 갱신
+    updateUsers([...currentUsers.filter(u => u.userId !== createdUser.userId), createdUser]);
+    return { success: true };
+  };
+
   // 예약 취소 및 포인트 자동 환불
   const handleCancelAndRefundReservation = (resId: string) => {
     const targetRes = reservations.find(r => r.id === resId);
@@ -542,24 +581,6 @@ function App() {
     }
 
     alert('예약 취소 및 결제 포인트 환불 처리가 완료되었습니다.');
-  };
-
-  // 신규 회원가입 처리
-  const handleRegisterUser = (newUser: Omit<UserAccount, 'id'>): { success: boolean; message?: string } => {
-    const exists = users.some(u => u.userId === newUser.userId);
-    if (exists) {
-      return { success: false, message: '이미 존재하는 아이디입니다.' };
-    }
-
-    // users.id는 UUID 컬럼이다. DB와 로컬이 같은 id를 갖도록 클라이언트에서 발급한다.
-    const createdUser: UserAccount = {
-      ...newUser,
-      id: crypto.randomUUID(),
-    };
-
-    updateUsers([...users, createdUser]);
-    persist('회원 등록', () => insertDbUser(createdUser));
-    return { success: true };
   };
 
   // 로그인 성공 처리
