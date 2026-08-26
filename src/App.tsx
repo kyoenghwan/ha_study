@@ -10,17 +10,28 @@ import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Check } f
 import logoImg from './assets/르하임로고.jfif';
 import { FA_CREATE_RESERVATIONS } from './atoms/reservation/FA_create_reservations';
 
-import { 
-  supabase, 
-  fetchDbUsers, 
-  saveDbUser, 
-  fetchDbReservations, 
-  saveDbReservations, 
-  fetchDbMasterBarcode, 
+import {
+  supabase,
+  fetchDbUsers,
+  insertDbUser,
+  updateDbUser,
+  fetchDbReservations,
+  saveDbReservations,
+  deleteDbReservationsByRoom,
+  fetchDbRooms,
+  saveDbRooms,
+  deleteDbRoom,
+  fetchDbMasterBarcode,
   saveDbMasterBarcode,
+  fetchDbAdminBarcodes,
+  saveDbAdminBarcodes,
+  deleteDbAdminBarcode,
+  fetchDbBankInfo,
+  saveDbBankInfo,
   fetchDbPointTransactions,
-  saveDbPointTransaction
+  saveDbPointTransaction,
 } from './lib/supabase';
+import type { DbResult } from './lib/supabase';
 
 // 르하임 v1 2개 지점 목록 정의 (멀티테넌트 확장 지점)
 export interface Branch {
@@ -72,6 +83,22 @@ function App() {
 
   // 포인트 충전 모달 상태
   const [showPointModal, setShowPointModal] = useState<boolean>(false);
+
+  /**
+   * DB 쓰기를 실행하고 실패를 사용자에게 알린다.
+   * 이전에는 결과를 확인하지 않아(fire-and-forget) 저장 실패가 조용히 묻혔고,
+   * Realtime 재조회가 화면 값을 옛 DB 값으로 되돌렸다.
+   */
+  const persist = (label: string, op: () => Promise<DbResult>) => {
+    void op().then((res) => {
+      if (!res.ok) {
+        alert(
+          label + '을 서버에 저장하지 못했습니다.\n\n' + res.error + '\n\n' +
+            '화면에 보이는 값은 아직 저장되지 않았습니다. 새로고침하면 사라질 수 있습니다.',
+        );
+      }
+    });
+  };
 
   // 로컬 스토리지 & Supabase DB 데이터 로드 및 연동
   useEffect(() => {
@@ -151,6 +178,27 @@ function App() {
         const savedTx = localStorage.getItem('lheureux_point_tx');
         if (savedTx) setPointTransactions(JSON.parse(savedTx));
       }
+
+      // 5. Rooms 로드 (DB를 SSOT로 사용, 비어 있으면 로컬 캐시 유지)
+      const dbRooms = await fetchDbRooms();
+      if (dbRooms.length > 0) {
+        setRooms(dbRooms);
+        localStorage.setItem('lheureux_rooms', JSON.stringify(dbRooms));
+      }
+
+      // 6. Admin Barcodes 로드
+      const dbBarcodes = await fetchDbAdminBarcodes();
+      if (dbBarcodes.length > 0) {
+        setAdminBarcodes(dbBarcodes);
+        localStorage.setItem('lheureux_admin_barcodes', JSON.stringify(dbBarcodes));
+      }
+
+      // 7. Bank Info 로드
+      const dbBank = await fetchDbBankInfo();
+      if (dbBank) {
+        setBankInfo(dbBank);
+        localStorage.setItem('lheureux_bank_info', JSON.stringify(dbBank));
+      }
     };
 
     loadSupabaseData();
@@ -199,12 +247,13 @@ function App() {
   const updateRooms = (newRooms: Room[]) => {
     setRooms(newRooms);
     localStorage.setItem('lheureux_rooms', JSON.stringify(newRooms));
+    persist('공간 정보', () => saveDbRooms(newRooms));
   };
 
   const updateReservations = (newReservations: Reservation[]) => {
     setReservations(newReservations);
     localStorage.setItem('lheureux_reservations', JSON.stringify(newReservations));
-    saveDbReservations(newReservations); // Supabase DB 동기화
+    persist('예약 정보', () => saveDbReservations(newReservations));
   };
 
   const updatePointTransactions = (newTxList: PointTransaction[]) => {
@@ -215,17 +264,19 @@ function App() {
   const updateAdminBarcodes = (newBarcodes: AdminBarcodeItem[]) => {
     setAdminBarcodes(newBarcodes);
     localStorage.setItem('lheureux_admin_barcodes', JSON.stringify(newBarcodes));
+    persist('바코드 정보', () => saveDbAdminBarcodes(newBarcodes));
   };
 
   const handleUpdateMasterBarcode = (barcode: MasterBarcode) => {
     setMasterBarcode(barcode);
     localStorage.setItem('lheureux_master_barcode', JSON.stringify(barcode));
-    saveDbMasterBarcode(barcode); // Supabase DB 동기화
+    persist('대표 바코드', () => saveDbMasterBarcode(barcode));
   };
 
   const handleUpdateBankInfo = (newInfo: BankInfo) => {
     setBankInfo(newInfo);
     localStorage.setItem('lheureux_bank_info', JSON.stringify(newInfo));
+    persist('입금 계좌 정보', () => saveDbBankInfo(newInfo));
   };
 
   const handleSelectBranch = (branchId: string) => {
@@ -240,6 +291,8 @@ function App() {
     
     const updatedUsers = users.map(u => u.id === currentUser.id ? updatedUser : u);
     updateUsers(updatedUsers);
+    // 이전에는 DB 저장 호출이 아예 없어 예약 시 차감된 포인트가 저장되지 않았다.
+    persist('포인트 잔액', () => updateDbUser(updatedUser));
   };
 
   // 무통장 입금 포인트 충전 신청 처리 (이용자용)
@@ -258,7 +311,7 @@ function App() {
 
     const updatedTx = [newTx, ...pointTransactions];
     updatePointTransactions(updatedTx);
-    saveDbPointTransaction(newTx);
+    persist('포인트 충전 신청', () => saveDbPointTransaction(newTx));
     setShowPointModal(false);
     alert(`무통장 입금 충전 신청이 완료되었습니다.\n입금계좌: ${bankInfo.bankName} ${bankInfo.accountNumber} (${bankInfo.accountHolder})\n관리자 입금 확인 후 포인트가 즉시 지급됩니다.`);
   };
@@ -274,7 +327,7 @@ function App() {
       const updatedUser = { ...targetUser, points: (targetUser.points || 0) + targetTx.amount };
       const updatedUsers = users.map(u => u.id === targetUser.id ? updatedUser : u);
       updateUsers(updatedUsers);
-      saveDbUser(updatedUser);
+      persist('회원 정보', () => updateDbUser(updatedUser));
 
       // 현재 로그인 유저라면 즉시 세션 반영
       if (currentUser?.id === targetUser.id) {
@@ -291,7 +344,8 @@ function App() {
     });
 
     updatePointTransactions(updatedTxList);
-    saveDbPointTransaction({ ...targetTx, status: 'completed', type: 'charge_approved' });
+    persist('충전 승인 이력', () =>
+      saveDbPointTransaction({ ...targetTx, status: 'completed', type: 'charge_approved' }));
     alert(`'${targetTx.userName}' 회원님의 ${targetTx.amount.toLocaleString()}P 입금 승인 및 포인트 적립이 완료되었습니다!`);
   };
 
@@ -304,7 +358,7 @@ function App() {
     const updatedUser = { ...targetUser, points: nextPoints };
     const updatedUsers = users.map(u => u.id === userId ? updatedUser : u);
     updateUsers(updatedUsers);
-    saveDbUser(updatedUser);
+    persist('회원 정보', () => updateDbUser(updatedUser));
 
     if (currentUser?.id === targetUser.id) {
       setCurrentUser(updatedUser);
@@ -323,7 +377,7 @@ function App() {
     };
 
     updatePointTransactions([newTx, ...pointTransactions]);
-    saveDbPointTransaction(newTx);
+    persist('수동 조율 이력', () => saveDbPointTransaction(newTx));
     alert(`'${targetUser.name}' 회원님의 포인트가 ${amount > 0 ? '+' : ''}${amount.toLocaleString()}P 조율되었습니다. (현재 잔액: ${nextPoints.toLocaleString()}P)`);
   };
 
@@ -346,7 +400,7 @@ function App() {
         const updatedUser = { ...targetUser, points: nextPoints };
         const updatedUsers = users.map(u => u.id === targetUser.id ? updatedUser : u);
         updateUsers(updatedUsers);
-        saveDbUser(updatedUser);
+        persist('회원 정보', () => updateDbUser(updatedUser));
 
         if (currentUser?.id === targetUser.id) {
           setCurrentUser(updatedUser);
@@ -365,7 +419,7 @@ function App() {
         };
 
         updatePointTransactions([refundTx, ...pointTransactions]);
-        saveDbPointTransaction(refundTx);
+        persist('환불 이력', () => saveDbPointTransaction(refundTx));
       }
     }
 
@@ -379,13 +433,14 @@ function App() {
       return { success: false, message: '이미 존재하는 아이디입니다.' };
     }
 
+    // users.id는 UUID 컬럼이다. DB와 로컬이 같은 id를 갖도록 클라이언트에서 발급한다.
     const createdUser: UserAccount = {
       ...newUser,
-      id: `user-${Date.now()}`,
+      id: crypto.randomUUID(),
     };
 
     updateUsers([...users, createdUser]);
-    saveDbUser(newUser); // Supabase DB에 회원 저장
+    persist('회원 등록', () => insertDbUser(createdUser));
     return { success: true };
   };
 
@@ -414,7 +469,10 @@ function App() {
 
   // 관리자 바코드 삭제 (레거시/향후용)
   const handleDeleteAdminBarcode = (id: string) => {
-    updateAdminBarcodes(adminBarcodes.filter(b => b.id !== id));
+    const remaining = adminBarcodes.filter(b => b.id !== id);
+    setAdminBarcodes(remaining);
+    localStorage.setItem('lheureux_admin_barcodes', JSON.stringify(remaining));
+    persist('바코드 삭제', () => deleteDbAdminBarcode(id));
   };
 
   // 예약 건의 바코드 수동 변경
@@ -442,8 +500,19 @@ function App() {
   const handleDeleteRoom = (roomId: string) => {
     const filteredRooms = rooms.filter((r) => r.id !== roomId);
     const filteredReservations = reservations.filter((res) => res.roomId !== roomId);
-    updateRooms(filteredRooms);
-    updateReservations(filteredReservations);
+
+    setRooms(filteredRooms);
+    localStorage.setItem('lheureux_rooms', JSON.stringify(filteredRooms));
+    setReservations(filteredReservations);
+    localStorage.setItem('lheureux_reservations', JSON.stringify(filteredReservations));
+
+    // upsert만 하면 삭제된 행이 DB에 남아 다음 조회에서 되살아난다.
+    // 예약을 먼저 지운 뒤 공간을 지운다 (참조 순서).
+    persist('공간 삭제', async () => {
+      const removed = await deleteDbReservationsByRoom(roomId);
+      if (!removed.ok) return removed;
+      return deleteDbRoom(roomId);
+    });
   };
 
   // 신규 예약 신청 (단일/다중 슬롯, 결제 수단 지원)
@@ -495,7 +564,7 @@ function App() {
         };
 
         updatePointTransactions([useTx, ...pointTransactions]);
-        saveDbPointTransaction(useTx);
+        persist('포인트 사용 이력', () => saveDbPointTransaction(useTx));
       }
     }
 
