@@ -671,11 +671,12 @@ function App() {
     updateReservations(updated);
   };
 
-  // 공부방 생성
+  // 공부방 생성 (현재 선택된 지점 branchId 자동 부여)
   const handleAddRoom = (roomData: Omit<Room, 'id'>) => {
     const newRoom: Room = {
       ...roomData,
-      id: `room-${Date.now()}`,
+      branchId: selectedBranch,
+      id: `room-${selectedBranch}-${Date.now()}`,
     };
     updateRooms([...rooms, newRoom]);
   };
@@ -866,7 +867,15 @@ function App() {
   };
 
   const currentBranchObj = BRANCHES.find((b) => b.id === selectedBranch) || BRANCHES[0];
-  const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
+  
+  // 🏢 현재 선택된 지점(selectedBranch)의 룸 및 예약 필터링
+  // branchId가 없는 레거시 룸은 기본 'yeouido'로 취급
+  const currentBranchRooms = rooms.filter((r) => (r.branchId || 'yeouido') === selectedBranch);
+  const currentBranchReservations = reservations.filter((res) => 
+    currentBranchRooms.some((r) => r.id === res.roomId)
+  );
+
+  const selectedRoom = currentBranchRooms.find((r) => r.id === selectedRoomId);
 
   // 1. 미로그인 상태: 회원가입 / 로그인 화면
   if (!currentUser) {
@@ -1069,8 +1078,8 @@ function App() {
       <main className="flex-1 flex flex-col overflow-hidden bg-[#ffffff]">
         {role === 'admin' ? (
           <AdminDashboard
-            rooms={rooms}
-            reservations={reservations}
+            rooms={currentBranchRooms}
+            reservations={currentBranchReservations}
             bankInfo={bankInfo}
             users={users}
             pointTransactions={pointTransactions}
@@ -1100,15 +1109,15 @@ function App() {
           <Scheduler
             currentUser={currentUser}
             room={selectedRoom}
-            reservations={reservations}
+            reservations={currentBranchReservations}
             onBack={() => setSelectedRoomId(null)}
             onAddReservations={handleAddReservations}
           />
         ) : (
           <UserDashboard
             currentUser={currentUser}
-            rooms={rooms}
-            reservations={reservations}
+            rooms={currentBranchRooms}
+            reservations={currentBranchReservations}
             bankInfo={bankInfo}
             masterBarcode={masterBarcode}
             onSelectRoom={(roomId) => setSelectedRoomId(roomId)}

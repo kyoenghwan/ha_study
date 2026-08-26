@@ -51,23 +51,57 @@ export const INITIAL_BANK_INFO: BankInfo = {
 };
 
 export const INITIAL_ROOMS: Room[] = [
+  // 🏢 여의도점 공부방
   {
-    id: 'room-1',
+    id: 'room-yeouido-1',
     name: '스터디 존 A (4인실)',
     capacity: 4,
     description: '집중이 잘되는 조명과 화이트보드가 준비된 4인실 공부방입니다.',
+    branchId: 'yeouido',
   },
   {
-    id: 'room-2',
+    id: 'room-yeouido-2',
     name: '스터디 존 B (6인실)',
     capacity: 6,
     description: '개별 모니터와 콘센트가 구비된 그룹 스터디용 6인실입니다.',
+    branchId: 'yeouido',
   },
   {
-    id: 'room-3',
+    id: 'room-yeouido-3',
     name: '세미나룸 C (10인실)',
     capacity: 10,
     description: '대형 빔프로젝터와 음향 장비가 완비된 단체 세미나용 10인실입니다.',
+    branchId: 'yeouido',
+  },
+
+  // 🏢 마포점 공부방
+  {
+    id: 'room-mapo-1',
+    name: '포커스 몰입룸 (2인실)',
+    capacity: 2,
+    description: '조용하고 아늑한 1:1 과외 및 집중 몰입 전용 2인실입니다.',
+    branchId: 'mapo',
+  },
+  {
+    id: 'room-mapo-2',
+    name: '프리미엄 스터디룸 (4인실)',
+    capacity: 4,
+    description: '공기청정기와 와이드 화이트보드가 설치된 4인실입니다.',
+    branchId: 'mapo',
+  },
+  {
+    id: 'room-mapo-3',
+    name: '그룹 스터디룸 (8인실)',
+    capacity: 8,
+    description: '개별 모니터와 멀티탭이 완비된 중형 스터디룸입니다.',
+    branchId: 'mapo',
+  },
+  {
+    id: 'room-mapo-4',
+    name: '마포 대형 세미나홀 (15인실)',
+    capacity: 15,
+    description: '빔프로젝터, 대형 스크린, 마이크가 구비된 대형 홀입니다.',
+    branchId: 'mapo',
   },
 ];
 

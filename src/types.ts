@@ -7,6 +7,7 @@ export interface Room {
   name: string;
   capacity: number;
   description: string;
+  branchId?: string; // 'yeouido' | 'mapo' 등 지점 식별자
 }
 
 export interface Reservation {
