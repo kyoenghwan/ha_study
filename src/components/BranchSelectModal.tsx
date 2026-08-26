@@ -95,7 +95,7 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
           <Search size={19} className="text-[#a67c48] shrink-0" />
         </div>
 
-        {/* 하단: 지점 그리드 목록 (선택 시 강조 색상 및 진한 테두리 적용) */}
+        {/* 하단: 지점 그리드 목록 (선택 시 확실한 골드 풀 채움 배경색 적용) */}
         <div className="flex-1 overflow-y-auto pr-1">
           {filteredBranches.length === 0 ? (
             <div className="text-center py-12 text-[#8b95a1] space-y-2 border border-dashed border-[#e5e8eb] rounded-2xl bg-[#f8f9fc]">
@@ -113,27 +113,27 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
                     onClick={() => handleCardClick(branch.id)}
                     className={`p-3.5 rounded-xl cursor-pointer flex flex-col justify-between transition-all duration-200 relative group ${
                       isSelected
-                        ? 'border-2 border-[#a67c48] bg-[#fbf7f2] shadow-md ring-1 ring-[#a67c48]/30 -translate-y-0.5'
-                        : 'border border-[#e5e8eb] bg-[#f8f9fc] hover:bg-white hover:border-[#a67c48]/50 hover:shadow-sm'
+                        ? 'bg-gradient-to-br from-[#a67c48] to-[#8a6230] text-white border-2 border-[#7a5426] shadow-lg shadow-[#a67c48]/30 -translate-y-0.5 ring-2 ring-[#a67c48]/40'
+                        : 'border border-[#e5e8eb] bg-[#f8f9fc] text-[#191f28] hover:bg-white hover:border-[#a67c48]/50 hover:shadow-sm'
                     }`}
                   >
                     {/* 지점명 & 선택 상태 */}
                     <div className="text-left">
                       <div className="flex justify-between items-start">
-                        <p className={`text-[11px] font-semibold ${isSelected ? 'text-[#a67c48]' : 'text-[#8b95a1]'}`}>
+                        <p className={`text-[11px] font-semibold ${isSelected ? 'text-[#faecd8]' : 'text-[#8b95a1]'}`}>
                           르하임 스터디카페
                         </p>
                         {isSelected ? (
-                          <span className="px-1.5 py-0.5 rounded-md bg-[#a67c48] text-white text-[10px] font-bold flex items-center gap-0.5 shadow-sm">
-                            <Check size={10} strokeWidth={3} /> 선택됨
+                          <span className="px-2 py-0.5 rounded-md bg-white text-[#8a6230] text-[10px] font-extrabold flex items-center gap-1 shadow-sm">
+                            <Check size={11} strokeWidth={3.5} /> 선택됨
                           </span>
                         ) : (
                           <span className="w-4 h-4 rounded-full border border-[#d1d6db] bg-white group-hover:border-[#a67c48]/50" />
                         )}
                       </div>
-                      <h4 className={`text-base tracking-tight transition-colors mt-0.5 ${
+                      <h4 className={`text-base tracking-tight transition-colors mt-1 ${
                         isSelected 
-                          ? 'font-extrabold text-[#a67c48]' 
+                          ? 'font-black text-white' 
                           : 'font-bold text-[#191f28] group-hover:text-[#a67c48]'
                       }`}>
                         {branch.name}
@@ -142,10 +142,10 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
 
                     {/* 하단: 주소 정보 */}
                     <div className={`text-left pt-2 mt-2.5 border-t ${
-                      isSelected ? 'border-[#a67c48]/20' : 'border-[#e5e8eb]/70'
+                      isSelected ? 'border-white/20' : 'border-[#e5e8eb]/70'
                     }`}>
                       <p className={`text-xs line-clamp-2 leading-snug ${
-                        isSelected ? 'text-[#6b5030] font-medium' : 'text-[#8b95a1]'
+                        isSelected ? 'text-[#f5e7d6] font-medium' : 'text-[#8b95a1]'
                       }`}>
                         {branch.address}
                       </p>
