@@ -298,29 +298,48 @@ export const Scheduler: React.FC<SchedulerProps> = ({
               // 오늘 날짜에서 이미 종료된 과거 슬롯 여부
               const isPastSlot = isToday && timeToMinutes(slot.end) <= currentTotalMinutes;
 
-              let slotClass = 'bg-[#f8f9fc] border-[#e5e8eb] hover:border-[#a67c48]/50 text-[#191f28] cursor-pointer';
-              if (existingRes) {
-                slotClass = 'bg-[#f1f3f5] border-[#e5e8eb] text-[#8b95a1] cursor-not-allowed opacity-80';
-              } else if (isPastSlot) {
-                slotClass = 'bg-[#f8f9fa] border-[#f1f3f5] text-[#b0b8c1] cursor-not-allowed opacity-60';
-              } else if (isSelected) {
-                slotClass = 'bg-[#a67c48]/10 border-[#a67c48] text-[#a67c48] font-bold shadow-sm ring-1 ring-[#a67c48]';
-              }
-
               return (
                 <div
                   key={index}
                   ref={isCurrentSlot ? currentSlotRef : null}
                   onClick={() => handleSlotToggle(selectedDate, slot.start, slot.end)}
-                  className={`border rounded-2xl p-3.5 flex justify-between items-center transition-all ${slotClass} ${
-                    isCurrentSlot ? 'ring-2 ring-[#a67c48] bg-[#a67c48]/5' : ''
-                  }`}
+                  className={`rounded-2xl p-3.5 flex justify-between items-center transition-all shadow-sm ${
+                    existingRes || isPastSlot ? 'cursor-not-allowed' : 'cursor-pointer'
+                  } ${isSelected ? 'border-2 -translate-y-0.5 shadow-md' : 'border'}`}
+                  style={{
+                    backgroundColor: isSelected
+                      ? '#a67c48'
+                      : existingRes
+                      ? '#f8f9fc'
+                      : isPastSlot
+                      ? '#f8f9fa'
+                      : isCurrentSlot
+                      ? '#fcf8f2'
+                      : '#f8f9fc',
+                    borderColor: isSelected
+                      ? '#8a6230'
+                      : isCurrentSlot
+                      ? '#a67c48'
+                      : '#e5e8eb',
+                    color: isSelected ? '#ffffff' : isPastSlot ? '#b0b8c1' : '#191f28',
+                  }}
                 >
                   <div className="flex items-center gap-2.5 text-sm">
-                    <Clock size={16} className={isCurrentSlot ? 'text-[#a67c48]' : isSelected ? 'text-[#a67c48]' : 'text-[#8b95a1]'} />
-                    <span className="font-semibold">{slot.start} ~ {slot.end}</span>
+                    <Clock 
+                      size={16} 
+                      style={{ color: isSelected ? '#ffffff' : isCurrentSlot ? '#a67c48' : '#8b95a1' }} 
+                    />
+                    <span className={isSelected ? 'font-extrabold text-white' : 'font-semibold'}>
+                      {slot.start} ~ {slot.end}
+                    </span>
                     {isCurrentSlot && (
-                      <span className="text-[11px] font-bold bg-[#a67c48] text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span 
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm"
+                        style={{
+                          backgroundColor: isSelected ? '#ffffff' : '#a67c48',
+                          color: isSelected ? '#a67c48' : '#ffffff',
+                        }}
+                      >
                         🔴 현재 시간
                       </span>
                     )}
@@ -336,8 +355,11 @@ export const Scheduler: React.FC<SchedulerProps> = ({
                         시간 경과
                       </span>
                     ) : isSelected ? (
-                      <span className="text-xs text-[#a67c48] font-bold flex items-center gap-1 bg-[#a67c48]/10 px-2.5 py-1 rounded-full">
-                        <Check size={14} /> 선택됨
+                      <span 
+                        className="text-xs font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm"
+                        style={{ backgroundColor: '#ffffff', color: '#a67c48' }}
+                      >
+                        <Check size={13} strokeWidth={3.5} /> 선택됨
                       </span>
                     ) : (
                       <span className="text-xs text-[#8b95a1] font-medium">예약 가능 (4,000P)</span>
