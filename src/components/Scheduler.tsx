@@ -538,9 +538,9 @@ export const Scheduler: React.FC<SchedulerProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting || ((currentUser?.points || 0) < totalCost)}
-                  className="gold-btn flex-1 py-3.5 text-xs font-bold flex justify-center items-center gap-1.5 shadow rounded-xl"
+                  className="gold-btn flex-1 py-3.5 text-sm font-bold flex justify-center items-center gap-1.5 shadow rounded-xl whitespace-nowrap"
                 >
-                  <Check size={16} /> {isSubmitting ? '결제 처리 중...' : `${totalCost.toLocaleString()}P 결제 및 확정`}
+                  <Check size={16} /> {isSubmitting ? '결제 중...' : '결제'}
                 </button>
               </div>
             </form>
