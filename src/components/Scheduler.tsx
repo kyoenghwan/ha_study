@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Room, Reservation, BankInfo, PaymentMethod } from '../types';
-import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Clock, User, Phone, Check, CreditCard, Landmark, CheckCircle2 } from 'lucide-react';
+import type { Room, Reservation, PaymentMethod, UserAccount } from '../types';
+import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Clock, Check, CheckCircle2 } from 'lucide-react';
 import { getTodayDateString, getOffsetDateString } from '../utils/mockData';
 
 interface SchedulerProps {
+  currentUser?: UserAccount | null;
   room: Room;
   reservations: Reservation[];
-  bankInfo: BankInfo;
   onBack: () => void;
   onAddReservations: (
     slots: Array<{ date: string; start: string; end: string }>,
@@ -31,9 +31,9 @@ const generateTimeSlots = () => {
 const TIME_SLOTS = generateTimeSlots();
 
 export const Scheduler: React.FC<SchedulerProps> = ({
+  currentUser,
   room,
   reservations,
-  bankInfo,
   onBack,
   onAddReservations,
 }) => {
@@ -48,10 +48,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({
   // 다중 슬롯 선택 상태
   const [selectedSlots, setSelectedSlots] = useState<Array<{ date: string; start: string; end: string }>>([]);
 
-  // 예약자 폼 상태
-  const [userName, setUserName] = useState('');
-  const [userPhone, setUserPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('points');
+  // 에러 및 제출 상태
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -101,7 +98,6 @@ export const Scheduler: React.FC<SchedulerProps> = ({
 
   // 날짜 변경 또는 뷰 모드 전환 시 자동 스크롤
   useEffect(() => {
-    // 렌더링 후 DOM 위치가 확정된 뒤 스크롤 실행
     const timer = setTimeout(() => {
       scrollToCurrentTime('auto');
     }, 100);
@@ -117,24 +113,30 @@ export const Scheduler: React.FC<SchedulerProps> = ({
       if (r.barcodeStatus === 'cancelled' || r.roomId !== room.id || r.date !== date) return false;
       const rStart = timeToMinutes(r.startTime);
       const rEnd = timeToMinutes(r.endTime);
-      return rStart < checkEnd && rEnd > checkStart;
+
+      return (
+        (checkStart >= rStart && checkStart < rEnd) ||
+        (checkEnd > rStart && checkEnd <= rEnd) ||
+        (checkStart <= rStart && checkEnd >= rEnd)
+      );
     });
   };
 
-  // 날짜 제어 (일별 뷰)
-  const changeDate = (offset: number) => {
-    const current = new Date(selectedDate);
-    current.setDate(current.getDate() + offset);
-    const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, '0');
-    const day = String(current.getDate()).padStart(2, '0');
-    setSelectedDate(`${year}-${month}-${day}`);
+  // 날짜 변경 (이전/다음)
+  const changeDate = (days: number) => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const target = new Date(y, m - 1, d + days);
+    const yStr = target.getFullYear();
+    const mStr = String(target.getMonth() + 1).padStart(2, '0');
+    const dStr = String(target.getDate()).padStart(2, '0');
+    setSelectedDate(`${yStr}-${mStr}-${dStr}`);
   };
 
-  // 오늘부터 7일간의 날짜 배열 생성
+  // 주별 뷰용 날짜 7일 배열
   const getWeeklyDays = () => {
-    const days = [];
+    const days: Array<{ date: string; dayNum: number; dayName: string; label: string }> = [];
     const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+
     for (let i = 0; i < 7; i++) {
       const dateStr = getOffsetDateString(i);
       const d = new Date(dateStr);
@@ -180,26 +182,28 @@ export const Scheduler: React.FC<SchedulerProps> = ({
 
   const totalCost = selectedSlots.length * 4000;
 
-  // 예약 확정 처리
+  // 예약 확정 처리 (포인트 1-클릭 즉시 결제)
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
     setErrorMsg('');
 
-    if (!userName.trim() || !userPhone.trim()) {
-      setErrorMsg('예약자 성함과 연락처를 모두 입력해 주세요.');
+    const bookingName = currentUser?.name || '회원';
+    const bookingPhone = currentUser?.phone || '010-0000-0000';
+    const userPoints = currentUser?.points || 0;
+
+    if (userPoints < totalCost) {
+      setErrorMsg(`보유 포인트(${userPoints.toLocaleString()}P)가 부족합니다. 상단에서 포인트를 먼저 충전해 주세요.`);
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const result = onAddReservations(selectedSlots, userName, userPhone, paymentMethod);
+      const result = onAddReservations(selectedSlots, bookingName, bookingPhone, 'points');
       if (result.success && result.createdReservations) {
         setShowModal(false);
         setCompletedReservations(result.createdReservations);
         setSelectedSlots([]);
-        setUserName('');
-        setUserPhone('');
       } else {
         setErrorMsg(result.message || '예약 처리 중 오류가 발생했습니다.');
       }
@@ -255,7 +259,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({
           </span>
         </div>
 
-        {/* 일별 날짜 내비게이터 & 현재 시간 바로가기 */}
+        {/* 일별 날짜 내비게이터 */}
         {viewMode === 'daily' && (
           <div className="flex justify-between items-center bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-2.5 text-sm font-bold text-[#191f28]">
             <button onClick={() => changeDate(-1)} className="p-1 hover:text-[#a67c48] transition-colors" title="이전 날짜">
@@ -393,11 +397,10 @@ export const Scheduler: React.FC<SchedulerProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {TIME_SLOTS.map((slot, sIdx) => {
-                  const isCurrentTimeSlot = slot.start === currentSlotStart;
+                {TIME_SLOTS.map((slot) => {
                   return (
-                    <tr key={sIdx} className={isCurrentTimeSlot ? 'bg-[#a67c48]/5' : ''}>
-                      <td className={`weekly-grid-time-col font-mono ${isCurrentTimeSlot ? 'font-bold text-[#a67c48]' : ''}`}>
+                    <tr key={slot.start}>
+                      <td className="weekly-grid-time-col font-medium">
                         {slot.start}
                       </td>
                       {WEEKLY_DAYS.map((day) => {
@@ -460,139 +463,84 @@ export const Scheduler: React.FC<SchedulerProps> = ({
             className="fab-button"
           >
             <span className="fab-badge">{selectedSlots.length}</span>
-            <span>예약 신청하기 ({totalCost.toLocaleString()}원 / P)</span>
+            <span>예약 신청하기 ({totalCost.toLocaleString()} P)</span>
           </button>
         </div>
       )}
 
-      {/* 예약 신청 & 결제 수단 선택 모달 */}
+      {/* 예약 확인 & 포인트 결제 모달 (이상한 점선/결제수단선택/수동입력 완전 제거) */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-content max-w-sm" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[#e5e8eb]">
               <h3 className="text-base font-bold text-[#191f28] flex items-center gap-1.5">
-                <Check size={18} className="text-[#a67c48]" /> 예약 신청 및 결제 방식
+                <Check size={18} className="text-[#a67c48]" /> 예약 확인 및 포인트 결제
               </h3>
               <button onClick={() => setShowModal(false)} className="text-[#8b95a1] hover:text-[#191f28] text-2xl">&times;</button>
             </div>
             
-            <div className="bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-3.5 mb-4 space-y-2 text-xs text-[#4e5968]">
-              <p className="font-bold text-sm text-[#191f28]">{room.name}</p>
+            <div className="bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-4 mb-4 space-y-3 text-xs text-[#4e5968]">
+              {/* 예약 룸 정보 & 예약자 */}
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-sm text-[#191f28]">{room.name}</span>
+                <span className="text-xs text-[#a67c48] font-bold bg-[#a67c48]/10 px-2.5 py-0.5 rounded-full">
+                  {currentUser?.name || '회원'}님
+                </span>
+              </div>
+
+              {/* 선택된 시간 슬롯 목록 */}
               <div className="border-t border-[#e5e8eb] pt-2">
-                <p className="font-semibold text-[#a67c48] mb-1">선택된 시간 슬롯 ({selectedSlots.length}개):</p>
-                <div className="max-h-28 overflow-y-auto space-y-1 bg-[#ffffff] p-2.5 rounded-xl border border-[#e5e8eb]">
+                <p className="font-semibold text-[#a67c48] mb-1.5">선택된 시간 슬롯 ({selectedSlots.length}개):</p>
+                <div className="max-h-32 overflow-y-auto space-y-1 bg-[#ffffff] p-2.5 rounded-xl border border-[#e5e8eb]">
                   {selectedSlots.map((s, idx) => (
-                    <div key={idx} className="flex justify-between text-xs py-0.5 border-b border-[#f1f3f5] last:border-none">
+                    <div key={idx} className="flex justify-between text-xs py-1 border-b border-[#f1f3f5] last:border-none">
                       <span className="text-[#4e5968]">{s.date} ({new Date(s.date).toLocaleDateString('ko-KR', { weekday: 'short' })})</span>
-                      <strong className="text-[#191f28]">{s.start} ~ {s.end}</strong>
+                      <strong className="text-[#191f28] font-bold">{s.start} ~ {s.end}</strong>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="flex justify-between items-center pt-2 text-sm font-bold border-t border-dashed border-[#e5e8eb]">
-                <span>결제 예정 금액</span>
-                <span className="text-[#a67c48] text-base">{totalCost.toLocaleString()} 원</span>
+
+              {/* 포인트 결제 정산 요약 */}
+              <div className="bg-white p-3 rounded-xl border border-[#e5e8eb] space-y-1.5">
+                <div className="flex justify-between items-center text-xs text-[#8b95a1]">
+                  <span>현재 보유 포인트</span>
+                  <span className="font-bold text-[#191f28]">{(currentUser?.points || 0).toLocaleString()} P</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-bold text-[#191f28] pt-1.5 border-t border-[#f1f3f5]">
+                  <span>차감 결제 포인트</span>
+                  <span className="text-[#a67c48] font-extrabold text-base">-{totalCost.toLocaleString()} P</span>
+                </div>
+                <div className="flex justify-between items-center text-xs text-[#8b95a1] pt-1.5 border-t border-[#f1f3f5]">
+                  <span>결제 후 잔여 포인트</span>
+                  <span className={`font-bold ${((currentUser?.points || 0) - totalCost) < 0 ? 'text-[#e93d3d]' : 'text-[#28a745]'}`}>
+                    {((currentUser?.points || 0) - totalCost).toLocaleString()} P
+                  </span>
+                </div>
               </div>
             </div>
 
-            <form onSubmit={handleBookingSubmit} className="space-y-3.5">
-              {/* 결제 수단 선택 */}
-              <div className="form-group">
-                <label className="text-xs font-bold text-[#191f28]">결제 수단 선택</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('points')}
-                    className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                      paymentMethod === 'points'
-                        ? 'border-[#a67c48] bg-[#a67c48]/10 text-[#a67c48] ring-1 ring-[#a67c48]'
-                        : 'border-[#e5e8eb] bg-[#f8f9fc] text-[#8b95a1]'
-                    }`}
-                  >
-                    <CreditCard size={18} />
-                    <span>포인트 결제 (즉시)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('bank_transfer')}
-                    className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                      paymentMethod === 'bank_transfer'
-                        ? 'border-[#a67c48] bg-[#a67c48]/10 text-[#a67c48] ring-1 ring-[#a67c48]'
-                        : 'border-[#e5e8eb] bg-[#f8f9fc] text-[#8b95a1]'
-                    }`}
-                  >
-                    <Landmark size={18} />
-                    <span>무통장 입금</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 무통장 입금 계좌 안내 */}
-              {paymentMethod === 'bank_transfer' && (
-                <div className="bg-[#a67c48]/10 border border-[#a67c48]/30 rounded-2xl p-3.5 space-y-1 text-xs text-[#191f28]">
-                  <div className="font-bold text-[#a67c48] flex items-center gap-1">
-                    <Landmark size={14} /> 입금 계좌 안내
-                  </div>
-                  <div className="text-xs space-y-0.5 pt-1">
-                    <p>• 은행명: <strong>{bankInfo.bankName}</strong></p>
-                    <p>• 계좌번호: <strong className="text-[#a67c48] font-mono">{bankInfo.accountNumber}</strong></p>
-                    <p>• 예금주: <strong>{bankInfo.accountHolder}</strong></p>
-                  </div>
-                  <p className="text-xs text-[#8b95a1] pt-1">
-                    * 입금 완료 후 관리자 확인 시 '결제 완료' 상태로 전환되며 출입 바코드가 활성화됩니다.
-                  </p>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label className="text-xs font-bold flex items-center gap-1 text-[#191f28]">
-                  <User size={13} className="text-[#a67c48]" /> 예약자 성함
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="예: 홍길동"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  className="form-input text-sm"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="text-xs font-bold flex items-center gap-1 text-[#191f28]">
-                  <Phone size={13} className="text-[#a67c48]" /> 연락처
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="예: 010-1234-5678"
-                  value={userPhone}
-                  onChange={(e) => setUserPhone(e.target.value)}
-                  className="form-input text-sm"
-                />
-              </div>
-
+            <form onSubmit={handleBookingSubmit} className="space-y-3">
               {errorMsg && (
-                <div className="text-xs text-[#e93d3d] bg-[#e93d3d]/10 p-3 rounded-xl border border-[#e93d3d]/20">
+                <div className="text-xs text-[#e93d3d] bg-[#e93d3d]/10 p-3 rounded-xl border border-[#e93d3d]/20 font-bold">
                   {errorMsg}
                 </div>
               )}
 
-              <div className="flex gap-2.5 pt-2">
+              <div className="flex gap-2.5 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="gold-btn-outline flex-1 py-3 text-xs font-bold"
+                  className="gold-btn-outline flex-1 py-3.5 text-xs font-bold rounded-xl"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="gold-btn flex-1 py-3 text-xs font-bold flex justify-center items-center gap-1.5 shadow"
+                  disabled={isSubmitting || ((currentUser?.points || 0) < totalCost)}
+                  className="gold-btn flex-1 py-3.5 text-xs font-bold flex justify-center items-center gap-1.5 shadow rounded-xl"
                 >
-                  <Check size={15} /> {isSubmitting ? '처리 중...' : paymentMethod === 'points' ? '포인트 결제 완료' : '무통장 예약 신청'}
+                  <Check size={16} /> {isSubmitting ? '결제 처리 중...' : `${totalCost.toLocaleString()}P 결제 및 확정`}
                 </button>
               </div>
             </form>
@@ -609,55 +557,28 @@ export const Scheduler: React.FC<SchedulerProps> = ({
             </div>
 
             <div>
-              <h3 className="text-base font-bold text-[#191f28]">예약 신청이 완료되었습니다!</h3>
+              <h3 className="text-base font-bold text-[#191f28]">예약 및 결제가 완료되었습니다!</h3>
               <p className="text-xs text-[#8b95a1] mt-1">
-                발급된 출입 바코드를 통해 현장 입장이 가능합니다.
+                이용 시작 5분 전에 출입 바코드가 자동 활성화됩니다.
               </p>
             </div>
 
-            {/* 발급된 바코드 대표 카드 표출 */}
             <div className="bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-4 space-y-3">
-              <div className="text-xs font-bold text-[#a67c48] uppercase tracking-wider flex justify-center items-center gap-1">
-                출입증 바코드 (Pass Card)
+              <div className="text-xs text-[#191f28] space-y-1">
+                <p>예약 호실: <strong>{room.name}</strong></p>
+                <p>예약 슬롯 수: <strong>{completedReservations.length}개 타임</strong></p>
+                <p>결제 차감: <strong className="text-[#a67c48] font-bold">{(completedReservations.length * 4000).toLocaleString()} P</strong></p>
               </div>
-
-              <div className="bg-white p-3 rounded-xl border border-[#e5e8eb] space-y-1 shadow-sm">
-                <div className="font-mono text-sm tracking-widest text-[#191f28] font-bold">
-                  {completedReservations[0].barcodeId}
-                </div>
-                <div className="flex justify-center items-center gap-0.5 h-8 px-6 opacity-90">
-                  {Array.from({ length: 32 }).map((_, i) => (
-                    <div
-                      key={i}
-                      style={{ width: i % 3 === 0 ? '3px' : '1px' }}
-                      className="bg-[#191f28] h-full"
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="text-xs text-[#191f28] space-y-1.5 text-left bg-white p-3 rounded-xl border border-[#e5e8eb]">
-                <p>• 공간 명칭: <strong>{room.name}</strong></p>
-                <p>• 예약자: <strong>{completedReservations[0].userName}</strong></p>
-                <p>• 총 예약 슬롯: <strong>{completedReservations.length}개 타임</strong></p>
-                <p>• 결제 상태: <strong className={completedReservations[0].paymentStatus === 'paid' ? 'text-[#28a745]' : 'text-[#f59e0b]'}>
-                  {completedReservations[0].paymentStatus === 'paid' ? '결제 완료 (출입가능)' : '무통장 입금 확인 대기'}
-                </strong></p>
-              </div>
-
-              {completedReservations[0].paymentMethod === 'bank_transfer' && (
-                <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-xl p-3 text-xs text-[#4e5968] text-left space-y-1 font-medium">
-                  <p className="font-bold text-[#f59e0b]">• 입금 계좌:</p>
-                  <p>{bankInfo.bankName} {bankInfo.accountNumber} (예금주: {bankInfo.accountHolder})</p>
-                </div>
-              )}
             </div>
 
             <button
-              onClick={() => setCompletedReservations(null)}
-              className="gold-btn w-full py-3.5 text-sm font-bold rounded-xl shadow"
+              onClick={() => {
+                setCompletedReservations(null);
+                onBack();
+              }}
+              className="gold-btn w-full py-3.5 font-bold text-sm rounded-xl shadow"
             >
-              확인 및 스케줄로 돌아가기
+              내 예약 현황으로 이동
             </button>
           </div>
         </div>

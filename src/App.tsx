@@ -1080,9 +1080,9 @@ function App() {
           />
         ) : selectedRoomId && selectedRoom ? (
           <Scheduler
+            currentUser={currentUser}
             room={selectedRoom}
             reservations={reservations}
-            bankInfo={bankInfo}
             onBack={() => setSelectedRoomId(null)}
             onAddReservations={handleAddReservations}
           />
