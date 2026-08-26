@@ -986,11 +986,12 @@ function App() {
               </div>
 
               <button
-                onClick={() => setShowAdminAuthModal(true)}
+                onClick={() => setRole('admin')}
                 className="gold-btn w-full py-3.5 text-sm font-bold rounded-2xl shadow flex items-center justify-center gap-1.5"
               >
                 <Shield size={18} />
-                <span>최고 관리자 보안 인증 후 접속</span>
+                <span>최고 관리자 통합 콘솔 접속</span>
+                <ChevronRight size={18} />
               </button>
             </div>
           )}

@@ -362,8 +362,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { label: '21:00 ~ 24:00 (야간 공부)', range: [21, 24] },
   ].map((slot) => {
     const count = reservations.filter((r) => {
-      const startH = parseInt(r.startTime.split(':')[0], 10);
-      return startH >= slot.range[0] && startH < slot.range[1];
+      const startH = parseInt((r.startTime || '00:00').split(':')[0], 10);
+      return !isNaN(startH) && startH >= slot.range[0] && startH < slot.range[1];
     }).length;
     return { ...slot, count };
   });
@@ -372,10 +372,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // 바코드 관리 필터링
   const filteredBarcodes = reservations.filter((r) => {
+    const barcodeId = r.barcodeId || '';
+    const userName = r.userName || '';
+    const userPhone = r.userPhone || '';
     const matchText =
-      r.barcodeId.toLowerCase().includes(barcodeSearchTerm.toLowerCase()) ||
-      r.userName.toLowerCase().includes(barcodeSearchTerm.toLowerCase()) ||
-      r.userPhone.includes(barcodeSearchTerm);
+      barcodeId.toLowerCase().includes(barcodeSearchTerm.toLowerCase()) ||
+      userName.toLowerCase().includes(barcodeSearchTerm.toLowerCase()) ||
+      userPhone.includes(barcodeSearchTerm);
 
     if (barcodeFilterStatus === 'all') return matchText;
     return matchText && r.barcodeStatus === barcodeFilterStatus;
@@ -837,7 +840,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     ) : (
                       pointTransactions.map((tx) => (
                         <tr key={tx.id} className="hover:bg-[#f8f9fa]">
-                          <td className="p-3 text-[#8e8e93] font-mono">{tx.createdAt.split('T')[0]}</td>
+                          <td className="p-3 text-[#8e8e93] font-mono">{(tx.createdAt || '').split('T')[0] || '-'}</td>
                           <td className="p-3 font-bold text-[#1c1c1e]">
                             {tx.userName} <span className="text-[10px] text-[#8e8e93] font-normal">({tx.userId})</span>
                           </td>
