@@ -108,22 +108,37 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       {activeValidPass ? (
         <div 
           onClick={() => handleOpenBarcodePass(activeValidPass)}
-          className="bg-gradient-to-r from-[#a67c48] to-[#c29d6d] text-white rounded-2xl p-4 shadow-md cursor-pointer transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-between border border-[#a67c48]/30"
+          className="rounded-2xl p-4 shadow-md cursor-pointer transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-between border border-[#8a6230]"
+          style={{
+            background: 'linear-gradient(135deg, #a67c48 0%, #8a6230 100%)',
+            backgroundColor: '#a67c48',
+            color: '#ffffff',
+          }}
         >
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold bg-white/20 px-2.5 py-0.5 rounded-full w-max backdrop-blur-sm">
-              <Sparkles size={13} className="text-yellow-200" />
-              <span>입장 가능 출입 바코드 활성화됨 (퇴실까지 유지)</span>
+          <div className="space-y-1.5" style={{ color: '#ffffff' }}>
+            <div 
+              className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full w-max backdrop-blur-sm"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff' }}
+            >
+              <Sparkles size={13} style={{ color: '#fde047' }} />
+              <span>입장 가능 출입 바코드 활성화됨</span>
             </div>
-            <h3 className="text-base font-bold flex items-center gap-1.5 text-white">
-              <QrCode size={18} /> 출입 바코드 터치하여 열기
+            <h3 className="text-base font-extrabold flex items-center gap-1.5" style={{ color: '#ffffff' }}>
+              <QrCode size={18} style={{ color: '#ffffff' }} /> 출입 바코드 터치하여 열기
             </h3>
-            <p className="text-xs opacity-95 flex items-center gap-1">
-              <Clock size={13} />
+            <p className="text-xs font-medium flex items-center gap-1" style={{ color: '#f8fafc' }}>
+              <Clock size={13} style={{ color: '#ffffff' }} />
               {rooms.find(r => r.id === activeValidPass.roomId)?.name || '공부방'} | {activeValidPass.date} ({activeValidPass.startTime}~{activeValidPass.endTime})
             </p>
           </div>
-          <button className="bg-white text-[#a67c48] text-xs font-bold px-3.5 py-2.5 rounded-xl shadow shrink-0">
+          <button 
+            className="text-xs font-bold px-3.5 py-2.5 rounded-xl shadow shrink-0"
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#8a6230',
+              fontWeight: 800,
+            }}
+          >
             바코드 보기
           </button>
         </div>
