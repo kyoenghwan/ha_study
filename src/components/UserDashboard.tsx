@@ -13,7 +13,7 @@ interface UserDashboardProps {
   onCancelAndRefundReservation?: (resId: string) => void;
 }
 
-// ⏱️ 예약 시간 기준 바코드 활성화 상태 판정 헬퍼 (5분 전 발급 룰)
+// ⏱️ 예약 시간 기준 바코드 활성화 상태 판정 헬퍼 (5분 전 발급 ~ 종료 시간까지 유지, 종료 후 자동 소멸)
 export function getBarcodeTimingState(dateStr: string, startTimeStr: string, endTimeStr: string): 'ACTIVE' | 'UPCOMING' | 'EXPIRED' {
   try {
     const now = new Date();
@@ -30,9 +30,9 @@ export function getBarcodeTimingState(dateStr: string, startTimeStr: string, end
     if (now < fiveMinBefore) {
       return 'UPCOMING';
     } else if (now >= fiveMinBefore && now <= end) {
-      return 'ACTIVE';
+      return 'ACTIVE'; // 이용 시간 끝날 때까지 활성화 유지
     } else {
-      return 'EXPIRED';
+      return 'EXPIRED'; // 이용 시간 종료 시 만료/소멸
     }
   } catch {
     return 'ACTIVE';
@@ -73,11 +73,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       )
     : reservations;
 
-  // 결제 완료된 내 예약 건
-  const paidReservations = myReservations.filter((r) => r.paymentStatus === 'paid' && r.barcodeStatus !== 'cancelled');
+  // 🎟️ 출입 바코드 목록: 결제 완료되었으며, 이용 시간이 아직 끝나지 않은 유효/예정 건만 유지 (시간 종료 시 바코드 자동 소멸!)
+  const activeAndUpcomingPasses = myReservations.filter((r) => {
+    if (r.paymentStatus !== 'paid' || r.barcodeStatus === 'cancelled') return false;
+    const timing = getBarcodeTimingState(r.date, r.startTime, r.endTime);
+    return timing !== 'EXPIRED'; // ⏱️ 이용 시간이 끝난 바코드는 목록에서 즉시 소멸!
+  });
   
   // 🟢 현재 시간 기준 즉시 입장 가능한(5분 전 ~ 이용 종료 전) 활성 바코드 예약
-  const activeValidPass = paidReservations.find((r) => {
+  const activeValidPass = activeAndUpcomingPasses.find((r) => {
     const timing = getBarcodeTimingState(r.date, r.startTime, r.endTime);
     return timing === 'ACTIVE' && r.barcodeStatus === 'valid';
   });
@@ -91,12 +95,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       alert(`이용 시작 5분 전(${getActivateTimeString(res.startTime)})부터 바코드가 발급되어 활성화됩니다.`);
       return;
     }
+    if (timing === 'EXPIRED') {
+      alert('이용 시간이 종료되어 바코드가 만료되었습니다.');
+      return;
+    }
     setActiveBarcodeReservation(res);
   };
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto p-4 space-y-4">
-      {/* 🟢 이용 시작 5분 전 ~ 이용 중인 경우 상단 대표 바코드 하이라이트 배너 노출 */}
+      {/* 🟢 이용 시작 5분 전 ~ 이용 종료 시간까지 상단 대표 바코드 하이라이트 배너 노출 */}
       {activeValidPass ? (
         <div 
           onClick={() => handleOpenBarcodePass(activeValidPass)}
@@ -105,7 +113,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5 text-xs font-bold bg-white/20 px-2.5 py-0.5 rounded-full w-max backdrop-blur-sm">
               <Sparkles size={13} className="text-yellow-200" />
-              <span>입장 가능 출입 바코드 활성화됨 (5분 전)</span>
+              <span>입장 가능 출입 바코드 활성화됨 (퇴실까지 유지)</span>
             </div>
             <h3 className="text-base font-bold flex items-center gap-1.5 text-white">
               <QrCode size={18} /> 출입 바코드 터치하여 열기
@@ -184,7 +192,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </h4>
         <ul className="list-disc pl-4 space-y-1 text-xs text-[#4e5968]">
           <li>공부방 예약은 <strong>30분 단위</strong>로 원하는 시간만큼 자유롭게 신청할 수 있습니다.</li>
-          <li>출입 바코드는 <strong>이용 시작 5분 전</strong>에 자동 활성화되어 키오스크에서 스캔 후 즉시 입장이 가능합니다.</li>
+          <li>출입 바코드는 <strong>이용 시작 5분 전</strong>에 자동 활성화되며, <strong>이용 시간 종료 시 자동 소멸</strong>됩니다.</li>
           <li>무통장 입금 계좌: <strong>{bankInfo.bankName} {bankInfo.accountNumber} (예금주: {bankInfo.accountHolder})</strong></li>
         </ul>
       </div>
@@ -252,7 +260,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </div>
       )}
 
-      {/* 내 바코드 목록 모달 (5분 전 활성화 룰 적용) */}
+      {/* 내 바코드 목록 모달 (5분 전 활성화 및 시간 종료 시 자동 소멸 적용) */}
       {showMyReservationsModal && (
         <div className="modal-overlay" onClick={() => setShowMyReservationsModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -264,16 +272,18 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             </div>
 
             <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-              {paidReservations.length === 0 ? (
+              {activeAndUpcomingPasses.length === 0 ? (
                 <div className="text-center py-10 border border-dashed border-[#e5e8eb] rounded-2xl bg-[#f8f9fc] space-y-2">
                   <QrCode size={30} className="mx-auto text-[#b0b8c1]" />
                   <p className="text-xs font-bold text-[#191f28]">
-                    {currentUser?.name ? `${currentUser.name}님의 발급된 출입 바코드가 없습니다.` : '발급된 출입 바코드가 없습니다.'}
+                    {currentUser?.name ? `${currentUser.name}님의 유효한 출입 바코드가 없습니다.` : '유효한 출입 바코드가 없습니다.'}
                   </p>
-                  <p className="text-[11px] text-[#8b95a1]">공부방 예약 및 결제가 완료되면 이용 5분 전에 바코드가 자동 활성화됩니다.</p>
+                  <p className="text-[11px] text-[#8b95a1]">
+                    이용 시작 5분 전에 자동 활성화되며, 이용 시간이 종료되면 바코드가 자동 소멸됩니다.
+                  </p>
                 </div>
               ) : (
-                paidReservations.map((res) => {
+                activeAndUpcomingPasses.map((res) => {
                   const room = rooms.find((r) => r.id === res.roomId);
                   const timingState = getBarcodeTimingState(res.date, res.startTime, res.endTime);
                   const isActive = timingState === 'ACTIVE';
@@ -291,18 +301,14 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                           <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#28a745]/10 text-[#28a745] flex items-center gap-1 animate-pulse">
                             ● 출입 가능
                           </span>
-                        ) : isUpcoming ? (
+                        ) : (
                           <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#f59e0b]/10 text-[#f59e0b] flex items-center gap-1">
                             <Clock size={11} /> 5분 전 발급 예정
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#8b95a1]/10 text-[#8b95a1]">
-                            이용 완료
                           </span>
                         )}
                       </div>
 
-                      {/* 2. 바코드 영역 (5분 전 활성화 시 노출, 대기 시 안내 박스 노출) */}
+                      {/* 2. 바코드 영역 (이용 시간 종료 시까지 선명하게 유지, 대기 시에는 잠금 안내) */}
                       {isActive ? (
                         <div 
                           onClick={() => {
@@ -316,7 +322,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                             터치 시 대형 바코드 열기 🔍
                           </p>
                         </div>
-                      ) : isUpcoming ? (
+                      ) : (
                         <div className="bg-[#f8f9fc] p-3.5 rounded-xl border border-dashed border-[#e5e8eb] text-center space-y-1.5">
                           <div className="flex items-center justify-center gap-1 text-xs font-bold text-[#4e5968]">
                             <Lock size={13} className="text-[#a67c48]" /> 이용 시작 5분 전 바코드가 활성화됩니다.
@@ -324,10 +330,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                           <p className="text-[11px] text-[#8b95a1]">
                             활성화 예정: <strong className="text-[#a67c48]">{res.date} {getActivateTimeString(res.startTime)}</strong>
                           </p>
-                        </div>
-                      ) : (
-                        <div className="bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] text-center text-xs text-[#8b95a1]">
-                          이용 시간이 종료된 예약입니다.
                         </div>
                       )}
 
