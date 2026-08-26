@@ -1159,37 +1159,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'barcode_management' && (
           <div className="space-y-6">
             {/* 0. 대표 출입 바코드 사진 등록 & 번호 수동 설정 카드 */}
-            <div className="bg-[#ffffff] border-2 border-[#b09168]/40 p-5 rounded-2xl shadow-md space-y-4">
-              <div className="flex justify-between items-start">
+            <div className="bg-[#ffffff] border-2 border-[#a67c48]/30 p-4 sm:p-5 rounded-2xl shadow-sm space-y-4 overflow-hidden">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
                 <div>
-                  <h3 className="text-sm font-extrabold text-[#1c1c1e] flex items-center gap-1.5">
-                    <Camera className="text-[#b09168]" size={20} /> 이용자 대표 출입 바코드 등록 (사진 촬영 / 번호 입력)
+                  <h3 className="text-sm font-extrabold text-[#191f28] flex items-center gap-1.5">
+                    <Camera className="text-[#a67c48]" size={18} /> 대표 출입 바코드 등록 (사진 / 번호)
                   </h3>
-                  <p className="text-xs text-[#8e8e93]">
-                    바코드 사진을 찍어 업로드하거나 번호를 입력하면, 예약 완료된 모든 이용자의 출입 화면에 활성화되어 노출됩니다.
+                  <p className="text-xs text-[#8b95a1] pt-0.5 leading-relaxed">
+                    바코드 사진을 등록하거나 번호를 입력하면 이용자 출입 바코드로 즉시 활성화됩니다.
                   </p>
                 </div>
-                <span className="text-[10px] font-bold text-[#b09168] border border-[#b09168]/30 px-2.5 py-1 rounded-full bg-[#b09168]/10 shrink-0">
-                  현재 상태: {masterBarcode?.type === 'image' ? '🖼️ 사진 이미지 바코드' : '🔢 번호 바코드'}
+                <span className="text-[10px] font-bold text-[#a67c48] border border-[#a67c48]/30 px-2.5 py-0.5 rounded-full bg-[#a67c48]/10 shrink-0 self-start">
+                  {masterBarcode?.type === 'image' ? '🖼️ 사진 바코드' : '🔢 번호 바코드'}
                 </span>
               </div>
 
               {/* 등록 방법 탭 및 입력 폼 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
                 {/* 방법 A: 사진 촬영 / 이미지 파일 업로드 */}
-                <div className="border border-[#e5e5ea] rounded-xl p-3.5 bg-[#f8f9fa] space-y-2">
-                  <h4 className="text-xs font-bold text-[#1c1c1e] flex items-center gap-1">
-                    <Upload size={14} className="text-[#b09168]" /> 1. 바코드 사진 촬영 / 파일 업로드
+                <div className="border border-[#e5e8eb] rounded-2xl p-4 bg-[#f8f9fc] space-y-2.5 overflow-hidden">
+                  <h4 className="text-xs font-bold text-[#191f28] flex items-center gap-1">
+                    <Upload size={14} className="text-[#a67c48]" /> 1. 바코드 사진 촬영 / 파일 업로드
                   </h4>
-                  <p className="text-[11px] text-[#8e8e93]">실물 바코드 사진(JPG, PNG)을 올리시면 이용자 팝업에 바코드 사진으로 노출됩니다.</p>
+                  <p className="text-[11px] text-[#8b95a1] leading-relaxed">
+                    실물 바코드 사진(JPG, PNG)을 올리시면 이용자 팝업에 선명한 사진으로 노출됩니다.
+                  </p>
                   
-                  <label className="gold-btn w-full py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-center">
-                    <Camera size={16} /> 사진 촬영 / 파일 선택
+                  <label className="gold-btn w-full py-3 px-3 text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center">
+                    <Camera size={16} />
+                    <span className="whitespace-nowrap">사진 촬영 / 파일 선택</span>
                     <input
                       type="file"
                       accept="image/*"
                       capture="environment"
-                      className="hidden"
+                      style={{ display: 'none' }}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file && onUpdateMasterBarcode) {
@@ -1210,19 +1213,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 {/* 방법 B: 바코드 번호 직접 입력 */}
-                <div className="border border-[#e5e5ea] rounded-xl p-3.5 bg-[#f8f9fa] space-y-2">
-                  <h4 className="text-xs font-bold text-[#1c1c1e] flex items-center gap-1">
-                    <QrCode size={14} className="text-[#b09168]" /> 2. 바코드 번호 직접 입력
+                <div className="border border-[#e5e8eb] rounded-2xl p-4 bg-[#f8f9fc] space-y-2.5 overflow-hidden">
+                  <h4 className="text-xs font-bold text-[#191f28] flex items-center gap-1">
+                    <QrCode size={14} className="text-[#a67c48]" /> 2. 바코드 번호 직접 입력
                   </h4>
-                  <p className="text-[11px] text-[#8e8e93]">예: *M091063684* 번호를 입력하시면 막대 바코드로 렌더링됩니다.</p>
+                  <p className="text-[11px] text-[#8b95a1] leading-relaxed">
+                    예: *M091063684* 번호를 입력하시면 표준 막대 바코드로 자동 렌더링됩니다.
+                  </p>
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full min-w-0">
                     <input
                       type="text"
                       defaultValue={masterBarcode?.type === 'number' ? masterBarcode.value : '*M091063684*'}
                       id="master-barcode-num-input"
                       placeholder="예: *M091063684*"
-                      className="form-input text-xs flex-1 py-2"
+                      className="form-input text-xs flex-1 min-w-0 py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] outline-none"
                     />
                     <button
                       onClick={() => {
@@ -1235,9 +1240,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             value: formatted,
                             updatedAt: new Date().toISOString().split('T')[0],
                           });
+                          alert(`대표 바코드 번호가 '${formatted}'(으)로 저장되었습니다!`);
                         }
                       }}
-                      className="gold-btn-outline px-3 py-2 text-xs font-bold rounded-xl shrink-0"
+                      className="gold-btn-outline px-3.5 py-2.5 text-xs font-bold rounded-xl shrink-0 whitespace-nowrap shadow-sm"
                     >
                       번호 저장
                     </button>
