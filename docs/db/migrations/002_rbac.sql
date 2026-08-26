@@ -8,6 +8,29 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
+-- 0. 선행 조건 검사
+--    user_roles.user_id 가 users.id 를 FK 로 참조하므로 타입이 맞아야 한다.
+--    조건이 안 맞으면 알아보기 어려운 에러 대신 명확한 메시지로 중단한다.
+-- ---------------------------------------------------------------------
+do $$
+declare id_type text;
+begin
+  select data_type into id_type
+    from information_schema.columns
+   where table_schema = 'public' and table_name = 'users' and column_name = 'id';
+
+  if id_type is null then
+    raise exception 'public.users 테이블이 없습니다. 001_write_path.sql 을 먼저 실행하세요.';
+  end if;
+
+  if id_type <> 'uuid' then
+    raise exception
+      'public.users.id 가 uuid 가 아니라 %% 입니다. user_roles.user_id FK 를 만들 수 없습니다. '
+      'docs/db/schema.md 1.3.0 기준으로 users.id 를 uuid 로 정렬한 뒤 다시 실행하세요.', id_type;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------
 -- 1. role_definitions — 권한 정의
 --    권한을 코드에 하드코딩하지 않고 데이터로 관리한다.
 --    rank 가 클수록 상위 권한이며, 권한 부여 가능 여부 판정에 쓰인다.
