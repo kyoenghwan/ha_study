@@ -6,7 +6,7 @@ import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
 import { AuthModal } from './components/AuthModal';
 import { AdminAuthModal } from './components/AdminAuthModal';
-import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Check } from 'lucide-react';
+import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Search } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 import { FA_CREATE_RESERVATIONS } from './atoms/reservation/FA_create_reservations';
 import type { AuthContext, RoleCode, RoleGrant } from './atoms/auth/DA_auth';
@@ -45,7 +45,9 @@ import {
 } from './lib/supabase';
 import type { DbResult } from './lib/supabase';
 
-// 르하임 v1 2개 지점 목록 정의 (멀티테넌트 확장 지점)
+import { BranchSelectModal } from './components/BranchSelectModal';
+
+// 르하임 멀티테넌트 지점 목록 정의
 export interface Branch {
   id: string;
   name: string;
@@ -72,6 +74,22 @@ export const BRANCHES: Branch[] = [
     description: '대형 빔프로젝터 세미나룸 & 몰입형 프리미엄 스터디존',
     badge: '2호점 (운영중)',
   },
+  {
+    id: 'gangnam',
+    name: '강남점',
+    fullName: '르하임 스터디카페 강남점',
+    address: '서울특별시 강남구 역삼동 825번지',
+    description: '개별 방음 부스 & 1인 몰입 스터디룸',
+    badge: '3호점 (오픈예정)',
+  },
+  {
+    id: 'pangyo',
+    name: '판교점',
+    fullName: '르하임 스터디카페 판교점',
+    address: '경기도 성남시 분당구 판교역로 146',
+    description: '초고속 기가 Wi-Fi & IT 개발자 전용 스터디존',
+    badge: '4호점 (오픈예정)',
+  },
 ];
 
 function App() {
@@ -92,6 +110,7 @@ function App() {
 
   // 지점 선택 상태 (기본: 여의도점)
   const [selectedBranch, setSelectedBranch] = useState<string>('yeouido');
+  const [showBranchSelectModal, setShowBranchSelectModal] = useState<boolean>(false);
 
   // 포인트 충전 모달 상태
   const [showPointModal, setShowPointModal] = useState<boolean>(false);
@@ -870,54 +889,55 @@ function App() {
             </p>
           </div>
 
-          {/* 일반 이용자인 경우: 2개 지점 선택 뷰 */}
+          {/* 일반 이용자인 경우: 지점 선택 뷰 */}
           {!canAccessAdminConsole ? (
             <div className="w-full max-w-sm space-y-4">
               <div className="space-y-2.5">
-                <label className="block text-xs font-bold text-[#191f28] flex items-center gap-1">
-                  <Building2 size={15} className="text-[#a67c48]" /> 이용하실 지점 선택 (2개 지점 운영 중)
-                </label>
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold text-[#191f28] flex items-center gap-1">
+                    <Building2 size={15} className="text-[#a67c48]" /> 이용하실 지점
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowBranchSelectModal(true)}
+                    className="text-xs font-bold text-[#a67c48] hover:text-[#8f6735] flex items-center gap-1 bg-[#a67c48]/10 hover:bg-[#a67c48]/20 px-2.5 py-1 rounded-lg transition-colors"
+                  >
+                    <Search size={13} /> 지점 선택 / 검색
+                  </button>
+                </div>
 
-                {/* 르하임 2개 지점 카드 목록 */}
-                <div className="space-y-2">
-                  {BRANCHES.map((branch) => {
-                    const isSelected = selectedBranch === branch.id;
-                    return (
-                      <div
-                        key={branch.id}
-                        onClick={() => handleSelectBranch(branch.id)}
-                        className={`p-3.5 rounded-2xl border cursor-pointer flex justify-between items-center transition-all ${
-                          isSelected
-                            ? 'border-[#a67c48] bg-[#a67c48]/5 shadow-sm ring-1 ring-[#a67c48]'
-                            : 'border-[#e5e8eb] bg-[#f8f9fc] hover:border-[#a67c48]/50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex justify-center items-center font-bold ${
-                            isSelected ? 'bg-[#a67c48] text-white' : 'bg-[#a67c48]/10 text-[#a67c48]'
-                          }`}>
-                            <MapPin size={20} />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <h4 className="text-sm font-bold text-[#191f28]">
-                                {branch.fullName}
-                              </h4>
-                              <span className="text-[11px] font-semibold text-[#a67c48] bg-[#a67c48]/10 px-1.5 py-0.5 rounded">
-                                {branch.badge}
-                              </span>
-                            </div>
-                            <p className="text-xs text-[#8b95a1] pt-0.5">{branch.address}</p>
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <div className="w-6 h-6 rounded-full bg-[#a67c48] text-white flex items-center justify-center shrink-0">
-                            <Check size={14} />
-                          </div>
-                        )}
+                {/* 현재 선택된 지점 대표 카드 (클릭 시에도 팝업 오픈) */}
+                <div
+                  onClick={() => setShowBranchSelectModal(true)}
+                  className="p-4 rounded-2xl border border-[#a67c48] bg-[#a67c48]/5 shadow-sm ring-1 ring-[#a67c48] cursor-pointer hover:bg-[#a67c48]/10 transition-all space-y-2 group"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#a67c48] text-white flex items-center justify-center font-bold shadow-sm">
+                        <MapPin size={20} />
                       </div>
-                    );
-                  })}
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-sm font-bold text-[#191f28] group-hover:text-[#a67c48] transition-colors">
+                            {currentBranchObj.fullName}
+                          </h4>
+                          <span className="text-[11px] font-semibold text-[#a67c48] bg-white border border-[#a67c48]/30 px-1.5 py-0.2 rounded">
+                            {currentBranchObj.badge}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#8b95a1] pt-0.5">{currentBranchObj.address}</p>
+                      </div>
+                    </div>
+
+                    <div className="text-xs font-bold text-[#a67c48] flex items-center gap-0.5 pt-1 group-hover:underline">
+                      <span>변경</span>
+                      <ChevronRight size={14} />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-[#4e5968] bg-white/80 p-2 rounded-xl border border-[#a67c48]/20">
+                    💡 {currentBranchObj.description}
+                  </p>
                 </div>
               </div>
 
@@ -969,6 +989,15 @@ function App() {
             onCancel={() => setShowAdminAuthModal(false)}
           />
         )}
+
+        {/* 🏢 지점 선택 및 검색 팝업 모달 */}
+        <BranchSelectModal
+          isOpen={showBranchSelectModal}
+          branches={BRANCHES}
+          selectedBranchId={selectedBranch}
+          onSelectBranch={handleSelectBranch}
+          onClose={() => setShowBranchSelectModal(false)}
+        />
       </div>
     );
   }
@@ -986,7 +1015,15 @@ function App() {
           />
           <div>
             <h1 className="text-sm font-bold text-[#191f28] flex items-center gap-1.5">
-              르하임 <span className="text-[#a67c48] text-xs font-semibold bg-[#a67c48]/10 border border-[#a67c48]/20 px-1.5 py-0.5 rounded">{currentBranchObj.name}</span>
+              르하임 
+              <button
+                onClick={() => setShowBranchSelectModal(true)}
+                className="text-[#a67c48] text-xs font-semibold bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/20 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all"
+                title="지점 변경 팝업 열기"
+              >
+                <span>{currentBranchObj.name}</span>
+                <ChevronRight size={13} />
+              </button>
             </h1>
             <div className="text-xs text-[#8b95a1] flex items-center gap-1.5 pt-0.5">
               {role === 'admin' ? (
@@ -1123,6 +1160,15 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* 🏢 지점 선택 및 검색 팝업 모달 */}
+      <BranchSelectModal
+        isOpen={showBranchSelectModal}
+        branches={BRANCHES}
+        selectedBranchId={selectedBranch}
+        onSelectBranch={handleSelectBranch}
+        onClose={() => setShowBranchSelectModal(false)}
+      />
     </>
   );
 }
