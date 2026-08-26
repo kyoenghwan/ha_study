@@ -836,16 +836,11 @@ function App() {
       <div className="flex-1 flex flex-col justify-between p-5 bg-[#ffffff] overflow-y-auto">
         {/* 상단 프로필 헤더 */}
         <div className="w-full flex justify-between items-center pb-4 border-b border-[#e5e8eb] shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-[#a67c48]/10 text-[#a67c48] flex items-center justify-center font-bold text-sm">
-              {currentUser.name[0]}
-            </div>
-            <div>
-              <p className="text-sm font-bold text-[#191f28]">{currentUser.name}님 환영합니다</p>
-              <p className="text-xs text-[#8b95a1]">
-                {canAccessAdminConsole ? '관리자' : '일반 회원'} ({currentUser.userId})
-              </p>
-            </div>
+          <div>
+            <p className="text-sm font-bold text-[#191f28]">{currentUser.name}님 환영합니다</p>
+            <p className="text-xs text-[#8b95a1]">
+              {canAccessAdminConsole ? '관리자' : '일반 회원'} ({currentUser.userId})
+            </p>
           </div>
 
           <button
