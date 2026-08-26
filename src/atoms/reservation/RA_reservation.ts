@@ -23,8 +23,14 @@ export const RA_RESERVATION_IS_VALID_SLOT = (slot: ReservationSlotInput): boolea
 };
 
 export const RA_RESERVATION_IS_PAST_SLOT = (slot: ReservationSlotInput, now: Date): boolean => {
-  const slotStart = new Date(`${slot.date}T${slot.start}:00`);
-  return Number.isNaN(slotStart.getTime()) || slotStart.getTime() < now.getTime();
+  // 슬롯의 종료 시각(slot.end)이 현재 시각(now) 이전일 때만 지난 슬롯으로 판정
+  // 진행 중인 현재 슬롯(예: 02:30~03:00 중 02:46)은 정상 예약 가능
+  let slotEndDateStr = `${slot.date}T${slot.end}:00`;
+  if (slot.end === '24:00') {
+    slotEndDateStr = `${slot.date}T23:59:59`;
+  }
+  const slotEnd = new Date(slotEndDateStr);
+  return Number.isNaN(slotEnd.getTime()) || slotEnd.getTime() <= now.getTime();
 };
 
 export const RA_RESERVATION_HAS_CONFLICT = (
