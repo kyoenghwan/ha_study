@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Room, Reservation, BankInfo, MasterBarcode, UserAccount } from '../types';
-import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles, Clock, Lock, User, Coins, FileText } from 'lucide-react';
+import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles, Clock, Lock, User, Coins, FileText, Edit2, Check } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
 
 interface UserDashboardProps {
@@ -12,6 +12,7 @@ interface UserDashboardProps {
   onSelectRoom: (roomId: string) => void;
   onCancelAndRefundReservation?: (resId: string) => void;
   onOpenPointModal?: () => void;
+  onUpdateUserProfile?: (userId: string, data: { name: string; phone: string; password?: string }) => Promise<{ success: boolean; message?: string }>;
 }
 
 // ⏱️ 예약 시간 기준 바코드 활성화 상태 판정 헬퍼 (5분 전 발급 ~ 종료 시간까지 유지, 종료 후 자동 소멸)
@@ -63,10 +64,20 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   onSelectRoom,
   onCancelAndRefundReservation,
   onOpenPointModal,
+  onUpdateUserProfile,
 }) => {
   const [showMyReservationsModal, setShowMyReservationsModal] = useState(false);
   const [showMyProfileModal, setShowMyProfileModal] = useState(false);
   const [activeBarcodeReservation, setActiveBarcodeReservation] = useState<Reservation | null>(null);
+
+  // 회원 정보 수정 폼 상태
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
 
   // 🔒 현재 접속자(currentUser)의 본인 예약 내역만 필터링
   const myReservations = currentUser
@@ -103,6 +114,44 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       return;
     }
     setActiveBarcodeReservation(res);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!currentUser || !onUpdateUserProfile) return;
+    if (!editName.trim()) {
+      setProfileMsg('이름을 입력해 주세요.');
+      return;
+    }
+    if (!editPhone.trim()) {
+      setProfileMsg('휴대폰 번호를 입력해 주세요.');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setProfileMsg('');
+    setProfileSuccessMsg('');
+
+    try {
+      const res = await onUpdateUserProfile(currentUser.userId, {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        password: editPassword.trim() || undefined,
+      });
+
+      if (res.success) {
+        setProfileSuccessMsg('회원 정보가 성공적으로 수정되었습니다.');
+        setTimeout(() => {
+          setIsEditingProfile(false);
+          setProfileSuccessMsg('');
+        }, 1200);
+      } else {
+        setProfileMsg(res.message || '정보 수정 중 오류가 발생했습니다.');
+      }
+    } catch {
+      setProfileMsg('정보 수정 중 오류가 발생했습니다.');
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   return (
@@ -203,7 +252,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         )}
       </div>
 
-      {/* 👤 하단 내 정보 & 포인트 요약 카드 (사용자 요구: 내 정보는 아래쪽에 배치) */}
+      {/* 👤 하단 내 정보 & 포인트 요약 카드 */}
       <div className="bg-[#ffffff] border border-[#a67c48]/30 rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2.5">
@@ -214,7 +263,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               <h3 className="text-sm font-bold text-[#191f28] flex items-center gap-1.5">
                 {currentUser?.name || '회원'}님
                 <span className="text-[10px] font-bold bg-[#a67c48]/15 text-[#a67c48] px-2 py-0.5 rounded-full">
-                  일반회원
+                  정회원
                 </span>
               </h3>
               <p className="text-xs text-[#8b95a1]">{currentUser?.phone || '010-0000-0000'}</p>
@@ -222,7 +271,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           </div>
 
           <button
-            onClick={() => setShowMyProfileModal(true)}
+            onClick={() => {
+              setProfileMsg('');
+              setProfileSuccessMsg('');
+              setIsEditingProfile(false);
+              setShowMyProfileModal(true);
+            }}
             className="gold-btn-outline text-xs py-1.5 px-3 rounded-xl font-bold flex items-center gap-1 shrink-0"
           >
             <FileText size={13} /> 내 정보 / 예약 내역
@@ -363,7 +417,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                             ● 출입 가능
                           </span>
                         ) : (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#f59e0b]/10 text-[#f59e0b] flex items-center gap-1">
+                          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#f59e0b]/10 text-[#f59e0b] flex items-center gap-1">
                             <Clock size={11} /> 5분 전 발급 예정
                           </span>
                         )}
@@ -426,7 +480,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </div>
       )}
 
-      {/* 📋 내 정보 & 전체 예약/이용 내역 전용 모달 */}
+      {/* 📋 내 정보 & 전체 예약/이용 내역 + 정보 수정 모달 */}
       {showMyProfileModal && (
         <div className="modal-overlay" onClick={() => setShowMyProfileModal(false)}>
           <div className="modal-content max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -437,9 +491,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               <button onClick={() => setShowMyProfileModal(false)} className="text-[#8b95a1] hover:text-[#191f28] text-2xl">&times;</button>
             </div>
 
-            {/* 1. 회원 프로필 요약 카드 */}
-            <div className="bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-3.5 space-y-2">
-              <div className="flex justify-between items-center">
+            {/* 1. 회원 프로필 요약 및 수정 카드 */}
+            <div className="bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-4 space-y-3">
+              <div className="flex justify-between items-start">
                 <div>
                   <h4 className="text-sm font-bold text-[#191f28] flex items-center gap-1.5">
                     {currentUser?.name}님
@@ -447,13 +501,98 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                       정회원
                     </span>
                   </h4>
-                  <p className="text-xs text-[#8b95a1] pt-0.5">아이디: {currentUser?.userId} | 연락처: {currentUser?.phone}</p>
+                  <p className="text-xs text-[#8b95a1] pt-0.5">아이디: {currentUser?.userId}</p>
                 </div>
-                <div className="text-right">
-                  <span className="text-[11px] text-[#8b95a1]">보유 포인트</span>
-                  <p className="text-sm font-extrabold text-[#a67c48]">{(currentUser?.points || 0).toLocaleString()} P</p>
-                </div>
+
+                {!isEditingProfile ? (
+                  <button
+                    onClick={() => {
+                      setEditName(currentUser?.name || '');
+                      setEditPhone(currentUser?.phone || '');
+                      setEditPassword('');
+                      setProfileMsg('');
+                      setProfileSuccessMsg('');
+                      setIsEditingProfile(true);
+                    }}
+                    className="gold-btn-outline text-xs py-1 px-2.5 rounded-lg font-bold flex items-center gap-1 shrink-0"
+                  >
+                    <Edit2 size={12} /> 정보 수정
+                  </button>
+                ) : null}
               </div>
+
+              {isEditingProfile ? (
+                /* 정보 수정 폼 */
+                <div className="bg-white p-3.5 rounded-xl border border-[#a67c48]/40 space-y-2.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-[#4e5968] block">이름 (성함)</label>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="이름 입력"
+                      className="form-input text-xs py-2 px-3 rounded-lg w-full border border-[#e5e8eb] focus:border-[#a67c48] outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-[#4e5968] block">연락처 (휴대폰 번호)</label>
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="010-0000-0000"
+                      className="form-input text-xs py-2 px-3 rounded-lg w-full border border-[#e5e8eb] focus:border-[#a67c48] outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-[#4e5968] block">비밀번호 변경 (선택)</label>
+                    <input
+                      type="password"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder="변경할 때만 입력하세요"
+                      className="form-input text-xs py-2 px-3 rounded-lg w-full border border-[#e5e8eb] focus:border-[#a67c48] outline-none"
+                    />
+                  </div>
+
+                  {profileMsg && (
+                    <div className="text-[11px] text-[#e93d3d] font-bold bg-[#e93d3d]/10 p-2 rounded-lg">
+                      {profileMsg}
+                    </div>
+                  )}
+
+                  {profileSuccessMsg && (
+                    <div className="text-[11px] text-[#28a745] font-bold bg-[#28a745]/10 p-2 rounded-lg flex items-center gap-1">
+                      <Check size={13} /> {profileSuccessMsg}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingProfile(false)}
+                      className="gold-btn-outline flex-1 py-2 text-xs font-bold rounded-lg"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      disabled={isSavingProfile}
+                      className="gold-btn flex-1 py-2 text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1"
+                    >
+                      <Check size={13} /> {isSavingProfile ? '저장 중...' : '저장 완료'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-[#e5e8eb] text-xs">
+                  <span className="text-[#8b95a1]">연락처</span>
+                  <span className="font-bold text-[#191f28]">{currentUser?.phone || '미등록'}</span>
+                </div>
+              )}
             </div>
 
             {/* 2. 내 전체 예약 내역 리스트 */}
@@ -463,7 +602,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                 <span className="text-[11px] text-[#8b95a1] font-normal">최신순 정렬</span>
               </h4>
 
-              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
                 {myReservations.length === 0 ? (
                   <div className="text-center py-8 border border-dashed border-[#e5e8eb] rounded-xl bg-[#f8f9fc] text-xs text-[#8b95a1]">
                     예약 내역이 없습니다.
@@ -475,7 +614,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                     const isCancelled = res.barcodeStatus === 'cancelled';
                     const isActive = !isCancelled && timing === 'ACTIVE';
                     const isUpcoming = !isCancelled && timing === 'UPCOMING';
-                    
+
                     return (
                       <div 
                         key={res.id}

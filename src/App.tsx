@@ -597,6 +597,36 @@ function App() {
     alert('예약 취소 및 결제 포인트 환불 처리가 완료되었습니다.');
   };
 
+  // 회원 개인정보 수정 (이름, 연락처, 비밀번호)
+  const handleUpdateUserProfile = async (
+    userId: string,
+    updatedData: { name: string; phone: string; password?: string }
+  ): Promise<{ success: boolean; message?: string }> => {
+    const targetUser = users.find(u => u.userId === userId || u.id === userId) || currentUser;
+    if (!targetUser) return { success: false, message: '사용자를 찾을 수 없습니다.' };
+
+    const updatedUser: UserAccount = {
+      ...targetUser,
+      name: updatedData.name.trim(),
+      phone: updatedData.phone.trim(),
+      ...(updatedData.password ? { password: updatedData.password.trim() } : {}),
+    };
+
+    const res = await updateDbUser(updatedUser);
+    if (!res.ok) {
+      return { success: false, message: '서버 저장 중 오류가 발생했습니다: ' + res.error };
+    }
+
+    // 로컬 상태 및 현재 로그인 유저 동기화
+    const newUsers = users.map(u => u.id === targetUser.id ? updatedUser : u);
+    updateUsers(newUsers);
+    if (currentUser?.id === targetUser.id || currentUser?.userId === targetUser.userId) {
+      setCurrentUser(updatedUser);
+    }
+
+    return { success: true };
+  };
+
   // 로그인 성공 처리
   const handleLoginSuccess = (user: UserAccount) => {
     updateCurrentUser(user);
@@ -1083,6 +1113,7 @@ function App() {
             onSelectRoom={(roomId) => setSelectedRoomId(roomId)}
             onCancelAndRefundReservation={handleCancelAndRefundReservation}
             onOpenPointModal={() => setShowPointModal(true)}
+            onUpdateUserProfile={handleUpdateUserProfile}
           />
         )}
       </main>
