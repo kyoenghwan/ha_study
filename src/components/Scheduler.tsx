@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Room, Reservation, BankInfo, PaymentMethod } from '../types';
-import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Clock, User, Phone, Check, CreditCard, Landmark, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Clock, User, Phone, Check, CreditCard, Landmark, CheckCircle2, Navigation } from 'lucide-react';
 import { getTodayDateString, getOffsetDateString } from '../utils/mockData';
 
 interface SchedulerProps {
@@ -40,6 +40,10 @@ export const Scheduler: React.FC<SchedulerProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [showModal, setShowModal] = useState(false);
   
+  // 스크롤 컨테이너 및 현재 시간 슬롯 ref
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const currentSlotRef = useRef<HTMLDivElement>(null);
+
   // 다중 슬롯 선택 상태
   const [selectedSlots, setSelectedSlots] = useState<Array<{ date: string; start: string; end: string }>>([]);
 
@@ -53,11 +57,57 @@ export const Scheduler: React.FC<SchedulerProps> = ({
   // 예약 완료 결과 팝업 상태
   const [completedReservations, setCompletedReservations] = useState<Reservation[] | null>(null);
 
-  // HH:MM -> minutes (충돌 확인용)
+  const isToday = selectedDate === getTodayDateString();
+
+  // HH:MM -> minutes (충돌 및 시간 비교용)
   const timeToMinutes = (timeStr: string) => {
     const [h, m] = timeStr.split(':').map(Number);
     return h * 60 + m;
   };
+
+  // 현재 시간(분 단위)
+  const now = new Date();
+  const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // 현재 시간 슬롯 찾기 (현재 시각이 포함되거나 바로 직전/직후 슬롯)
+  const getCurrentSlotStart = () => {
+    const matching = TIME_SLOTS.find((s) => {
+      const sStart = timeToMinutes(s.start);
+      const sEnd = timeToMinutes(s.end);
+      return currentTotalMinutes >= sStart && currentTotalMinutes < sEnd;
+    });
+    if (matching) return matching.start;
+    // 현재 시각이 06:00 이전이면 06:00, 24:00 이후면 마지막 슬롯
+    if (currentTotalMinutes < 360) return '06:00';
+    return '23:30';
+  };
+
+  const currentSlotStart = getCurrentSlotStart();
+
+  // 현재 시간으로 자동 스크롤 함수
+  const scrollToCurrentTime = (behavior: ScrollBehavior = 'smooth') => {
+    if (!timelineContainerRef.current) return;
+
+    if (isToday) {
+      if (currentSlotRef.current) {
+        const container = timelineContainerRef.current;
+        const target = currentSlotRef.current;
+        const topOffset = target.offsetTop - container.offsetTop - 12; // 상단 여백 12px
+        container.scrollTo({ top: Math.max(0, topOffset), behavior });
+      }
+    } else {
+      timelineContainerRef.current.scrollTo({ top: 0, behavior });
+    }
+  };
+
+  // 날짜 변경 또는 뷰 모드 전환 시 자동 스크롤
+  useEffect(() => {
+    // 렌더링 후 DOM 위치가 확정된 뒤 스크롤 실행
+    const timer = setTimeout(() => {
+      scrollToCurrentTime('auto');
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [selectedDate, viewMode]);
 
   // 특정 시간대의 예약 겹침 검사
   const findReservation = (date: string, startT: string, endT: string) => {
@@ -104,6 +154,15 @@ export const Scheduler: React.FC<SchedulerProps> = ({
   // 슬롯 다중 선택 토글 핸들러
   const handleSlotToggle = (date: string, start: string, end: string) => {
     if (findReservation(date, start, end)) return;
+
+    // 오늘 날짜의 지난 시간(현재 시각 이전 종료 슬롯)은 선택 방지
+    if (date === getTodayDateString()) {
+      const slotEndMin = timeToMinutes(end);
+      if (slotEndMin <= currentTotalMinutes) {
+        alert('이미 지난 시간대는 예약할 수 없습니다.');
+        return;
+      }
+    }
 
     const existsIndex = selectedSlots.findIndex(
       (s) => s.date === date && s.start === start && s.end === end
@@ -197,38 +256,63 @@ export const Scheduler: React.FC<SchedulerProps> = ({
           </span>
         </div>
 
-        {/* 일별 날짜 내비게이터 */}
+        {/* 일별 날짜 내비게이터 & 현재 시간 바로가기 */}
         {viewMode === 'daily' && (
           <div className="flex justify-between items-center bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-2.5 text-sm font-bold text-[#191f28]">
-            <button onClick={() => changeDate(-1)} className="p-1 hover:text-[#a67c48] transition-colors">
+            <button onClick={() => changeDate(-1)} className="p-1 hover:text-[#a67c48] transition-colors" title="이전 날짜">
               <ChevronLeft size={20} />
             </button>
+            
             <div className="flex items-center gap-2">
               <Calendar size={16} className="text-[#a67c48]" />
               <span>{selectedDate}</span>
               <span className="text-xs text-[#8b95a1] font-normal">
                 ({new Date(selectedDate).toLocaleDateString('ko-KR', { weekday: 'short' })})
               </span>
+              {isToday && (
+                <span className="text-[11px] font-bold text-[#a67c48] bg-[#a67c48]/15 px-2 py-0.5 rounded-full ml-1">
+                  오늘
+                </span>
+              )}
             </div>
-            <button onClick={() => changeDate(1)} className="p-1 hover:text-[#a67c48] transition-colors">
-              <ChevronRight size={20} />
-            </button>
+
+            <div className="flex items-center gap-1">
+              {isToday && (
+                <button
+                  onClick={() => scrollToCurrentTime('smooth')}
+                  className="text-xs font-semibold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                  title="현재 시간 위치로 스크롤 이동"
+                >
+                  <Navigation size={12} /> 지금
+                </button>
+              )}
+              <button onClick={() => changeDate(1)} className="p-1 hover:text-[#a67c48] transition-colors" title="다음 날짜">
+                <ChevronRight size={20} />
+              </button>
+            </div>
           </div>
         )}
       </div>
 
       {/* 스케줄 타임라인 표출 영역 */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={timelineContainerRef} className="flex-1 overflow-y-auto p-4 scroll-smooth">
         {viewMode === 'daily' ? (
           /* 일별 스케줄 타임라인 */
-          <div className="space-y-2 pb-16">
+          <div className="space-y-2 pb-20">
             {TIME_SLOTS.map((slot, index) => {
               const existingRes = findReservation(selectedDate, slot.start, slot.end);
               const isSelected = isSlotSelected(selectedDate, slot.start, slot.end);
+              
+              // 현재 시간 슬롯 여부
+              const isCurrentSlot = isToday && slot.start === currentSlotStart;
+              // 오늘 날짜에서 이미 종료된 과거 슬롯 여부
+              const isPastSlot = isToday && timeToMinutes(slot.end) <= currentTotalMinutes;
 
               let slotClass = 'bg-[#f8f9fc] border-[#e5e8eb] hover:border-[#a67c48]/50 text-[#191f28] cursor-pointer';
               if (existingRes) {
                 slotClass = 'bg-[#f1f3f5] border-[#e5e8eb] text-[#8b95a1] cursor-not-allowed opacity-80';
+              } else if (isPastSlot) {
+                slotClass = 'bg-[#f8f9fa] border-[#f1f3f5] text-[#b0b8c1] cursor-not-allowed opacity-60';
               } else if (isSelected) {
                 slotClass = 'bg-[#a67c48]/10 border-[#a67c48] text-[#a67c48] font-bold shadow-sm ring-1 ring-[#a67c48]';
               }
@@ -236,18 +320,30 @@ export const Scheduler: React.FC<SchedulerProps> = ({
               return (
                 <div
                   key={index}
+                  ref={isCurrentSlot ? currentSlotRef : null}
                   onClick={() => handleSlotToggle(selectedDate, slot.start, slot.end)}
-                  className={`border rounded-2xl p-3.5 flex justify-between items-center transition-all ${slotClass}`}
+                  className={`border rounded-2xl p-3.5 flex justify-between items-center transition-all ${slotClass} ${
+                    isCurrentSlot ? 'ring-2 ring-[#a67c48] bg-[#a67c48]/5' : ''
+                  }`}
                 >
                   <div className="flex items-center gap-2.5 text-sm">
-                    <Clock size={16} className={isSelected ? 'text-[#a67c48]' : 'text-[#8b95a1]'} />
+                    <Clock size={16} className={isCurrentSlot ? 'text-[#a67c48]' : isSelected ? 'text-[#a67c48]' : 'text-[#8b95a1]'} />
                     <span className="font-semibold">{slot.start} ~ {slot.end}</span>
+                    {isCurrentSlot && (
+                      <span className="text-[11px] font-bold bg-[#a67c48] text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                        🔴 현재 시간
+                      </span>
+                    )}
                   </div>
 
                   <div className="text-xs">
                     {existingRes ? (
                       <span className="text-xs text-[#e93d3d] font-bold bg-[#e93d3d]/10 px-2.5 py-1 rounded-full">
                         예약 완료 ({existingRes.userName})
+                      </span>
+                    ) : isPastSlot ? (
+                      <span className="text-xs text-[#8b95a1] font-medium bg-[#f1f3f5] px-2.5 py-1 rounded-full">
+                        시간 경과
                       </span>
                     ) : isSelected ? (
                       <span className="text-xs text-[#a67c48] font-bold flex items-center gap-1 bg-[#a67c48]/10 px-2.5 py-1 rounded-full">
@@ -268,48 +364,73 @@ export const Scheduler: React.FC<SchedulerProps> = ({
               <thead>
                 <tr>
                   <th className="weekly-grid-time-col">시간</th>
-                  {WEEKLY_DAYS.map((day) => (
-                    <th key={day.date}>
-                      <div className="font-bold">{day.dayName}</div>
-                      <div className="text-xs text-[#8b95a1] font-normal">{day.dayNum}일</div>
-                    </th>
-                  ))}
+                  {WEEKLY_DAYS.map((day) => {
+                    const isDayToday = day.date === getTodayDateString();
+                    return (
+                      <th key={day.date} className={isDayToday ? 'bg-[#a67c48]/10 text-[#a67c48]' : ''}>
+                        <div className="font-bold flex items-center justify-center gap-0.5">
+                          {day.dayName}
+                          {isDayToday && <span className="text-[9px] bg-[#a67c48] text-white px-1 rounded">오늘</span>}
+                        </div>
+                        <div className={`text-xs ${isDayToday ? 'text-[#a67c48] font-bold' : 'text-[#8b95a1] font-normal'}`}>
+                          {day.dayNum}일
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
-                {TIME_SLOTS.map((slot, sIdx) => (
-                  <tr key={sIdx}>
-                    <td className="weekly-grid-time-col font-mono">
-                      {slot.start}
-                    </td>
-                    {WEEKLY_DAYS.map((day) => {
-                      const existingRes = findReservation(day.date, slot.start, slot.end);
-                      const isSelected = isSlotSelected(day.date, slot.start, slot.end);
+                {TIME_SLOTS.map((slot, sIdx) => {
+                  const isCurrentTimeSlot = slot.start === currentSlotStart;
+                  return (
+                    <tr key={sIdx} className={isCurrentTimeSlot ? 'bg-[#a67c48]/5' : ''}>
+                      <td className={`weekly-grid-time-col font-mono ${isCurrentTimeSlot ? 'font-bold text-[#a67c48]' : ''}`}>
+                        {slot.start}
+                      </td>
+                      {WEEKLY_DAYS.map((day) => {
+                        const isDayToday = day.date === getTodayDateString();
+                        const existingRes = findReservation(day.date, slot.start, slot.end);
+                        const isSelected = isSlotSelected(day.date, slot.start, slot.end);
+                        const isPast = isDayToday && timeToMinutes(slot.end) <= currentTotalMinutes;
 
-                      if (existingRes) {
+                        if (existingRes) {
+                          return (
+                            <td
+                              key={day.date}
+                              className="weekly-cell-booked"
+                              title={`예약자: ${existingRes.userName}`}
+                            >
+                              마감
+                            </td>
+                          );
+                        }
+
+                        if (isPast) {
+                          return (
+                            <td
+                              key={day.date}
+                              className="text-[11px] text-[#b0b8c1] bg-[#f8f9fa] cursor-not-allowed text-center"
+                              title="지난 시간대"
+                            >
+                              -
+                            </td>
+                          );
+                        }
+
                         return (
                           <td
                             key={day.date}
-                            className="weekly-cell-booked"
-                            title={`예약자: ${existingRes.userName}`}
+                            onClick={() => handleSlotToggle(day.date, slot.start, slot.end)}
+                            className={isSelected ? 'weekly-cell-selected' : 'weekly-cell-available'}
                           >
-                            마감
+                            {isSelected ? '선택' : '예약'}
                           </td>
                         );
-                      }
-
-                      return (
-                        <td
-                          key={day.date}
-                          onClick={() => handleSlotToggle(day.date, slot.start, slot.end)}
-                          className={isSelected ? 'weekly-cell-selected' : 'weekly-cell-available'}
-                        >
-                          {isSelected ? '선택' : '예약'}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
