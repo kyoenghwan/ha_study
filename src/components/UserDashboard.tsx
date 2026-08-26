@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Room, Reservation, BankInfo, MasterBarcode, UserAccount } from '../types';
-import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles, Clock, Lock } from 'lucide-react';
+import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles, Clock, Lock, User, Coins, FileText } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
 
 interface UserDashboardProps {
@@ -11,6 +11,7 @@ interface UserDashboardProps {
   masterBarcode?: MasterBarcode;
   onSelectRoom: (roomId: string) => void;
   onCancelAndRefundReservation?: (resId: string) => void;
+  onOpenPointModal?: () => void;
 }
 
 // ⏱️ 예약 시간 기준 바코드 활성화 상태 판정 헬퍼 (5분 전 발급 ~ 종료 시간까지 유지, 종료 후 자동 소멸)
@@ -61,8 +62,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   masterBarcode,
   onSelectRoom,
   onCancelAndRefundReservation,
+  onOpenPointModal,
 }) => {
   const [showMyReservationsModal, setShowMyReservationsModal] = useState(false);
+  const [showMyProfileModal, setShowMyProfileModal] = useState(false);
   const [activeBarcodeReservation, setActiveBarcodeReservation] = useState<Reservation | null>(null);
 
   // 🔒 현재 접속자(currentUser)의 본인 예약 내역만 필터링
@@ -200,6 +203,51 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         )}
       </div>
 
+      {/* 👤 하단 내 정보 & 포인트 요약 카드 (사용자 요구: 내 정보는 아래쪽에 배치) */}
+      <div className="bg-[#ffffff] border border-[#a67c48]/30 rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full bg-[#a67c48]/10 text-[#a67c48] flex items-center justify-center font-bold shrink-0">
+              <User size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#191f28] flex items-center gap-1.5">
+                {currentUser?.name || '회원'}님
+                <span className="text-[10px] font-bold bg-[#a67c48]/15 text-[#a67c48] px-2 py-0.5 rounded-full">
+                  일반회원
+                </span>
+              </h3>
+              <p className="text-xs text-[#8b95a1]">{currentUser?.phone || '010-0000-0000'}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowMyProfileModal(true)}
+            className="gold-btn-outline text-xs py-1.5 px-3 rounded-xl font-bold flex items-center gap-1 shrink-0"
+          >
+            <FileText size={13} /> 내 정보 / 예약 내역
+          </button>
+        </div>
+
+        <div className="flex justify-between items-center bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb]">
+          <div className="flex items-center gap-2">
+            <Coins size={18} className="text-[#a67c48]" />
+            <div>
+              <span className="text-[11px] text-[#8b95a1]">보유 포인트</span>
+              <p className="text-sm font-extrabold text-[#191f28]">{(currentUser?.points || 0).toLocaleString()} P</p>
+            </div>
+          </div>
+          {onOpenPointModal && (
+            <button
+              onClick={onOpenPointModal}
+              className="gold-btn text-xs py-1.5 px-3.5 rounded-lg font-bold shadow-sm"
+            >
+              충전
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* 르하임 스터디카페 이용 안내 배너 */}
       <div className="bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-4 space-y-2 text-xs text-[#4e5968] leading-relaxed">
         <h4 className="font-bold text-[#a67c48] text-xs flex items-center gap-1">
@@ -275,7 +323,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </div>
       )}
 
-      {/* 내 바코드 목록 모달 (5분 전 활성화 및 시간 종료 시 자동 소멸 적용) */}
+      {/* 내 바코드 목록 모달 */}
       {showMyReservationsModal && (
         <div className="modal-overlay" onClick={() => setShowMyReservationsModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -302,11 +350,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                   const room = rooms.find((r) => r.id === res.roomId);
                   const timingState = getBarcodeTimingState(res.date, res.startTime, res.endTime);
                   const isActive = timingState === 'ACTIVE';
-                  const isUpcoming = timingState === 'UPCOMING';
 
                   return (
                     <div key={res.id} className="border border-[#a67c48]/30 rounded-2xl p-4 bg-[#ffffff] shadow-sm space-y-3">
-                      {/* 1. 예약자 & 호실 & 상태 뱃지 */}
                       <div className="flex justify-between items-start">
                         <div>
                           <span className="text-sm font-bold text-[#191f28]">{res.userName}님</span>
@@ -323,7 +369,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                         )}
                       </div>
 
-                      {/* 2. 바코드 영역 (이용 시간 종료 시까지 선명하게 유지, 대기 시에는 잠금 안내) */}
                       {isActive ? (
                         <div 
                           onClick={() => {
@@ -348,12 +393,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                         </div>
                       )}
 
-                      {/* 3. 예약 시간 & 취소 버튼 */}
                       <div className="text-xs text-[#8b95a1] flex justify-between items-center pt-2 border-t border-[#e5e8eb]">
                         <span className="flex items-center gap-1 text-[#191f28] font-medium">
                           <Calendar size={13} className="text-[#a67c48]" /> {res.date} ({res.startTime} ~ {res.endTime})
                         </span>
-                        {onCancelAndRefundReservation && isUpcoming && (
+                        {onCancelAndRefundReservation && !isActive && (
                           <button
                             onClick={() => {
                               if (confirm(`'${room?.name}' 예약을 취소하시겠습니까? 결제하신 금액(포인트)이 즉시 환불됩니다.`)) {
@@ -375,6 +419,146 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             <button
               onClick={() => setShowMyReservationsModal(false)}
               className="gold-btn-outline w-full py-3 text-xs font-bold rounded-xl mt-4"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 📋 내 정보 & 전체 예약/이용 내역 전용 모달 */}
+      {showMyProfileModal && (
+        <div className="modal-overlay" onClick={() => setShowMyProfileModal(false)}>
+          <div className="modal-content max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-2 border-b border-[#e5e8eb]">
+              <h3 className="text-base font-bold text-[#191f28] flex items-center gap-1.5">
+                <User size={18} className="text-[#a67c48]" /> 내 정보 및 예약 내역
+              </h3>
+              <button onClick={() => setShowMyProfileModal(false)} className="text-[#8b95a1] hover:text-[#191f28] text-2xl">&times;</button>
+            </div>
+
+            {/* 1. 회원 프로필 요약 카드 */}
+            <div className="bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-3.5 space-y-2">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="text-sm font-bold text-[#191f28] flex items-center gap-1.5">
+                    {currentUser?.name}님
+                    <span className="text-[10px] font-bold bg-[#a67c48]/15 text-[#a67c48] px-2 py-0.5 rounded-full">
+                      정회원
+                    </span>
+                  </h4>
+                  <p className="text-xs text-[#8b95a1] pt-0.5">아이디: {currentUser?.userId} | 연락처: {currentUser?.phone}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] text-[#8b95a1]">보유 포인트</span>
+                  <p className="text-sm font-extrabold text-[#a67c48]">{(currentUser?.points || 0).toLocaleString()} P</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. 내 전체 예약 내역 리스트 */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-[#191f28] flex items-center justify-between">
+                <span>전체 예약 / 이용 내역 ({myReservations.length}건)</span>
+                <span className="text-[11px] text-[#8b95a1] font-normal">최신순 정렬</span>
+              </h4>
+
+              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                {myReservations.length === 0 ? (
+                  <div className="text-center py-8 border border-dashed border-[#e5e8eb] rounded-xl bg-[#f8f9fc] text-xs text-[#8b95a1]">
+                    예약 내역이 없습니다.
+                  </div>
+                ) : (
+                  myReservations.map((res) => {
+                    const room = rooms.find(r => r.id === res.roomId);
+                    const timing = getBarcodeTimingState(res.date, res.startTime, res.endTime);
+                    const isCancelled = res.barcodeStatus === 'cancelled';
+                    const isActive = !isCancelled && timing === 'ACTIVE';
+                    const isUpcoming = !isCancelled && timing === 'UPCOMING';
+                    
+                    return (
+                      <div 
+                        key={res.id}
+                        className={`p-3 rounded-xl border text-xs space-y-2 transition-all ${
+                          isActive 
+                            ? 'bg-[#a67c48]/5 border-[#a67c48]' 
+                            : isCancelled 
+                            ? 'bg-[#fbf0f0] border-[#f5c6cb] opacity-70' 
+                            : 'bg-white border-[#e5e8eb]'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="font-bold text-[#191f28] text-sm">{room?.name || '공부방'}</span>
+                            <p className="text-xs text-[#8b95a1] flex items-center gap-1 pt-0.5">
+                              <Calendar size={12} className="text-[#a67c48]" />
+                              {res.date} ({res.startTime} ~ {res.endTime})
+                            </p>
+                          </div>
+
+                          <div>
+                            {isCancelled ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e93d3d]/10 text-[#e93d3d]">
+                                취소됨
+                              </span>
+                            ) : isActive ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#28a745]/10 text-[#28a745] animate-pulse">
+                                ● 이용 중
+                              </span>
+                            ) : isUpcoming ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f59e0b]/10 text-[#f59e0b]">
+                                이용 대기
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8b95a1]/10 text-[#8b95a1]">
+                                이용 완료
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-1.5 border-t border-[#f1f3f5]">
+                          <span className="text-[11px] text-[#8b95a1]">
+                            결제 포인트: <strong className="text-[#191f28]">{(res.costPoints || 4000).toLocaleString()} P</strong>
+                          </span>
+
+                          <div className="flex items-center gap-1.5">
+                            {isActive && (
+                              <button
+                                onClick={() => {
+                                  setShowMyProfileModal(false);
+                                  handleOpenBarcodePass(res);
+                                }}
+                                className="text-[11px] font-bold bg-[#a67c48] text-white px-2 py-0.5 rounded-lg shadow-sm"
+                              >
+                                바코드 보기
+                              </button>
+                            )}
+
+                            {onCancelAndRefundReservation && isUpcoming && (
+                              <button
+                                onClick={() => {
+                                  if (confirm(`'${room?.name}' 예약을 취소하시겠습니까? 결제하신 포인트가 즉시 환불됩니다.`)) {
+                                    onCancelAndRefundReservation(res.id);
+                                  }
+                                }}
+                                className="text-[11px] font-bold text-[#e93d3d] bg-[#e93d3d]/10 px-2 py-0.5 rounded-lg hover:bg-[#e93d3d]/20 transition-colors"
+                              >
+                                취소/환불
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowMyProfileModal(false)}
+              className="gold-btn-outline w-full py-3 text-xs font-bold rounded-xl"
             >
               닫기
             </button>

@@ -1003,49 +1003,36 @@ function App() {
             alt="르하임 로고" 
             style={{ height: '36px', width: 'auto' }}
           />
-          <div>
-            <h1 className="text-sm font-bold text-[#191f28] flex items-center">
-              <button
-                onClick={() => setShowBranchSelectModal(true)}
-                className="text-[#a67c48] text-sm font-bold bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1 transition-all"
-                title="지점 변경 팝업 열기"
-              >
-                <span>{currentBranchObj.name}</span>
-                <ChevronRight size={14} />
-              </button>
-            </h1>
-            <div className="text-xs text-[#8b95a1] flex items-center gap-1.5 pt-0.5">
-              {role === 'admin' ? (
-                <span className="text-[#a67c48] font-semibold">최고 관리자 통합 콘솔</span>
-              ) : (
-                <>
-                  <span>{currentUser.name}님</span>
-                  <span className="text-xs text-[#a67c48] font-bold flex items-center gap-1 bg-[#a67c48]/10 px-2 py-0.5 rounded-full">
-                    <Coins size={12} /> {(currentUser.points || 0).toLocaleString()}P
-                    <button 
-                      onClick={() => setShowPointModal(true)} 
-                      className="ml-1 text-xs bg-[#a67c48] text-[#ffffff] px-1.5 py-0.2 rounded hover:bg-[#8f6735] transition-colors"
-                    >
-                      충전
-                    </button>
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
+          <h1 className="text-sm font-bold text-[#191f28] flex items-center">
+            <button
+              onClick={() => setShowBranchSelectModal(true)}
+              className="text-[#a67c48] text-sm font-bold bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1 rounded-xl flex items-center gap-1 transition-all"
+              title="지점 변경 팝업 열기"
+            >
+              <span>{currentBranchObj.name}</span>
+              <ChevronRight size={14} />
+            </button>
+          </h1>
         </div>
 
-        {/* 로그아웃 버튼 */}
-        <button
-          onClick={() => {
-            setRole(null);
-            setSelectedRoomId(null);
-          }}
-          className="flex items-center gap-1 text-xs font-semibold py-2 px-3 rounded-lg border border-[#e5e8eb] text-[#8b95a1] hover:text-[#191f28] hover:bg-[#f8f9fc] transition-all"
-          title="로그아웃"
-        >
-          <LogOut size={14} /> 로그아웃
-        </button>
+        {/* 헤더 우측 컨트롤 */}
+        <div className="flex items-center gap-2">
+          {role === 'admin' && (
+            <span className="text-xs text-[#a67c48] font-bold bg-[#a67c48]/10 px-2.5 py-1 rounded-lg">
+              최고 관리자
+            </span>
+          )}
+          <button
+            onClick={() => {
+              setRole(null);
+              setSelectedRoomId(null);
+            }}
+            className="flex items-center gap-1 text-xs font-semibold py-2 px-3 rounded-lg border border-[#e5e8eb] text-[#8b95a1] hover:text-[#191f28] hover:bg-[#f8f9fc] transition-all"
+            title="로그아웃"
+          >
+            <LogOut size={14} /> 로그아웃
+          </button>
+        </div>
       </header>
 
       {/* 메인 콘텐츠 영역 */}
@@ -1095,6 +1082,7 @@ function App() {
             masterBarcode={masterBarcode}
             onSelectRoom={(roomId) => setSelectedRoomId(roomId)}
             onCancelAndRefundReservation={handleCancelAndRefundReservation}
+            onOpenPointModal={() => setShowPointModal(true)}
           />
         )}
       </main>
