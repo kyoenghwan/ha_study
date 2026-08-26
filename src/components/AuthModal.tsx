@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import type { UserAccount } from '../types';
 import { User, LogIn, UserPlus, Phone, Lock, Sparkles, CheckCircle2 } from 'lucide-react';
 import logoImg from '../assets/르하임로고.jfif';
+import { FindAccountModal } from './FindAccountModal';
 import { RA_PHONE_FORMAT, RA_PHONE_IS_VALID } from '../atoms/common/RA_phone';
 
 interface AuthModalProps {
   onLoginSuccess: (user: UserAccount) => void;
+  onUpdatePassword?: (userId: string, newPassword: string) => Promise<{ success: boolean; message?: string }>;
   /**
    * 회원 등록. DB 저장까지 끝난 뒤 결과를 반환한다.
    * 저장 실패 시 가입 완료 안내를 띄우지 않기 위해 비동기로 대기한다.
@@ -19,10 +21,15 @@ interface AuthModalProps {
 export const AuthModal: React.FC<AuthModalProps> = ({
   onLoginSuccess,
   onRegisterUser,
+  onUpdatePassword,
   existingUsers,
 }) => {
   const [tab, setTab] = useState<'login' | 'register'>('login');
   
+  // 아이디 / 비밀번호 찾기 모달 상태
+  const [showFindModal, setShowFindModal] = useState(false);
+  const [findModalTab, setFindModalTab] = useState<'findId' | 'resetPw'>('findId');
+
   // 로그인 폼
   const [loginUserId, setLoginUserId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -200,6 +207,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button type="submit" className="gold-btn w-full py-3.5 text-sm font-bold rounded-xl shadow">
               로그인하기
             </button>
+
+            {/* 아이디 / 비밀번호 찾기 링크 */}
+            <div className="flex justify-center items-center gap-3 text-xs text-[#8b95a1] pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setFindModalTab('findId');
+                  setShowFindModal(true);
+                }}
+                className="hover:text-[#a67c48] hover:underline transition-colors"
+              >
+                아이디 찾기
+              </button>
+              <span className="text-[#e5e8eb]">|</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setFindModalTab('resetPw');
+                  setShowFindModal(true);
+                }}
+                className="hover:text-[#a67c48] hover:underline transition-colors"
+              >
+                비밀번호 재설정
+              </button>
+            </div>
           </div>
 
           {/* 테스트 빠른 접속 가이드 */}
@@ -340,6 +372,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </button>
           </div>
         </form>
+      )}
+      {/* 🔍 아이디 찾기 및 비밀번호 재설정 모달 */}
+      {showFindModal && (
+        <FindAccountModal
+          isOpen={showFindModal}
+          initialTab={findModalTab}
+          existingUsers={existingUsers}
+          onClose={() => setShowFindModal(false)}
+          onSelectFoundId={(uid) => {
+            setLoginUserId(uid);
+            setTab('login');
+          }}
+          onUpdatePassword={onUpdatePassword || (async () => ({ success: true }))}
+        />
       )}
     </div>
   );

@@ -868,6 +868,9 @@ function App() {
         <AuthModal
           onLoginSuccess={handleLoginSuccess}
           onRegisterUser={handleRegisterUser}
+          onUpdatePassword={async (uid, newPw) => {
+            return handleUpdateUserProfile(uid, { name: users.find(u => u.userId === uid)?.name || '', phone: users.find(u => u.userId === uid)?.phone || '', password: newPw });
+          }}
           existingUsers={users}
         />
       </div>
