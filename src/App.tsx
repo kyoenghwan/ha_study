@@ -5,7 +5,6 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
 import { AuthModal } from './components/AuthModal';
-import { AdminAuthModal } from './components/AdminAuthModal';
 import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Search } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 import { FA_CREATE_RESERVATIONS } from './atoms/reservation/FA_create_reservations';
@@ -100,8 +99,7 @@ function App() {
   const [bankInfo, setBankInfo] = useState<BankInfo>(INITIAL_BANK_INFO);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   
-  // 관리자 전용 인증 모달 상태
-  const [showAdminAuthModal, setShowAdminAuthModal] = useState<boolean>(false);
+
 
   // 지점 선택 상태 (기본: 여의도점)
   const [selectedBranch, setSelectedBranch] = useState<string>('yeouido');
@@ -630,6 +628,9 @@ function App() {
   // 로그인 성공 처리
   const handleLoginSuccess = (user: UserAccount) => {
     updateCurrentUser(user);
+    if (user.role === 'admin' || user.userId === 'admin') {
+      setRole('admin');
+    }
   };
 
   // 로그아웃
@@ -1001,18 +1002,7 @@ function App() {
           © 2026 HA-STUDY Platform. L'Heux Study Cafe.
         </p>
 
-        {/* 최고 관리자 보안 로그인 모달 */}
-        {showAdminAuthModal && (
-          <AdminAuthModal
-            adminUser={currentUser}
-            isAuthorized={canAccessAdminConsole}
-            onSuccess={() => {
-              setShowAdminAuthModal(false);
-              setRole('admin');
-            }}
-            onCancel={() => setShowAdminAuthModal(false)}
-          />
-        )}
+
 
         {/* 🏢 지점 선택 및 검색 팝업 모달 */}
         <BranchSelectModal
