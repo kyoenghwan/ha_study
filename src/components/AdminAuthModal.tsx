@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
+import type { UserAccount } from '../types';
 import { Shield, Lock, ArrowRight, X, User } from 'lucide-react';
 import logoImg from '../assets/르하임로고.jfif';
 
 interface AdminAuthModalProps {
+  /** 현재 로그인한 계정. 이 계정의 자격 증명으로만 관제 콘솔에 진입할 수 있다. */
+  adminUser: UserAccount | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
+  adminUser,
   onSuccess,
   onCancel,
 }) => {
@@ -19,8 +23,15 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
     e.preventDefault();
     setErrorMsg('');
 
-    // 최고 관리자 인증 검증 (기본: admin / 123)
-    if (adminId.trim() === 'admin' && adminPw === '123') {
+    // 로그인한 관리자 본인의 자격 증명으로만 통과시킨다.
+    // 고정 계정 비교(하드코딩)는 클라이언트 번들에 노출되므로 사용하지 않는다.
+    const isOwnAdminCredential =
+      adminUser !== null &&
+      adminUser.role === 'admin' &&
+      adminId.trim() === adminUser.userId &&
+      adminPw === adminUser.password;
+
+    if (isOwnAdminCredential) {
       onSuccess();
     } else {
       setErrorMsg('최고 관리자 접속 권한이 없거나 계정 정보가 올바르지 않습니다.');
@@ -62,7 +73,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               type="text"
               value={adminId}
               onChange={(e) => setAdminId(e.target.value)}
-              placeholder="admin"
+              placeholder="관리자 아이디"
               className="form-input text-sm w-full"
               autoFocus
             />
@@ -76,7 +87,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               type="password"
               value={adminPw}
               onChange={(e) => setAdminPw(e.target.value)}
-              placeholder="123"
+              placeholder="비밀번호"
               className="form-input text-sm w-full"
             />
           </div>

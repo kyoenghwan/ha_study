@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { UserAccount, Role } from '../types';
-import { User, Shield, LogIn, UserPlus, Phone, Lock, Sparkles, CheckCircle2 } from 'lucide-react';
+import type { UserAccount } from '../types';
+import { User, LogIn, UserPlus, Phone, Lock, Sparkles, CheckCircle2 } from 'lucide-react';
 import logoImg from '../assets/르하임로고.jfif';
 
 interface AuthModalProps {
@@ -26,7 +26,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [regPassword, setRegPassword] = useState('');
   const [regName, setRegName] = useState('');
   const [regPhone, setRegPhone] = useState('');
-  const [regRole, setRegRole] = useState<Role>('user');
   const [regError, setRegError] = useState('');
   const [regSuccessMsg, setRegSuccessMsg] = useState('');
 
@@ -40,7 +39,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     const found = existingUsers.find(
-      (u) => u.userId === loginUserId.trim() && (u.password === loginPassword || u.password === '123')
+      (u) => u.userId === loginUserId.trim() && u.password === loginPassword
     );
 
     if (found) {
@@ -65,8 +64,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       password: regPassword.trim(),
       name: regName.trim(),
       phone: regPhone.trim(),
-      role: regRole,
-      points: regRole === 'user' ? 20000 : 999000,
+      role: 'user', // 관리자 계정은 가입 화면에서 생성할 수 없다 (권한 상승 방지)
+      points: 20000,
     });
 
     if (res.success) {
@@ -213,34 +212,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       {/* 2. 회원가입 폼 */}
       {tab === 'register' && (
         <form onSubmit={handleRegisterSubmit} className="space-y-3.5 pt-1">
-          <div className="form-group">
-            <label className="text-xs font-semibold text-[#1c1c1e]">가입 유형 선택</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setRegRole('user')}
-                className={`py-2.5 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                  regRole === 'user'
-                    ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
-                    : 'border-[#e5e5ea] text-[#8e8e93] bg-[#f8f9fa]'
-                }`}
-              >
-                <User size={14} /> 일반 이용자
-              </button>
-              <button
-                type="button"
-                onClick={() => setRegRole('admin')}
-                className={`py-2.5 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                  regRole === 'admin'
-                    ? 'border-[#b09168] bg-[#b09168]/10 text-[#b09168]'
-                    : 'border-[#e5e5ea] text-[#8e8e93] bg-[#f8f9fa]'
-                }`}
-              >
-                <Shield size={14} /> 지점 관리자
-              </button>
-            </div>
-          </div>
-
           <div className="form-group">
             <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
               <User size={14} className="text-[#b09168]" /> 아이디

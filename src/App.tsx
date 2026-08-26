@@ -757,6 +757,7 @@ function App() {
         {/* 최고 관리자 보안 로그인 모달 */}
         {showAdminAuthModal && (
           <AdminAuthModal
+            adminUser={currentUser}
             onSuccess={() => {
               setShowAdminAuthModal(false);
               setRole('admin');

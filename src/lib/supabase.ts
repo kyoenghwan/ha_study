@@ -1,8 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 import type { UserAccount, Reservation, MasterBarcode, PointTransaction } from '../types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://aonpiwzphpngucrtrnmq.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvbnBpd3pwaHBuZ3VjcnRybm1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzM2NTksImV4cCI6MjEwMTUwOTY1OX0.A2W5VENnUQL6GDROVzNtK3orR6OX8GupKRTfts4e4PI';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// 자격 증명을 소스에 하드코딩하지 않는다. 누락 시 조용히 넘어가지 않고 즉시 실패시킨다.
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Supabase 환경변수가 설정되지 않았습니다. .env.example을 복사해 .env를 만들고 ' +
+      'VITE_SUPABASE_URL 과 VITE_SUPABASE_ANON_KEY 를 채워 주세요.',
+  );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
