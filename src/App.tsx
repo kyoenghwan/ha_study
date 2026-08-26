@@ -1089,6 +1089,7 @@ function App() {
           />
         ) : (
           <UserDashboard
+            currentUser={currentUser}
             rooms={rooms}
             reservations={reservations}
             bankInfo={bankInfo}

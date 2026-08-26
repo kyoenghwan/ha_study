@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import type { Room, Reservation, BankInfo, MasterBarcode } from '../types';
+import type { Room, Reservation, BankInfo, MasterBarcode, UserAccount } from '../types';
 import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles, Clock } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
 
 interface UserDashboardProps {
+  currentUser?: UserAccount | null;
   rooms: Room[];
   reservations: Reservation[];
   bankInfo: BankInfo;
@@ -13,6 +14,7 @@ interface UserDashboardProps {
 }
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({
+  currentUser,
   rooms,
   reservations,
   bankInfo,
@@ -23,9 +25,20 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   const [showMyReservationsModal, setShowMyReservationsModal] = useState(false);
   const [activeBarcodeReservation, setActiveBarcodeReservation] = useState<Reservation | null>(null);
 
-  // 결제 완료된 예약 건 필터링 (valid 상태 우선)
-  const paidReservations = reservations.filter((r) => r.paymentStatus === 'paid');
+  // 🔒 현재 접속자(currentUser)의 본인 예약 내역만 필터링
+  const myReservations = currentUser
+    ? reservations.filter((r) => 
+        (r.userName && r.userName === currentUser.name) || 
+        (r.userPhone && currentUser.phone && r.userPhone === currentUser.phone)
+      )
+    : reservations;
+
+  // 결제 완료된 내 예약 건 필터링 (valid 상태 우선)
+  const paidReservations = myReservations.filter((r) => r.paymentStatus === 'paid');
   const activeValidPass = paidReservations.find((r) => r.barcodeStatus === 'valid') || paidReservations[0];
+
+  // 무통장 입금 대기 중인 내 예약 건
+  const pendingReservations = myReservations.filter((r) => r.paymentStatus === 'deposit_pending');
 
   const handleOpenBarcodePass = (res: Reservation) => {
     setActiveBarcodeReservation(res);
@@ -56,12 +69,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             바코드 보기
           </button>
         </div>
-      ) : reservations.length > 0 && (
+      ) : pendingReservations.length > 0 && (
         <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-2xl p-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <AlertCircle size={20} className="text-[#f59e0b] shrink-0" />
             <div>
-              <h4 className="text-sm font-bold text-[#191f28]">무통장 입금 확인 대기 중</h4>
+              <h4 className="text-sm font-bold text-[#191f28]">무통장 입금 확인 대기 중 ({pendingReservations.length}건)</h4>
               <p className="text-xs text-[#8b95a1]">관리자 입금 확인 후 출입 바코드가 자동 발급됩니다.</p>
             </div>
           </div>
@@ -207,12 +220,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             </div>
 
             <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-              {reservations.length === 0 ? (
+              {myReservations.length === 0 ? (
                 <p className="text-xs text-[#8b95a1] text-center py-8 border border-dashed border-[#e5e8eb] rounded-xl">
-                  등록된 예약 내역이 없습니다.
+                  {currentUser?.name ? `${currentUser.name}님의 등록된 예약 내역이 없습니다.` : '등록된 예약 내역이 없습니다.'}
                 </p>
               ) : (
-                reservations.map((res) => {
+                myReservations.map((res) => {
                   const room = rooms.find((r) => r.id === res.roomId);
                   const isPaid = res.paymentStatus === 'paid';
                   return (
