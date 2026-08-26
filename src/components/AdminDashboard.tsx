@@ -1419,95 +1419,106 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {filteredBarcodes.map((res) => {
-                  const room = rooms.find((r) => r.id === res.roomId);
-                  const isEditing = editingBarcodeResId === res.id;
-                  return (
-                    <div key={res.id} className="border border-[#e5e5ea] rounded-xl p-3.5 bg-[#f8f9fa] space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="text-xs font-bold text-[#1c1c1e]">{res.userName}님</span>
-                          <span className="text-[10px] text-[#8e8e93] ml-2">({room?.name})</span>
-                        </div>
-                        <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            res.barcodeStatus === 'valid'
-                              ? 'bg-[#34c759]/10 text-[#34c759]'
+                {filteredBarcodes.length === 0 ? (
+                  <div className="col-span-2 text-center py-8 text-xs text-[#8b95a1] bg-[#f8f9fc] rounded-xl border border-dashed border-[#e5e8eb]">
+                    검색 조건에 일치하는 바코드 예약 내역이 없습니다.
+                  </div>
+                ) : (
+                  filteredBarcodes.map((res) => {
+                    const room = rooms.find((r) => r.id === res.roomId);
+                    const isEditing = editingBarcodeResId === res.id;
+                    const safeBarcode = res.barcodeId || '*M091063684*';
+                    return (
+                      <div key={res.id} className="border border-[#e5e8eb] rounded-2xl p-4 bg-[#ffffff] shadow-sm space-y-2.5">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-xs font-bold text-[#191f28]">{res.userName || '회원'}님</span>
+                            <span className="text-[10px] text-[#a67c48] font-bold ml-1.5 bg-[#a67c48]/10 px-2 py-0.5 rounded-full">
+                              {room?.name || '공부방'}
+                            </span>
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              res.barcodeStatus === 'valid'
+                                ? 'bg-[#28a745]/10 text-[#28a745]'
+                                : res.barcodeStatus === 'used'
+                                ? 'bg-[#8b95a1]/10 text-[#8b95a1]'
+                                : 'bg-[#e93d3d]/10 text-[#e93d3d]'
+                            }`}
+                          >
+                            {res.barcodeStatus === 'valid'
+                              ? '사용 가능'
                               : res.barcodeStatus === 'used'
-                              ? 'bg-[#8e8e93]/10 text-[#8e8e93]'
-                              : 'bg-[#ff3b30]/10 text-[#ff3b30]'
-                          }`}
-                        >
-                          {res.barcodeStatus === 'valid'
-                            ? '사용 가능'
-                            : res.barcodeStatus === 'used'
-                            ? '입장 완료'
-                            : '취소됨'}
-                        </span>
-                      </div>
-
-                      {/* 바코드 시각화 패널 */}
-                      <BarcodeView value={res.barcodeId} height={60} showText={true} />
-
-                      {/* 바코드 수동 변경 폼 */}
-                      {isEditing ? (
-                        <div className="flex gap-1.5 pt-1">
-                          <input
-                            type="text"
-                            value={customBarcodeResInput}
-                            onChange={(e) => setCustomBarcodeResInput(e.target.value)}
-                            placeholder="변경할 바코드 번호"
-                            className="form-input text-xs flex-1 py-1 px-2"
-                          />
-                          <button
-                            onClick={() => {
-                              if (customBarcodeResInput.trim() && onUpdateReservationBarcode) {
-                                onUpdateReservationBarcode(res.id, customBarcodeResInput.trim());
-                                setEditingBarcodeResId(null);
-                              }
-                            }}
-                            className="bg-[#b09168] text-white text-[10px] font-bold px-2 py-1 rounded"
-                          >
-                            저장
-                          </button>
-                          <button
-                            onClick={() => setEditingBarcodeResId(null)}
-                            className="bg-[#e5e5ea] text-[#1c1c1e] text-[10px] px-2 py-1 rounded"
-                          >
-                            취소
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="text-[10px] text-[#8e8e93] flex justify-between items-center pt-1">
-                          <span>
-                            {res.date} {res.startTime}~{res.endTime}
+                              ? '입장 완료'
+                              : '취소됨'}
                           </span>
-                          <div className="flex gap-2">
+                        </div>
+
+                        {/* 바코드 시각화 패널 */}
+                        <BarcodeView value={safeBarcode} height={60} showText={true} />
+
+                        {/* 바코드 수동 변경 폼 */}
+                        {isEditing ? (
+                          <div className="flex gap-1.5 pt-1">
+                            <input
+                              type="text"
+                              value={customBarcodeResInput}
+                              onChange={(e) => setCustomBarcodeResInput(e.target.value)}
+                              placeholder="변경할 바코드 번호"
+                              className="form-input text-xs flex-1 py-1.5 px-2.5 rounded-lg border border-[#e5e8eb]"
+                            />
                             <button
                               onClick={() => {
-                                setEditingBarcodeResId(res.id);
-                                setCustomBarcodeResInput(res.barcodeId);
+                                if (customBarcodeResInput.trim() && onUpdateReservationBarcode) {
+                                  onUpdateReservationBarcode(res.id, customBarcodeResInput.trim());
+                                  setEditingBarcodeResId(null);
+                                }
                               }}
-                              className="text-[#8e8e93] hover:text-[#1c1c1e] font-medium"
+                              className="gold-btn text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm"
                             >
-                              바코드 변경
+                              저장
                             </button>
                             <button
-                              onClick={() => {
-                                setScanBarcodeId(res.barcodeId);
-                                const result = onVerifyBarcode(res.barcodeId);
-                                setScanResult(result);
-                              }}
-                              className="text-[#b09168] hover:underline font-semibold"
+                              onClick={() => setEditingBarcodeResId(null)}
+                              className="gold-btn-outline text-xs px-2.5 py-1.5 rounded-lg"
                             >
-                              바로 입장 처리
+                              취소
                             </button>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        ) : (
+                          <div className="text-[11px] text-[#8b95a1] flex justify-between items-center pt-1.5 border-t border-[#f1f3f5]">
+                            <span>
+                              {res.date} ({res.startTime || '00:00'}~{res.endTime || '00:00'})
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingBarcodeResId(res.id);
+                                  setCustomBarcodeResInput(safeBarcode);
+                                }}
+                                className="text-[#a67c48] hover:underline font-bold"
+                              >
+                                바코드 변경
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setScanBarcodeId(safeBarcode);
+                                  if (onVerifyBarcode) {
+                                    const result = onVerifyBarcode(safeBarcode);
+                                    setScanResult(result);
+                                  }
+                                }}
+                                className="text-[#28a745] hover:underline font-bold"
+                              >
+                                바로 입장
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

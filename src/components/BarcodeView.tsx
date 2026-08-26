@@ -63,7 +63,8 @@ export const BarcodeView: React.FC<BarcodeViewProps> = ({
   className = '',
 }) => {
   // 입력 문자열 전처리 (앞뒤 * 가 없으면 붙여서 Code 39 규격 맞춤)
-  const cleanStr = value.trim().toUpperCase();
+  const safeVal = (value || '*M091063684*').trim().toUpperCase();
+  const cleanStr = safeVal || '*M091063684*';
   const code39Str = cleanStr.startsWith('*') && cleanStr.endsWith('*') && cleanStr.length > 2
     ? cleanStr
     : `*${cleanStr.replace(/\*/g, '')}*`;
