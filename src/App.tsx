@@ -1004,15 +1004,14 @@ function App() {
             style={{ height: '36px', width: 'auto' }}
           />
           <div>
-            <h1 className="text-sm font-bold text-[#191f28] flex items-center gap-1.5">
-              르하임 
+            <h1 className="text-sm font-bold text-[#191f28] flex items-center">
               <button
                 onClick={() => setShowBranchSelectModal(true)}
-                className="text-[#a67c48] text-xs font-semibold bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/20 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all"
+                className="text-[#a67c48] text-sm font-bold bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1 transition-all"
                 title="지점 변경 팝업 열기"
               >
                 <span>{currentBranchObj.name}</span>
-                <ChevronRight size={13} />
+                <ChevronRight size={14} />
               </button>
             </h1>
             <div className="text-xs text-[#8b95a1] flex items-center gap-1.5 pt-0.5">
@@ -1036,16 +1035,16 @@ function App() {
           </div>
         </div>
 
-        {/* 로그아웃 및 역할/지점 전환 */}
+        {/* 로그아웃 버튼 */}
         <button
           onClick={() => {
             setRole(null);
             setSelectedRoomId(null);
           }}
           className="flex items-center gap-1 text-xs font-semibold py-2 px-3 rounded-lg border border-[#e5e8eb] text-[#8b95a1] hover:text-[#191f28] hover:bg-[#f8f9fc] transition-all"
-          title="처음 게이트 화면으로 이동"
+          title="로그아웃"
         >
-          <LogOut size={14} /> 지점/역할 변경
+          <LogOut size={14} /> 로그아웃
         </button>
       </header>
 

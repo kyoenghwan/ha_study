@@ -33,8 +33,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       )
     : reservations;
 
-  // 결제 완료된 내 예약 건 필터링 (valid 상태 우선)
-  const paidReservations = myReservations.filter((r) => r.paymentStatus === 'paid');
+  // 결제 완료된 내 예약 건 (출입 바코드가 실제로 발급된 예약)
+  const paidReservations = myReservations.filter((r) => r.paymentStatus === 'paid' && r.barcodeStatus !== 'cancelled');
   const activeValidPass = paidReservations.find((r) => r.barcodeStatus === 'valid') || paidReservations[0];
 
   // 무통장 입금 대기 중인 내 예약 건
@@ -78,12 +78,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               <p className="text-xs text-[#8b95a1]">관리자 입금 확인 후 출입 바코드가 자동 발급됩니다.</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowMyReservationsModal(true)}
-            className="text-xs font-bold text-[#f59e0b] border border-[#f59e0b]/40 px-3 py-1.5 rounded-lg hover:bg-[#f59e0b]/10 transition-colors"
-          >
-            내역 확인
-          </button>
         </div>
       )}
 
@@ -208,84 +202,73 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </div>
       )}
 
-      {/* 내 예약 목록 및 바코드 모달 */}
+      {/* 내 바코드 목록 모달 (발급 완료된 바코드만 예약자/호실/시간/바코드 심플 노출) */}
       {showMyReservationsModal && (
         <div className="modal-overlay" onClick={() => setShowMyReservationsModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-base font-bold text-[#191f28] flex items-center gap-1.5">
-                <QrCode size={18} className="text-[#a67c48]" /> 내 예약 내역 및 출입 바코드
+                <QrCode size={18} className="text-[#a67c48]" /> 내 출입 바코드 목록
               </h3>
               <button onClick={() => setShowMyReservationsModal(false)} className="text-[#8b95a1] text-2xl">&times;</button>
             </div>
 
             <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-              {myReservations.length === 0 ? (
-                <p className="text-xs text-[#8b95a1] text-center py-8 border border-dashed border-[#e5e8eb] rounded-xl">
-                  {currentUser?.name ? `${currentUser.name}님의 등록된 예약 내역이 없습니다.` : '등록된 예약 내역이 없습니다.'}
-                </p>
+              {paidReservations.length === 0 ? (
+                <div className="text-center py-10 border border-dashed border-[#e5e8eb] rounded-2xl bg-[#f8f9fc] space-y-2">
+                  <QrCode size={30} className="mx-auto text-[#b0b8c1]" />
+                  <p className="text-xs font-bold text-[#191f28]">
+                    {currentUser?.name ? `${currentUser.name}님의 발급된 출입 바코드가 없습니다.` : '발급된 출입 바코드가 없습니다.'}
+                  </p>
+                  <p className="text-[11px] text-[#8b95a1]">공부방 예약 및 결제가 완료되면 출입 바코드가 자동 발급됩니다.</p>
+                </div>
               ) : (
-                myReservations.map((res) => {
+                paidReservations.map((res) => {
                   const room = rooms.find((r) => r.id === res.roomId);
-                  const isPaid = res.paymentStatus === 'paid';
                   return (
-                    <div key={res.id} className="border border-[#e5e8eb] rounded-2xl p-4 bg-[#f8f9fc] space-y-3">
+                    <div key={res.id} className="border border-[#a67c48]/30 rounded-2xl p-4 bg-[#ffffff] shadow-sm space-y-3">
+                      {/* 1. 예약자 & 호실 */}
                       <div className="flex justify-between items-start">
                         <div>
                           <span className="text-sm font-bold text-[#191f28]">{res.userName}님</span>
-                          <span className="text-xs text-[#8b95a1] ml-2">({room?.name})</span>
+                          <span className="text-xs font-semibold text-[#a67c48] ml-2">({room?.name || '공부방'})</span>
                         </div>
-                        <span
-                          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            isPaid ? 'bg-[#28a745]/10 text-[#28a745]' : 'bg-[#f59e0b]/10 text-[#f59e0b]'
-                          }`}
-                        >
-                          {isPaid ? '결제 완료 (출입가능)' : '무통장 입금 대기'}
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#28a745]/10 text-[#28a745]">
+                          출입 가능
                         </span>
                       </div>
 
-                      {/* 바코드 비주얼 패널 */}
-                      {isPaid ? (
-                        <div 
-                          onClick={() => {
-                            setShowMyReservationsModal(false);
-                            handleOpenBarcodePass(res);
-                          }}
-                          className="bg-white p-3 rounded-xl border border-[#a67c48]/30 hover:border-[#a67c48] cursor-pointer transition-all space-y-1.5 text-center group"
-                        >
-                          <BarcodeView value={res.barcodeId} height={60} showText={true} />
-                          <p className="text-xs text-[#a67c48] font-bold pt-1 group-hover:underline">
-                            터치 시 대형 출입 바코드 모달 열기 🔍
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="bg-[#e5e8eb]/40 p-3.5 rounded-xl border border-dashed border-[#e5e8eb] text-center space-y-1">
-                          <p className="text-xs font-bold text-[#4e5968]">입금 확인 후 출입 바코드가 활성화됩니다.</p>
-                          <p className="text-xs text-[#8b95a1]">계좌: {bankInfo.bankName} {bankInfo.accountNumber}</p>
-                        </div>
-                      )}
+                      {/* 2. 바코드 */}
+                      <div 
+                        onClick={() => {
+                          setShowMyReservationsModal(false);
+                          handleOpenBarcodePass(res);
+                        }}
+                        className="bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] hover:border-[#a67c48] cursor-pointer transition-all space-y-1.5 text-center group"
+                      >
+                        <BarcodeView value={res.barcodeId} height={60} showText={true} />
+                        <p className="text-[11px] text-[#a67c48] font-bold pt-1 group-hover:underline flex items-center justify-center gap-1">
+                          터치 시 대형 바코드 열기 🔍
+                        </p>
+                      </div>
 
+                      {/* 3. 예약 시간 & 취소 버튼 */}
                       <div className="text-xs text-[#8b95a1] flex justify-between items-center pt-2 border-t border-[#e5e8eb]">
-                        <span className="flex items-center gap-1 text-[#191f28]">
+                        <span className="flex items-center gap-1 text-[#191f28] font-medium">
                           <Calendar size={13} className="text-[#a67c48]" /> {res.date} ({res.startTime} ~ {res.endTime})
                         </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[#a67c48] font-bold">
-                            {res.paymentMethod === 'points' ? '포인트 결제' : '무통장 입금'}
-                          </span>
-                          {onCancelAndRefundReservation && res.barcodeStatus === 'valid' && (
-                            <button
-                              onClick={() => {
-                                if (confirm(`'${room?.name}' 예약을 취소하시겠습니까? 결제하신 금액(포인트)이 즉시 환불됩니다.`)) {
-                                  onCancelAndRefundReservation(res.id);
-                                }
-                              }}
-                              className="text-xs text-[#e93d3d] font-bold border border-[#e93d3d]/30 bg-[#e93d3d]/5 px-2.5 py-1 rounded-lg hover:bg-[#e93d3d]/10 transition-colors"
-                            >
-                              예약 취소/환불
-                            </button>
-                          )}
-                        </div>
+                        {onCancelAndRefundReservation && res.barcodeStatus === 'valid' && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`'${room?.name}' 예약을 취소하시겠습니까? 결제하신 금액(포인트)이 즉시 환불됩니다.`)) {
+                                onCancelAndRefundReservation(res.id);
+                              }
+                            }}
+                            className="text-xs text-[#e93d3d] font-bold border border-[#e93d3d]/30 bg-[#e93d3d]/5 px-2.5 py-1 rounded-lg hover:bg-[#e93d3d]/10 transition-colors"
+                          >
+                            예약 취소
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
