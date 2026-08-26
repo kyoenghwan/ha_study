@@ -62,28 +62,26 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
           </button>
         </div>
 
-        {/* 상단: 지점 검색창 (돋보기를 오른쪽 끝에 완벽 정렬) */}
-        <div className="relative shrink-0">
+        {/* 상단: 지점 검색창 (Flex 레이아웃으로 돋보기를 우측 끝에 완벽 정렬) */}
+        <div className="flex items-center bg-[#f8f9fc] border border-[#e5e8eb] focus-within:border-[#a67c48] focus-within:ring-2 focus-within:ring-[#a67c48]/20 rounded-xl px-3.5 py-1 transition-all shrink-0">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="지점명 또는 주소를 검색하세요 (예: 여의도, 마포)"
-            className="form-input w-full pl-4 pr-11 py-3 text-sm rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] shadow-sm"
+            className="flex-1 bg-transparent text-sm text-[#191f28] placeholder-[#8b95a1] outline-none py-2.5 pr-2"
             autoFocus
           />
-          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-[#8b95a1]">
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="hover:text-[#191f28] p-0.5 rounded transition-colors"
-                title="검색어 지우기"
-              >
-                <X size={15} />
-              </button>
-            )}
-            <Search size={18} className="text-[#a67c48]" />
-          </div>
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="text-[#8b95a1] hover:text-[#191f28] p-1 mr-1 transition-colors"
+              title="검색어 지우기"
+            >
+              <X size={16} />
+            </button>
+          )}
+          <Search size={19} className="text-[#a67c48] shrink-0" />
         </div>
 
         {/* 하단: 정사각형 지점 그리드 목록 (호점 표시 제거) */}
