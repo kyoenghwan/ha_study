@@ -62,7 +62,7 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
           </button>
         </div>
 
-        {/* 상단: 지점 검색창 (Flex 레이아웃으로 돋보기를 우측 끝에 완벽 정렬) */}
+        {/* 상단: 지점 검색창 (autoFocus 제거로 모바일 키보드 자동 팝업 방지) */}
         <div className="flex items-center bg-[#f8f9fc] border border-[#e5e8eb] focus-within:border-[#a67c48] focus-within:ring-2 focus-within:ring-[#a67c48]/20 rounded-xl px-3.5 py-1 transition-all shrink-0">
           <input
             type="text"
@@ -70,7 +70,6 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="지점명 또는 주소를 검색하세요 (예: 여의도, 마포)"
             className="flex-1 bg-transparent text-sm text-[#191f28] placeholder-[#8b95a1] outline-none py-2.5 pr-2"
-            autoFocus
           />
           {searchTerm && (
             <button
@@ -84,7 +83,7 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
           <Search size={19} className="text-[#a67c48] shrink-0" />
         </div>
 
-        {/* 하단: 정사각형 지점 그리드 목록 (호점 표시 제거) */}
+        {/* 하단: 지점 그리드 목록 (상단 낭비 공간 제거 및 컴팩트 레이아웃) */}
         <div className="flex-1 overflow-y-auto pr-1">
           {filteredBranches.length === 0 ? (
             <div className="text-center py-12 text-[#8b95a1] space-y-2 border border-dashed border-[#e5e8eb] rounded-2xl bg-[#f8f9fc]">
@@ -93,46 +92,36 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
               <p className="text-xs text-[#8b95a1]">다른 검색어로 다시 시도해 주세요.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               {filteredBranches.map((branch) => {
                 const isSelected = selectedBranchId === branch.id;
                 return (
                   <div
                     key={branch.id}
                     onClick={() => handleCardClick(branch.id)}
-                    className={`aspect-square p-4 rounded-2xl border cursor-pointer flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 relative group ${
+                    className={`p-3.5 rounded-xl border cursor-pointer flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 relative group ${
                       isSelected
-                        ? 'border-[#a67c48] bg-[#a67c48]/5 ring-2 ring-[#a67c48] shadow-md'
+                        ? 'border-[#a67c48] bg-[#a67c48]/5 ring-2 ring-[#a67c48] shadow-sm'
                         : 'border-[#e5e8eb] bg-[#f8f9fc] hover:bg-white hover:border-[#a67c48]/50 hover:shadow-sm'
                     }`}
                   >
-                    {/* 상단: 지점 아이콘 & 선택 체크마크 (호점 배지 제거) */}
-                    <div className="flex justify-between items-center">
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                        isSelected ? 'bg-[#a67c48] text-white' : 'bg-[#a67c48]/10 text-[#a67c48]'
-                      }`}>
-                        <MapPin size={16} />
+                    {/* 지점명 & 선택 상태 (상단 낭비 공간 제거) */}
+                    <div className="text-left">
+                      <div className="flex justify-between items-start">
+                        <p className="text-[11px] text-[#a67c48] font-semibold">르하임 스터디카페</p>
+                        {isSelected && (
+                          <span className="w-5 h-5 rounded-full bg-[#a67c48] text-white flex items-center justify-center shrink-0 shadow-sm">
+                            <Check size={12} />
+                          </span>
+                        )}
                       </div>
-                      
-                      {isSelected ? (
-                        <div className="w-6 h-6 rounded-full bg-[#a67c48] text-white flex items-center justify-center shadow-sm">
-                          <Check size={14} />
-                        </div>
-                      ) : (
-                        <div className="w-6 h-6 rounded-full border border-[#e5e8eb] bg-white group-hover:border-[#a67c48]/40" />
-                      )}
-                    </div>
-
-                    {/* 중앙: 지점명 */}
-                    <div className="space-y-0.5 my-auto text-left">
-                      <p className="text-[11px] text-[#a67c48] font-medium">르하임 스터디카페</p>
-                      <h4 className="text-base font-bold text-[#191f28] tracking-tight group-hover:text-[#a67c48] transition-colors">
+                      <h4 className="text-base font-bold text-[#191f28] tracking-tight group-hover:text-[#a67c48] transition-colors mt-0.5">
                         {branch.name}
                       </h4>
                     </div>
 
                     {/* 하단: 주소 정보 */}
-                    <div className="text-left pt-2 border-t border-[#e5e8eb]/70">
+                    <div className="text-left pt-2 mt-2.5 border-t border-[#e5e8eb]/70">
                       <p className="text-xs text-[#8b95a1] line-clamp-2 leading-snug">
                         {branch.address}
                       </p>
