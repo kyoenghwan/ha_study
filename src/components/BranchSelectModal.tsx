@@ -74,14 +74,20 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
           </button>
         </div>
 
-        {/* 상단: 지점 검색창 (autoFocus 제거로 모바일 키보드 자동 팝업 방지) */}
+        {/* 상단: 지점 검색창 (내부 input 기본 네모 테두리 완벽 제거) */}
         <div className="flex items-center bg-[#f8f9fc] border border-[#e5e8eb] focus-within:border-[#a67c48] focus-within:ring-2 focus-within:ring-[#a67c48]/20 rounded-xl px-3.5 py-1 transition-all shrink-0">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="지점명 또는 주소를 검색하세요 (예: 여의도, 마포)"
-            className="flex-1 bg-transparent text-sm text-[#191f28] placeholder-[#8b95a1] outline-none py-2.5 pr-2"
+            className="flex-1 bg-transparent text-sm text-[#191f28] placeholder-[#8b95a1] py-2.5 pr-2"
+            style={{
+              border: 'none',
+              outline: 'none',
+              boxShadow: 'none',
+              WebkitAppearance: 'none',
+            }}
           />
           {searchTerm && (
             <button
@@ -95,7 +101,7 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
           <Search size={19} className="text-[#a67c48] shrink-0" />
         </div>
 
-        {/* 하단: 지점 그리드 목록 (선택 시 확실한 골드 풀 채움 배경색 적용) */}
+        {/* 하단: 지점 그리드 목록 (선택 시 확실한 골드 배경 및 선명한 텍스트 100% 보장) */}
         <div className="flex-1 overflow-y-auto pr-1">
           {filteredBranches.length === 0 ? (
             <div className="text-center py-12 text-[#8b95a1] space-y-2 border border-dashed border-[#e5e8eb] rounded-2xl bg-[#f8f9fc]">
@@ -111,42 +117,55 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
                   <div
                     key={branch.id}
                     onClick={() => handleCardClick(branch.id)}
-                    className={`p-3.5 rounded-xl cursor-pointer flex flex-col justify-between transition-all duration-200 relative group ${
+                    className={`p-3.5 rounded-xl cursor-pointer flex flex-col justify-between transition-all duration-200 relative group shadow-sm ${
                       isSelected
-                        ? 'bg-gradient-to-br from-[#a67c48] to-[#8a6230] text-white border-2 border-[#7a5426] shadow-lg shadow-[#a67c48]/30 -translate-y-0.5 ring-2 ring-[#a67c48]/40'
-                        : 'border border-[#e5e8eb] bg-[#f8f9fc] text-[#191f28] hover:bg-white hover:border-[#a67c48]/50 hover:shadow-sm'
+                        ? 'border-2 border-[#8a6230] shadow-md -translate-y-0.5'
+                        : 'border border-[#e5e8eb] hover:bg-white hover:border-[#a67c48]/50 hover:shadow-sm'
                     }`}
+                    style={{
+                      backgroundColor: isSelected ? '#a67c48' : '#f8f9fc',
+                      borderColor: isSelected ? '#8a6230' : '#e5e8eb',
+                    }}
                   >
                     {/* 지점명 & 선택 상태 */}
                     <div className="text-left">
                       <div className="flex justify-between items-start">
-                        <p className={`text-[11px] font-semibold ${isSelected ? 'text-[#faecd8]' : 'text-[#8b95a1]'}`}>
+                        <p 
+                          className="text-[11px] font-semibold"
+                          style={{ color: isSelected ? '#faecd8' : '#8b95a1' }}
+                        >
                           르하임 스터디카페
                         </p>
                         {isSelected ? (
-                          <span className="px-2 py-0.5 rounded-md bg-white text-[#8a6230] text-[10px] font-extrabold flex items-center gap-1 shadow-sm">
+                          <span 
+                            className="px-2 py-0.5 rounded-md text-[10px] font-extrabold flex items-center gap-1 shadow-sm"
+                            style={{ backgroundColor: '#ffffff', color: '#8a6230' }}
+                          >
                             <Check size={11} strokeWidth={3.5} /> 선택됨
                           </span>
                         ) : (
                           <span className="w-4 h-4 rounded-full border border-[#d1d6db] bg-white group-hover:border-[#a67c48]/50" />
                         )}
                       </div>
-                      <h4 className={`text-base tracking-tight transition-colors mt-1 ${
-                        isSelected 
-                          ? 'font-black text-white' 
-                          : 'font-bold text-[#191f28] group-hover:text-[#a67c48]'
-                      }`}>
+                      <h4 
+                        className={`text-base tracking-tight transition-colors mt-1 ${
+                          isSelected ? 'font-black' : 'font-bold group-hover:text-[#a67c48]'
+                        }`}
+                        style={{ color: isSelected ? '#ffffff' : '#191f28' }}
+                      >
                         {branch.name}
                       </h4>
                     </div>
 
                     {/* 하단: 주소 정보 */}
-                    <div className={`text-left pt-2 mt-2.5 border-t ${
-                      isSelected ? 'border-white/20' : 'border-[#e5e8eb]/70'
-                    }`}>
-                      <p className={`text-xs line-clamp-2 leading-snug ${
-                        isSelected ? 'text-[#f5e7d6] font-medium' : 'text-[#8b95a1]'
-                      }`}>
+                    <div 
+                      className="text-left pt-2 mt-2.5 border-t"
+                      style={{ borderColor: isSelected ? 'rgba(255, 255, 255, 0.25)' : '#e5e8eb' }}
+                    >
+                      <p 
+                        className="text-xs line-clamp-2 leading-snug"
+                        style={{ color: isSelected ? '#f5e7d6' : '#8b95a1' }}
+                      >
                         {branch.address}
                       </p>
                     </div>
