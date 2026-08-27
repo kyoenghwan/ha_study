@@ -347,12 +347,14 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
 
 
-      {/* 르하임 스터디카페 이용 안내 배너 (넉넉한 안쪽 여백 및 세련된 아이콘 정렬) */}
+      {/* 르하임 스터디카페 이용 안내 배너 (넉넉한 헤더 간격 및 지점별 포인트 독립 관리 안내) */}
       <div className="bg-[#ffffff] border border-[#e5e8eb] rounded-2xl p-5 space-y-3.5 shadow-sm">
-        <h4 className="font-bold text-[#a67c48] text-sm flex items-center gap-1.5 border-b border-[#f1f3f5] pb-2.5">
-          <span>📌</span>
-          <span>르하임 이용 안내</span>
-        </h4>
+        <div className="border-b border-[#e5e8eb] pb-3 mb-1">
+          <h4 className="font-bold text-[#a67c48] text-sm flex items-center gap-2">
+            <span>📌</span>
+            <span>르하임 이용 안내</span>
+          </h4>
+        </div>
 
         <div className="space-y-2.5 text-xs text-[#4e5968] leading-relaxed">
           <div className="flex items-start gap-2">
@@ -363,6 +365,13 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           <div className="flex items-start gap-2">
             <span className="text-[#a67c48] font-black text-base leading-none select-none shrink-0">•</span>
             <p>출입 바코드는 <strong className="text-[#191f28]">이용 시작 5분 전</strong>에 자동 활성화되며, <strong className="text-[#191f28]">이용 시간 종료 시 자동 소멸</strong>됩니다.</p>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <span className="text-[#a67c48] font-black text-base leading-none select-none shrink-0">•</span>
+            <p>
+              포인트는 각 지점(사업자)별로 <strong className="text-[#191f28]">독립 관리</strong>되며 충전한 해당 지점에서만 사용 가능합니다. <span className="text-[#a67c48] font-semibold">(타 지점 이용 시 '이전 신청' 가능)</span>
+            </p>
           </div>
 
           {branchManagerContact && (

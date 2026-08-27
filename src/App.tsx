@@ -1462,14 +1462,22 @@ function App() {
               <button onClick={() => setShowPointModal(false)} className="text-[#8b95a1] hover:text-[#191f28] text-2xl">&times;</button>
             </div>
             
-            <div className="bg-[#a67c48]/10 border border-[#a67c48]/30 p-4 rounded-xl text-xs space-y-1.5 mb-4">
-              <p className="font-bold text-[#a67c48] text-sm">입금 계좌 안내</p>
+            <div className="bg-[#a67c48]/10 border border-[#a67c48]/30 p-4 rounded-xl text-xs space-y-2 mb-4">
+              <div className="flex justify-between items-center pb-1 border-b border-[#a67c48]/20">
+                <p className="font-bold text-[#a67c48] text-sm">입금 계좌 안내</p>
+                <span className="text-[10px] font-bold text-[#a67c48] bg-white px-2 py-0.5 rounded-full border border-[#a67c48]/30 shadow-xs">
+                  {currentBranchObj.fullName || currentBranchObj.name} 전용
+                </span>
+              </div>
               <p className="text-[#191f28]">은행명: <strong>{bankInfo.bankName}</strong></p>
               <p className="text-[#191f28]">계좌번호: <strong className="font-mono text-[#a67c48] text-sm">{bankInfo.accountNumber}</strong></p>
               <p className="text-[#191f28]">예금주: <strong>{bankInfo.accountHolder}</strong></p>
-              <p className="text-xs text-[#8b95a1] pt-1">
-                * 충전 금액 선택 후 계좌로 입금해 주시면 관리자 확인 즉시 포인트가 적립됩니다.
-              </p>
+              <div className="text-[11px] text-[#4e5968] bg-white/70 p-2.5 rounded-lg border border-[#a67c48]/20 space-y-1">
+                <p className="font-semibold text-[#a67c48]">💡 지점별 독립 포인트 안내</p>
+                <p className="text-[10px] text-[#8b95a1] leading-relaxed">
+                  충전된 포인트는 <strong>[{currentBranchObj.name}] 전용</strong>으로 관리되며, 타 지점 이용 시에는 대시보드의 '이전 신청'을 통해 안전하게 옮기실 수 있습니다.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2.5">
