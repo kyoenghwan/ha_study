@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction, Branch, PointTransferRequest } from '../types';
 import { 
   Plus, Trash2, Calendar, Edit2, CheckCircle2, AlertCircle, 
-  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight 
+  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight, ReceiptText, RotateCcw 
 } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
 
@@ -64,7 +64,7 @@ interface AdminDashboardProps {
   }) => boolean;
 }
 
-type TabType = 'rooms_reservations' | 'long_term_bulk' | 'point_management' | 'user_management' | 'branches_management' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
+type TabType = 'rooms_reservations' | 'long_term_bulk' | 'point_management' | 'point_usage_history' | 'user_management' | 'branches_management' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
 
 const generateTimeOptions = () => {
   const options: string[] = [];
@@ -121,6 +121,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRejectPointTransfer,
 }) => {
   const [pointTabSubMode, setPointTabSubMode] = useState<'charge' | 'transfer'>('charge');
+  // 📋 포인트 사용 내역 독립 탭 검색 & 필터 상태
+  const [usageSearchQuery, setUsageSearchQuery] = useState('');
+  const [usageTypeFilter, setUsageTypeFilter] = useState<'all' | 'use' | 'refund'>('all');
+  const [usageBranchFilter, setUsageBranchFilter] = useState<string>('all');
+  const [usageDateFilter, setUsageDateFilter] = useState<string>('');
   // 🏢 지점 등록 / 수정 모달 상태
   const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
@@ -199,9 +204,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return tab !== 'branches_management' && tab !== 'bank_settings';
     }
 
-    // 4. 지점 직원 / 매니저 (STAFF): 룸&예약 관리, 포인트/입금 승인, 바코드 검증/발급 3개만 접근 가능
+    // 4. 지점 직원 / 매니저 (STAFF): 룸&예약 관리, 포인트/입금 승인, 포인트 사용내역, 바코드 검증/발급 접근 가능
     if (currentAdminRole === 'STAFF') {
-      return tab === 'rooms_reservations' || tab === 'point_management' || tab === 'barcode_management';
+      return tab === 'rooms_reservations' || tab === 'point_management' || tab === 'point_usage_history' || tab === 'barcode_management';
     }
 
     return true;
@@ -556,6 +561,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {pointTransactions.filter(t => t.status === 'pending').length}
               </span>
             )}
+          </button>
+        )}
+
+        {canAccessTab('point_usage_history') && (
+          <button
+            onClick={() => setActiveTab('point_usage_history')}
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'point_usage_history'
+                ? 'border-[#a67c48] text-[#a67c48]'
+                : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+            }`}
+          >
+            <ReceiptText size={15} /> 📋 포인트 사용/차감 내역
           </button>
         )}
 
@@ -1236,71 +1254,293 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               )}
             </div>
 
-            {/* 2. 하단: 회원 포인트 사용 및 차감 내역 (공부방 예약 시 차감 로그 등 참고용) */}
-            <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm space-y-4">
-              <div className="flex justify-between items-center">
+          </div>
+        )}
+
+        {/* TAB 4: 📋 포인트 사용/차감 내역 (독립 검색 & 상세 필터 지원 메뉴) */}
+        {activeTab === 'point_usage_history' && (
+          <div className="space-y-6">
+            <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm space-y-5">
+              {/* 헤더 타이틀 */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-[#e5e8eb]">
                 <div>
-                  <h4 className="text-sm font-bold text-[#191f28] flex items-center gap-2">
-                    <span>📋 회원 포인트 사용 및 차감 내역 (참고용 로그)</span>
-                    <span className="text-xs font-semibold text-[#8b95a1]">
-                      총 {pointTransactions.filter(t => t.type === 'use' || t.type === 'refund').length}건
-                    </span>
-                  </h4>
-                  <p className="text-xs text-[#8b95a1] pt-0.5">
-                    회원들이 스터디룸 예약 시 자동으로 결제/차감되거나 환불된 전체 포인트 사용 로그입니다.
+                  <h3 className="text-base font-bold text-[#191f28] flex items-center gap-2">
+                    <ReceiptText className="text-[#a67c48]" size={20} /> 회원 포인트 사용 및 차감 내역 관제
+                  </h3>
+                  <p className="text-xs text-[#8b95a1] mt-1 leading-relaxed">
+                    회원들이 스터디룸 예약 시 자동으로 결제/차감되거나 취소 환불된 전체 포인트 이용 이력을 실시간으로 검색하고 조회합니다.
                   </p>
                 </div>
               </div>
 
-              {(() => {
-                const usageLogs = pointTransactions.filter(t => t.type === 'use' || t.type === 'refund');
-
-                if (usageLogs.length === 0) {
-                  return (
-                    <div className="p-8 text-center text-xs text-[#8b95a1] bg-[#f8f9fc] rounded-2xl border border-dashed border-[#e5e8eb]">
-                      포인트 사용 또는 차감 이력이 없습니다.
+              {/* 🔍 실시간 검색 및 다각도 필터 바 */}
+              <div className="bg-[#f8f9fc] p-4 rounded-2xl border border-[#e5e8eb] space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* 1. 회원명 / 아이디 / 메모 검색 */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-[#4e5968] flex items-center gap-1">
+                      <Search size={12} className="text-[#a67c48]" /> 회원 및 내역 검색
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={usageSearchQuery}
+                        onChange={(e) => setUsageSearchQuery(e.target.value)}
+                        placeholder="회원명, 아이디, 방이름, 사유 검색..."
+                        className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48]"
+                      />
+                      {usageSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setUsageSearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8b95a1] hover:text-[#191f28] text-xs font-bold"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
-                  );
-                }
+                  </div>
+
+                  {/* 2. 구분 필터 (전체 / 차감 / 환불) */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-[#4e5968]">이용 구분</label>
+                    <select
+                      value={usageTypeFilter}
+                      onChange={(e) => setUsageTypeFilter(e.target.value as any)}
+                      className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48] font-medium"
+                    >
+                      <option value="all">전체 (차감 및 환불)</option>
+                      <option value="use">💸 포인트 사용 차감</option>
+                      <option value="refund">🔄 포인트 환불</option>
+                    </select>
+                  </div>
+
+                  {/* 3. 지점 필터 */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-[#4e5968]">대상 지점</label>
+                    <select
+                      value={usageBranchFilter}
+                      onChange={(e) => setUsageBranchFilter(e.target.value)}
+                      className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48] font-medium"
+                    >
+                      <option value="all">전체 지점</option>
+                      {branches.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.fullName || b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 4. 날짜 필터 & 초기화 */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[11px] font-bold text-[#4e5968]">이용 일자</label>
+                      {(usageSearchQuery || usageTypeFilter !== 'all' || usageBranchFilter !== 'all' || usageDateFilter) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUsageSearchQuery('');
+                            setUsageTypeFilter('all');
+                            setUsageBranchFilter('all');
+                            setUsageDateFilter('');
+                          }}
+                          className="text-[10px] text-[#e93d3d] hover:underline flex items-center gap-0.5 font-bold"
+                        >
+                          <RotateCcw size={10} /> 필터 초기화
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      value={usageDateFilter}
+                      onChange={(e) => setUsageDateFilter(e.target.value)}
+                      className="form-input text-xs py-1.5 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 📊 검색 결과 KPI 통계 요약 카드 */}
+              {(() => {
+                const filteredUsage = pointTransactions
+                  .filter((t) => t.type === 'use' || t.type === 'refund')
+                  .filter((t) => {
+                    // 1. 텍스트 검색 (회원명, 아이디, 설명)
+                    if (usageSearchQuery.trim()) {
+                      const q = usageSearchQuery.toLowerCase();
+                      const matchName = t.userName?.toLowerCase().includes(q);
+                      const matchId = t.userId?.toLowerCase().includes(q);
+                      const matchDesc = t.description?.toLowerCase().includes(q);
+                      if (!matchName && !matchId && !matchDesc) return false;
+                    }
+                    // 2. 구분 필터
+                    if (usageTypeFilter !== 'all' && t.type !== usageTypeFilter) {
+                      return false;
+                    }
+                    // 3. 지점 필터
+                    if (usageBranchFilter !== 'all' && t.branchId && t.branchId !== usageBranchFilter) {
+                      return false;
+                    }
+                    // 4. 날짜 필터
+                    if (usageDateFilter) {
+                      const txDate = (t.createdAt || '').split('T')[0];
+                      if (txDate !== usageDateFilter) return false;
+                    }
+                    return true;
+                  });
+
+                const totalUsedPoints = filteredUsage
+                  .filter((t) => t.type === 'use')
+                  .reduce((acc, cur) => acc + cur.amount, 0);
+
+                const totalRefundPoints = filteredUsage
+                  .filter((t) => t.type === 'refund')
+                  .reduce((acc, cur) => acc + cur.amount, 0);
 
                 return (
-                  <div className="overflow-x-auto border border-[#e5e8eb] rounded-xl">
-                    <table className="w-full text-left text-xs min-w-[650px]">
-                      <thead className="bg-[#f8f9fc] border-b border-[#e5e8eb] text-[#191f28]">
-                        <tr>
-                          <th className="p-3">일시</th>
-                          <th className="p-3">회원명 (아이디)</th>
-                          <th className="p-3">구분</th>
-                          <th className="p-3">차감/환불 금액</th>
-                          <th className="p-3">사용 내역 / 사유</th>
-                          <th className="p-3">상태</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#e5e8eb]">
-                        {usageLogs.map((tx) => (
-                          <tr key={tx.id} className="hover:bg-[#f8f9fc]">
-                            <td className="p-3 text-[#8b95a1] font-mono">{(tx.createdAt || '').split('T')[0] || '-'}</td>
-                            <td className="p-3 font-bold text-[#191f28]">
-                              {tx.userName} <span className="text-[10px] text-[#8b95a1] font-normal">({tx.userId})</span>
-                            </td>
-                            <td className="p-3 font-bold">
-                              {tx.type === 'use' && <span className="text-[#f59e0b]">포인트 차감</span>}
-                              {tx.type === 'refund' && <span className="text-[#28a745]">포인트 환불</span>}
-                            </td>
-                            <td className={`p-3 font-extrabold ${tx.type === 'refund' ? 'text-[#28a745]' : 'text-[#191f28]'}`}>
-                              {tx.type === 'refund' ? `+${tx.amount.toLocaleString()}` : `-${tx.amount.toLocaleString()}`} P
-                            </td>
-                            <td className="p-3 text-[#4e5968] max-w-[280px] truncate">{tx.description}</td>
-                            <td className="p-3">
-                              <span className="text-[10px] text-[#28a745] bg-[#28a745]/10 px-2 py-0.5 rounded font-bold">
-                                처리완료
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="bg-[#ffffff] p-3.5 rounded-xl border border-[#e5e8eb] flex justify-between items-center shadow-xs">
+                        <div>
+                          <p className="text-[11px] font-bold text-[#8b95a1]">검색된 내역 수</p>
+                          <p className="text-lg font-black text-[#191f28] mt-0.5">{filteredUsage.length}건</p>
+                        </div>
+                        <span className="p-2 rounded-xl bg-[#f1f3f5] text-[#191f28]">
+                          <ReceiptText size={18} />
+                        </span>
+                      </div>
+
+                      <div className="bg-[#ffffff] p-3.5 rounded-xl border border-[#e5e8eb] flex justify-between items-center shadow-xs">
+                        <div>
+                          <p className="text-[11px] font-bold text-[#8b95a1]">총 차감(사용) 금액</p>
+                          <p className="text-lg font-black text-[#e93d3d] mt-0.5">-{totalUsedPoints.toLocaleString()} P</p>
+                        </div>
+                        <span className="p-2 rounded-xl bg-[#e93d3d]/10 text-[#e93d3d]">
+                          <Coins size={18} />
+                        </span>
+                      </div>
+
+                      <div className="bg-[#ffffff] p-3.5 rounded-xl border border-[#e5e8eb] flex justify-between items-center shadow-xs">
+                        <div>
+                          <p className="text-[11px] font-bold text-[#8b95a1]">총 환불 금액</p>
+                          <p className="text-lg font-black text-[#28a745] mt-0.5">+{totalRefundPoints.toLocaleString()} P</p>
+                        </div>
+                        <span className="p-2 rounded-xl bg-[#28a745]/10 text-[#28a745]">
+                          <RotateCcw size={18} />
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 모바일 전용 카드 뷰 */}
+                    <div className="block md:hidden space-y-3">
+                      {filteredUsage.length === 0 ? (
+                        <div className="p-10 text-center text-xs text-[#8b95a1] bg-[#f8f9fc] rounded-2xl border border-dashed border-[#e5e8eb]">
+                          검색 조건과 일치하는 포인트 사용/차감 내역이 없습니다.
+                        </div>
+                      ) : (
+                        filteredUsage.map((tx) => (
+                          <div key={tx.id} className="border border-[#e5e8eb] rounded-2xl p-4 bg-[#ffffff] shadow-sm space-y-2.5">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="text-sm font-bold text-[#191f28]">{tx.userName}</span>
+                                <span className="text-xs text-[#8b95a1] ml-1.5 font-mono">({tx.userId})</span>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                tx.type === 'refund' ? 'bg-[#28a745]/10 text-[#28a745]' : 'bg-[#f59e0b]/10 text-[#f59e0b]'
+                              }`}>
+                                {tx.type === 'refund' ? '포인트 환불' : '포인트 차감'}
                               </span>
-                            </td>
+                            </div>
+
+                            <div className="flex justify-between items-center bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb]">
+                              <p className="text-xs font-medium text-[#4e5968] pr-2">{tx.description}</p>
+                              <span className={`text-base font-extrabold shrink-0 ${
+                                tx.type === 'refund' ? 'text-[#28a745]' : 'text-[#191f28]'
+                              }`}>
+                                {tx.type === 'refund' ? `+${tx.amount.toLocaleString()}` : `-${tx.amount.toLocaleString()}`} P
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center pt-1.5 text-xs text-[#8b95a1]">
+                              <span className="font-mono text-[11px]">{(tx.createdAt || '').split('T')[0] || '-'}</span>
+                              <span className="text-[10px] font-semibold text-[#a67c48]">
+                                {tx.branchId ? (branches.find(b => b.id === tx.branchId)?.name || tx.branchId) : '공통'}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* 데스크톱 전용 테이블 */}
+                    <div className="hidden md:block overflow-x-auto border border-[#e5e8eb] rounded-2xl">
+                      <table className="w-full text-left text-xs min-w-[700px]">
+                        <thead className="bg-[#f8f9fc] border-b border-[#e5e8eb] text-[#191f28]">
+                          <tr>
+                            <th className="p-3.5">일시</th>
+                            <th className="p-3.5">회원명 (아이디)</th>
+                            <th className="p-3.5">구분</th>
+                            <th className="p-3.5">이용 지점</th>
+                            <th className="p-3.5">차감/환불 금액</th>
+                            <th className="p-3.5">상세 내용 / 사유</th>
+                            <th className="p-3.5">상태</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-[#e5e8eb]">
+                          {filteredUsage.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="p-12 text-center text-xs text-[#8b95a1]">
+                                검색 조건과 일치하는 포인트 사용/차감 내역이 없습니다.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredUsage.map((tx) => {
+                              const branchName = tx.branchId ? (branches.find(b => b.id === tx.branchId)?.fullName || tx.branchId) : '-';
+                              return (
+                                <tr key={tx.id} className="hover:bg-[#f8f9fc] transition-colors">
+                                  <td className="p-3.5 text-[#8b95a1] font-mono whitespace-nowrap">
+                                    {(tx.createdAt || '').split('T')[0] || '-'}
+                                  </td>
+                                  <td className="p-3.5 font-bold text-[#191f28] whitespace-nowrap">
+                                    {tx.userName} <span className="text-[10px] text-[#8b95a1] font-normal font-mono">({tx.userId})</span>
+                                  </td>
+                                  <td className="p-3.5 font-bold whitespace-nowrap">
+                                    {tx.type === 'use' && (
+                                      <span className="text-[#8a6230] bg-[#faecd8] px-2 py-0.5 rounded-lg border border-[#a67c48]/30">
+                                        차감
+                                      </span>
+                                    )}
+                                    {tx.type === 'refund' && (
+                                      <span className="text-[#28a745] bg-[#28a745]/10 px-2 py-0.5 rounded-lg border border-[#28a745]/30">
+                                        환불
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="p-3.5 text-[#4e5968] font-semibold whitespace-nowrap">
+                                    {branchName}
+                                  </td>
+                                  <td className={`p-3.5 font-extrabold whitespace-nowrap ${
+                                    tx.type === 'refund' ? 'text-[#28a745]' : 'text-[#191f28]'
+                                  }`}>
+                                    {tx.type === 'refund' ? `+${tx.amount.toLocaleString()}` : `-${tx.amount.toLocaleString()}`} P
+                                  </td>
+                                  <td className="p-3.5 text-[#4e5968] max-w-[280px] truncate" title={tx.description}>
+                                    {tx.description}
+                                  </td>
+                                  <td className="p-3.5 whitespace-nowrap">
+                                    <span className="text-[10px] text-[#28a745] bg-[#28a745]/10 px-2 py-0.5 rounded font-bold">
+                                      처리완료
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 );
               })()}
             </div>
