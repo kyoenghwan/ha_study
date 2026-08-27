@@ -1200,27 +1200,50 @@ function App() {
   const currentBranchObj = branches.find((b) => b.id === selectedBranch) || branches[0] || BRANCHES[0];
   
   // 🏢 현재 선택된 지점(selectedBranch)의 룸 및 예약 필터링
-  // branchId가 없는 레거시 룸은 기본 'yeouido'로 취급
-  // 현재 지점에 룸이 없으면 INITIAL_ROOMS에서 복구
+  // 현재 지점에 룸이 없으면 자동 생성 템플릿(4인실, 6인실, 10인실)으로 즉시 복구/보장
   let currentBranchRooms = rooms.filter((r) => (r.branchId || 'yeouido') === selectedBranch);
   if (currentBranchRooms.length === 0) {
-    const defaultBranchRooms = INITIAL_ROOMS.filter((r) => (r.branchId || 'yeouido') === selectedBranch);
-    if (defaultBranchRooms.length > 0) {
-      currentBranchRooms = defaultBranchRooms;
-      // 비동기로 전체 룸 업데이트
-      setTimeout(() => {
-        setRooms((prev) => {
-          const exists = prev.some((r) => (r.branchId || 'yeouido') === selectedBranch);
-          if (!exists) {
-            const merged = [...prev, ...defaultBranchRooms];
-            localStorage.setItem('lheureux_rooms', JSON.stringify(merged));
-            return merged;
-          }
-          return prev;
-        });
-      }, 0);
-    }
+    const bObj = branches.find(b => b.id === selectedBranch);
+    const bName = bObj?.name || selectedBranch;
+    const generatedRooms: Room[] = [
+      {
+        id: `room-${selectedBranch}-1`,
+        name: `포커스 스터디룸 A (4인실)`,
+        capacity: 4,
+        description: `[${bName}] 공기청정기와 와이드 화이트보드가 완비된 4인실입니다.`,
+        branchId: selectedBranch,
+      },
+      {
+        id: `room-${selectedBranch}-2`,
+        name: `그룹 비즈니스룸 B (6인실)`,
+        capacity: 6,
+        description: `[${bName}] 개별 모니터와 고속 와이파이가 구비된 6인실입니다.`,
+        branchId: selectedBranch,
+      },
+      {
+        id: `room-${selectedBranch}-3`,
+        name: `세미나홀 C (10인실)`,
+        capacity: 10,
+        description: `[${bName}] 빔프로젝터와 대형 스크린이 구비된 10인 단체룸입니다.`,
+        branchId: selectedBranch,
+      },
+    ];
+
+    currentBranchRooms = generatedRooms;
+    setTimeout(() => {
+      setRooms((prev) => {
+        const exists = prev.some((r) => (r.branchId || 'yeouido') === selectedBranch);
+        if (!exists) {
+          const merged = [...prev, ...generatedRooms];
+          localStorage.setItem('lheureux_rooms', JSON.stringify(merged));
+          persist('지점 기본 룸 생성', () => saveDbRooms(merged));
+          return merged;
+        }
+        return prev;
+      });
+    }, 0);
   }
+
   const currentBranchReservations = reservations.filter((res) => 
     currentBranchRooms.some((r) => r.id === res.roomId)
   );
@@ -1553,8 +1576,8 @@ function App() {
         {role === 'admin' ? (
           <AdminDashboard
             currentUser={currentUser}
-            rooms={currentBranchRooms}
-            reservations={currentBranchReservations}
+            rooms={isSuperAdmin ? rooms : currentBranchRooms}
+            reservations={isSuperAdmin ? reservations : currentBranchReservations}
             branches={branches}
             selectedBranchId={selectedBranch}
             getBranchPoints={getBranchPoints}

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction, Branch, PointTransferRequest } from '../types';
 import { 
   Plus, Trash2, Calendar, Edit2, CheckCircle2, AlertCircle, 
-  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight, ReceiptText, RotateCcw, Bell, Send, Volume2, MessageSquare, CheckCheck 
+  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight, ReceiptText, RotateCcw, Bell, Send, Volume2, MessageSquare, CheckCheck, ChevronRight 
 } from 'lucide-react';
 import type { NotificationSettings } from '../lib/notificationService';
 import { DEFAULT_NOTIFICATION_SETTINGS, OFFICIAL_TELEGRAM_BOT_TOKEN, playNotificationSound, sendTelegramMessage, requestNotificationPermission } from '../lib/notificationService';
@@ -103,7 +103,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onCancelReservation,
   onEditReservation,
   onAddBulkReservations,
-  onTogglePaymentStatus,
+  onTogglePaymentStatus: _onTogglePaymentStatus,
   onVerifyBarcode,
   onUpdateBankInfo,
   onAddAdminBarcode,
@@ -221,6 +221,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setActiveTab('rooms_reservations');
     }
   }, [activeTab, currentAdminRole]);
+
+  // 룸 지점 필터 상태
+  const [roomBranchFilter, setRoomBranchFilter] = useState<string>('all');
 
   // 룸 수정 모달 상태
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -666,31 +669,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* TAB 1: 룸 및 예약 관리 */}
         {activeTab === 'rooms_reservations' && (
           <div className="space-y-5">
-            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#e5e8eb] shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-[#e5e8eb] shadow-sm">
               <div>
-                <h2 className="text-base font-bold text-[#191f28]">스터디룸 및 예약 목록</h2>
+                <h2 className="text-base font-bold text-[#191f28] flex items-center gap-2">
+                  <span>스터디룸 및 예약 목록</span>
+                  <span className="text-xs font-bold text-[#a67c48] bg-[#a67c48]/10 px-2.5 py-0.5 rounded-full">
+                    총 {rooms.filter(r => roomBranchFilter === 'all' || (r.branchId || 'yeouido') === roomBranchFilter).length}개 룸
+                  </span>
+                </h2>
                 <p className="text-xs text-[#8b95a1] pt-0.5">공부방을 추가/삭제하거나 실제 예약자의 예약을 변경/취소합니다.</p>
               </div>
-              <button
-                onClick={() => setShowAddRoomModal(true)}
-                className="gold-btn flex items-center gap-1.5 text-xs py-2.5 px-3.5 rounded-xl shadow"
-              >
-                <Plus size={15} /> 새 룸 추가
-              </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {/* 🏢 지점 선택 필터 (최고관리자는 전체 지점 통합 또는 개별 지점 선택) */}
+                <select
+                  value={roomBranchFilter}
+                  onChange={(e) => setRoomBranchFilter(e.target.value)}
+                  className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-[#f8f9fc] font-bold text-[#191f28] focus:border-[#a67c48]"
+                >
+                  <option value="all">🌐 전체 지점 룸 통합 보기</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      🏢 {b.fullName || b.name}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setShowAddRoomModal(true)}
+                  className="gold-btn flex items-center gap-1.5 text-xs py-2.5 px-3.5 rounded-xl shadow shrink-0"
+                >
+                  <Plus size={15} /> 새 룸 추가
+                </button>
+              </div>
             </div>
 
             {/* 방 카드 목록 */}
             <div className="space-y-4">
-              {rooms.length === 0 ? (
-                <div className="text-center py-10 text-[#8e8e93] border border-dashed border-[#e5e5ea] rounded-xl bg-white">
-                  등록된 공부방이 없습니다. 방을 추가해 주세요.
-                </div>
-              ) : (
-                rooms.map((room) => {
+              {(() => {
+                const displayedRooms = rooms.filter(r => roomBranchFilter === 'all' || (r.branchId || 'yeouido') === roomBranchFilter);
+                if (displayedRooms.length === 0) {
+                  return (
+                    <div className="text-center py-10 text-[#8e8e93] border border-dashed border-[#e5e5ea] rounded-xl bg-white space-y-2">
+                      <p className="font-bold">선택하신 지점에 등록된 공부방이 없습니다.</p>
+                      <button
+                        onClick={() => setShowAddRoomModal(true)}
+                        className="text-xs font-bold text-[#a67c48] underline"
+                      >
+                        + 지금 새 공부방 추가하기
+                      </button>
+                    </div>
+                  );
+                }
+
+                return displayedRooms.map((room) => {
                   const roomResList = reservations
                     .filter((r) => r.roomId === room.id)
                     .sort((a, b) => `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`));
                   const isExpanded = expandedRoomIds[room.id] ?? false;
+                  const roomBranch = branches.find(b => b.id === (room.branchId || 'yeouido'));
 
                   return (
                     <div key={room.id} className="bg-[#ffffff] border border-[#e5e8eb] rounded-2xl overflow-hidden shadow-sm">
@@ -699,7 +736,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div className="space-y-1.5 flex-1 pr-3">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-base font-bold text-[#191f28]">{room.name}</h3>
-                            <span className="text-[11px] text-[#a67c48] bg-[#a67c48]/10 px-2.5 py-0.5 rounded-full font-bold">
+                            <span className="text-[10px] font-extrabold text-[#a67c48] bg-[#a67c48]/10 px-2 py-0.5 rounded-lg border border-[#a67c48]/30">
+                              🏢 {roomBranch?.name || room.branchId || '여의도점'}
+                            </span>
+                            <span className="text-[11px] text-[#4e5968] bg-[#f1f3f5] px-2 py-0.5 rounded-full font-bold">
                               정원 {room.capacity}명
                             </span>
                           </div>
@@ -718,7 +758,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </button>
                           <button
                             onClick={() => {
-                              if (confirm(`'${room.name}'을(를) 삭제하시겠습니까? 관련된 전체 예약 내역도 삭제됩니다.`)) {
+                              if (confirm(`'${room.name}'을(를) 삭제하시겠습니까?\n해당 방의 모든 예약도 함께 삭제됩니다.`)) {
                                 onDeleteRoom(room.id);
                               }
                             }}
@@ -742,64 +782,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </span>
 
                         <button
+                          type="button"
                           onClick={() => toggleRoomReservations(room.id)}
-                          className="text-xs font-bold text-[#a67c48] bg-white border border-[#a67c48]/30 px-3 py-1.5 rounded-xl hover:bg-[#a67c48]/10 transition-all flex items-center gap-1 shadow-sm"
+                          className="text-xs font-bold text-[#a67c48] hover:underline flex items-center gap-1"
                         >
-                          <span>{isExpanded ? '예약 내역 접기 ▲' : '예약 내역 보기 ▼'}</span>
+                          <span>{isExpanded ? '접기' : '예약 목록 보기'}</span>
+                          <ChevronRight size={14} className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                         </button>
                       </div>
 
-                      {/* 펼쳤을 때만 노출되는 예약 내역 리스트 */}
+                      {/* 펼쳐진 예약 목록 */}
                       {isExpanded && (
-                        <div className="p-4 border-t border-[#e5e8eb] bg-[#ffffff] space-y-3">
+                        <div className="p-4 border-t border-[#f0f0f2] space-y-3 bg-white">
                           {roomResList.length === 0 ? (
-                            <p className="text-xs text-[#8b95a1] py-4 text-center italic bg-[#f8f9fc] rounded-xl border border-dashed border-[#e5e8eb]">
-                              현재 등록된 예약이 없습니다.
-                            </p>
+                            <p className="text-xs text-[#8b95a1] py-3 text-center">등록된 예약 내역이 없습니다.</p>
                           ) : (
-                            <div className="space-y-2.5">
+                            <div className="space-y-2">
                               {roomResList.map((res) => (
                                 <div
                                   key={res.id}
-                                  className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#f8f9fc] border border-[#e5e8eb] p-3 rounded-xl gap-2"
+                                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-[#e5e8eb] bg-[#f8f9fc] gap-2 text-xs"
                                 >
-                                  <div className="text-xs space-y-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-bold text-[#191f28]">{res.userName}</span>
-                                      <span className="text-[#8b95a1]">({res.userPhone})</span>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-[#191f28]">{res.date}</span>
+                                      <span className="font-semibold text-[#a67c48]">{res.startTime} ~ {res.endTime}</span>
                                       {res.isLongTerm && (
-                                        <span className="text-[10px] bg-[#28a745]/10 text-[#28a745] font-bold px-2 py-0.5 rounded-full">
-                                          장기 과외
+                                        <span className="bg-[#a67c48]/10 text-[#a67c48] text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                                          장기
                                         </span>
                                       )}
-                                      <span
-                                        onClick={() => onTogglePaymentStatus(res.id)}
-                                        className={`cursor-pointer text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 transition-all ${
-                                          res.paymentStatus === 'paid'
-                                            ? 'bg-[#28a745]/10 text-[#28a745]'
-                                            : 'bg-[#f59e0b]/10 text-[#f59e0b]'
-                                        }`}
-                                        title="결제 상태 변경 (클릭)"
-                                      >
-                                        {res.paymentStatus === 'paid' ? '결제/입금 완료' : '무통장 입금 대기'}
-                                      </span>
                                     </div>
-                                    <p className="text-[#8b95a1] flex items-center gap-1 pt-0.5">
-                                      <Calendar size={12} className="text-[#a67c48]" />
-                                      <span>{res.date}</span>
-                                      <span className="font-bold text-[#191f28]">{res.startTime} ~ {res.endTime}</span>
-                                      <span className="text-[10px] text-[#8b95a1] pl-2 font-mono">
-                                        | 바코드: {res.barcodeId}
-                                      </span>
+                                    <p className="text-[#4e5968]">
+                                      {res.userName} ({res.userPhone})
                                     </p>
                                   </div>
 
-                                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                                  <div className="flex items-center gap-2 shrink-0">
                                     <button
                                       onClick={() => openEditModal(res)}
-                                      className="gold-btn-outline text-xs py-1 px-2.5 rounded-lg flex items-center gap-1 font-semibold"
+                                      className="text-xs text-[#a67c48] hover:bg-[#a67c48]/10 border border-[#a67c48]/30 font-semibold py-1 px-2.5 rounded-lg transition-colors"
                                     >
-                                      <Edit2 size={12} /> 시간/룸 변경
+                                      수정
                                     </button>
                                     <button
                                       onClick={() => {
@@ -820,8 +844,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       )}
                     </div>
                   );
-                })
-              )}
+                });
+              })()}
             </div>
           </div>
         )}

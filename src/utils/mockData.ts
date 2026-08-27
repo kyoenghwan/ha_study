@@ -74,6 +74,28 @@ export const INITIAL_ROOMS: Room[] = [
     branchId: 'yeouido',
   },
 
+  // 🏢 대방역 공부방
+  {
+    id: 'room-daebang-1',
+    name: '포커스 스터디룸 A (4인실)',
+    capacity: 4,
+    description: '공기청정기와 와이드 화이트보드가 설치된 4인 전용 스터디룸입니다.',
+    branchId: 'daebang',
+  },
+  {
+    id: 'room-daebang-2',
+    name: '그룹 비즈니스룸 B (6인실)',
+    capacity: 6,
+    description: '개별 모니터와 멀티탭이 완비된 중형 그룹 스터디룸입니다.',
+    branchId: 'daebang',
+  },
+  {
+    id: 'room-daebang-3',
+    name: '대방 세미나홀 C (10인실)',
+    capacity: 10,
+    description: '빔프로젝터, 대형 스크린이 구비된 대형 세미나룸입니다.',
+    branchId: 'daebang',
+  },
   // 🏢 마포점 공부방
   {
     id: 'room-mapo-1',
