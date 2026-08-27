@@ -324,7 +324,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             <div
               key={room.id}
               onClick={() => onSelectRoom(room.id)}
-              className="bg-[#f8f9fc] hover:bg-[#ffffff] border border-[#e5e8eb] hover:border-[#a67c48]/50 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200 hover:-translate-y-0.5 shadow-sm"
+              className="group bg-[#f8f9fc] hover:bg-[#ffffff] border border-[#e5e8eb] hover:border-[#a67c48]/50 rounded-2xl p-4 flex justify-between items-center cursor-pointer transition-all duration-200 hover:-translate-y-0.5 shadow-sm"
             >
               <div className="flex items-center gap-3.5">
                 <span className="text-sm font-extrabold text-[#a67c48] tracking-wider shrink-0 bg-[#a67c48]/10 px-2.5 py-1 rounded-lg">
@@ -336,8 +336,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                 </div>
               </div>
 
-              <div className="text-[#8b95a1] hover:text-[#a67c48] transition-colors shrink-0 pl-2">
-                <ChevronRight size={22} />
+              <div className="shrink-0 pl-2">
+                <div className="bg-[#a67c48] text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-sm flex items-center gap-1 transition-all group-hover:bg-[#8c6535] group-hover:shadow-md">
+                  예약하기 <ChevronRight size={14} strokeWidth={3} />
+                </div>
               </div>
             </div>
           ))
