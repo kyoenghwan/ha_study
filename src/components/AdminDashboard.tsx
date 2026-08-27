@@ -3309,9 +3309,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     setRoomToDelete(null);
                   }
                 }}
-                className="flex-1 py-2.5 text-xs font-bold rounded-xl bg-[#e93d3d] hover:bg-[#d63030] text-white shadow transition-all flex items-center justify-center gap-1"
+                className="flex-1 py-3 text-xs font-extrabold rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-90"
+                style={{
+                  backgroundColor: '#e93d3d',
+                  color: '#ffffff',
+                  border: '1px solid #c92a2a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                <Trash2 size={14} /> 영구 삭제하기
+                <Trash2 size={15} color="#ffffff" strokeWidth={2.5} />
+                <span style={{ color: '#ffffff', fontWeight: 800 }}>영구 삭제하기</span>
               </button>
             </div>
           </div>
