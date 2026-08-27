@@ -2375,14 +2375,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   {/* 지점 문의 연락처 / 인풋필드 */}
                   <div 
                     className="py-2.5 border-b border-[#f1f3f5]"
-                    style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'flex-start', gap: '12px' }}
+                    style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
                   >
-                    <div className="pt-2">
-                      <label className="text-xs font-bold text-[#191f28] block">
-                        지점 문의 연락처
-                      </label>
-                      <span className="text-[10px] text-[#a67c48] font-bold block mt-0.5">★ 메인 노출</span>
-                    </div>
+                    <label className="text-xs font-bold text-[#191f28]">
+                      지점 문의 연락처
+                    </label>
                     <div>
                       <input
                         type="text"
@@ -2392,8 +2389,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         placeholder="예: 010-3957-3425"
                         className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] font-mono w-full"
                       />
-                      <p className="text-[10px] text-[#8b95a1] mt-1 leading-snug">
-                        💡 입력하신 번호가 이용자 예약 화면의 <strong>'지점 담당자 문의: 010-XXXX-XXXX'</strong>로 실시간 노출됩니다.
+                      <p className="text-[10px] text-[#a67c48] font-medium mt-1 leading-snug">
+                        ★ 메인 화면 노출 (이용자 예약 화면 상단 '지점 담당자 문의' 번호로 자동 연동됩니다.)
                       </p>
                     </div>
                   </div>
