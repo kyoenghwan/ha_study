@@ -61,6 +61,7 @@ interface UserMetaRecord {
   isSuperAdmin?: boolean;
   adminRoleCode?: UserAccount['adminRoleCode'];
   role?: UserAccount['role'];
+  telegramChatId?: string;
 }
 
 export const fetchDbUsers = async (): Promise<UserAccount[]> => {
@@ -90,6 +91,7 @@ export const fetchDbUsers = async (): Promise<UserAccount[]> => {
         points: u.points ?? 0,
         branchIds: meta.branchIds,
         branchPoints: meta.branchPoints,
+        telegramChatId: meta.telegramChatId,
       };
     });
   } catch (err) {
@@ -108,6 +110,7 @@ export const saveDbUsersMeta = async (users: UserAccount[]): Promise<DbResult> =
         isSuperAdmin: (u.userId === 'admin' || u.userId === 'kyoenghwan') ? true : u.isSuperAdmin,
         adminRoleCode: (u.userId === 'admin' || u.userId === 'kyoenghwan') ? 'PLATFORM_ADMIN' : u.adminRoleCode,
         role: u.role,
+        telegramChatId: u.telegramChatId,
       };
     });
 

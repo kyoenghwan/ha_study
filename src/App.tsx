@@ -233,6 +233,7 @@ function App() {
       userId: currentUser.userId,
       fromBranchName,
       toBranchName,
+      toBranchId: data.toBranchId,
       amount: data.amount,
       reason: data.reason,
     });
@@ -740,6 +741,7 @@ function App() {
       userPhone: currentUser.phone,
       amount,
       branchName: branchObj?.fullName || branchObj?.name,
+      branchId: branchObj?.id,
     });
 
     alert(`무통장 입금 충전 신청이 완료되었습니다.\n입금계좌: ${bankInfo.bankName} ${bankInfo.accountNumber} (${bankInfo.accountHolder})\n관리자 입금 확인 후 포인트가 즉시 지급됩니다.`);
@@ -1371,6 +1373,7 @@ function App() {
     name: string;
     phone: string;
     password?: string;
+    telegramChatId?: string;
   }) => {
     const branchNames = data.branchIds
       .map((id) => BRANCHES.find((b) => b.id === id)?.name || id)
@@ -1386,6 +1389,7 @@ function App() {
         role: 'admin',
         branchIds: data.branchIds,
         ...(data.password ? { password: data.password.trim() } : {}),
+        ...(data.telegramChatId ? { telegramChatId: data.telegramChatId.trim() } : {}),
       };
 
       const nextUsers = users.map((u) => (u.id === existingUser.id ? updatedUser : u));
@@ -1412,6 +1416,7 @@ function App() {
       role: 'admin',
       points: 0,
       branchIds: data.branchIds,
+      telegramChatId: data.telegramChatId?.trim() || undefined,
     };
 
     const nextUsers = [...users, newAdminUser];

@@ -5,7 +5,7 @@
  * - 텔레그램(Telegram) 봇 실시간 스마트폰 푸시 알림
  */
 
-import { fetchDbNotificationSettings } from './supabase';
+import { fetchDbNotificationSettings, fetchDbUsers } from './supabase';
 
 export interface NotificationSettings {
   soundEnabled: boolean;
@@ -186,6 +186,7 @@ export const triggerChargeRequestNotification = async (
     userPhone: string;
     amount: number;
     branchName?: string;
+    branchId?: string;
   }
 ) => {
   // 1. 소리 알림
@@ -200,7 +201,21 @@ export const triggerChargeRequestNotification = async (
   );
 
   // 3. 텔레그램 알림 (DB에서 최신 chatId를 직접 조회)
-  const { token: tokenToUse, chatId: chatIdToUse } = await getLatestTelegramSettings(settings);
+  let { token: tokenToUse, chatId: chatIdToUse } = await getLatestTelegramSettings(settings);
+
+  // 🌟 지점 맞춤 알림: toBranchId가 있으면 해당 지점 관리자 중 telegramChatId가 있는 사람을 찾음
+  if (info.branchId) {
+    try {
+      const users = await fetchDbUsers();
+      const branchAdmins = users.filter(u => u.role === 'admin' && u.branchIds?.includes(info.branchId!));
+      const adminWithChatId = branchAdmins.find(u => u.telegramChatId);
+      if (adminWithChatId && adminWithChatId.telegramChatId) {
+        chatIdToUse = adminWithChatId.telegramChatId;
+      }
+    } catch (e) {
+      console.warn('[Telegram] 지점 관리자 조회 실패:', e);
+    }
+  }
 
   if (chatIdToUse) {
     const branchText = info.branchName ? `\n🏢 <b>지점</b>: ${info.branchName}` : '';
@@ -228,6 +243,7 @@ export const triggerTransferRequestNotification = async (
     userId: string;
     fromBranchName: string;
     toBranchName: string;
+    toBranchId?: string;
     amount: number;
     reason?: string;
   }
@@ -244,7 +260,21 @@ export const triggerTransferRequestNotification = async (
   );
 
   // 3. 텔레그램 알림 (DB에서 최신 chatId를 직접 조회)
-  const { token: tokenToUse, chatId: chatIdToUse } = await getLatestTelegramSettings(settings);
+  let { token: tokenToUse, chatId: chatIdToUse } = await getLatestTelegramSettings(settings);
+
+  // 🌟 지점 맞춤 알림: toBranchId가 있으면 해당 지점 관리자 중 telegramChatId가 있는 사람을 찾음
+  if (info.toBranchId) {
+    try {
+      const users = await fetchDbUsers();
+      const branchAdmins = users.filter(u => u.role === 'admin' && u.branchIds?.includes(info.toBranchId!));
+      const adminWithChatId = branchAdmins.find(u => u.telegramChatId);
+      if (adminWithChatId && adminWithChatId.telegramChatId) {
+        chatIdToUse = adminWithChatId.telegramChatId;
+      }
+    } catch (e) {
+      console.warn('[Telegram] 지점 관리자 조회 실패:', e);
+    }
+  }
 
   if (chatIdToUse) {
     const message = `🔄 <b>[르하임 스터디카페] 지점 간 포인트 이전 신청</b>\n\n` +

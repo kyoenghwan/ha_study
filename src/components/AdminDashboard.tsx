@@ -66,6 +66,7 @@ interface AdminDashboardProps {
     name: string;
     phone: string;
     password?: string;
+    telegramChatId?: string;
   }) => boolean;
 }
 
@@ -152,6 +153,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newAdminPassword, setNewAdminPassword] = useState('1234');
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminPhone, setNewAdminPhone] = useState('');
+  const [newAdminTelegramChatId, setNewAdminTelegramChatId] = useState('');
 
   // 특정 회원을 지점 관리자로 지정하는 헬퍼
   const handleOpenAssignAdminModal = (user?: UserAccount) => {
@@ -163,6 +165,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setNewAdminName(user.name);
       setNewAdminPhone(user.phone);
       setNewAdminPassword(user.password || '1234');
+      setNewAdminTelegramChatId(user.telegramChatId || '');
       if (user.userId === 'admin' || user.userId === 'kyoenghwan' || user.isSuperAdmin || user.adminRoleCode === 'PLATFORM_ADMIN') {
         setNewAdminRoleCode('PLATFORM_ADMIN');
       } else if (user.branchIds && user.branchIds.length > 0) {
@@ -180,6 +183,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setNewAdminName(firstUser.name);
         setNewAdminPhone(firstUser.phone);
         setNewAdminPassword(firstUser.password || '1234');
+        setNewAdminTelegramChatId(firstUser.telegramChatId || '');
         setNewAdminBranchIds(firstUser.branchIds && firstUser.branchIds.length > 0 ? firstUser.branchIds : (branches.length > 0 ? [branches[0].id] : ['yeouido']));
       }
     }
@@ -3001,6 +3005,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     password: newAdminPassword.trim() || '1234',
                     name: newAdminName.trim(),
                     phone: newAdminPhone.trim(),
+                    telegramChatId: newAdminTelegramChatId.trim(),
                   });
                   if (success) {
                     setShowCreateAdminModal(false);
@@ -3238,6 +3243,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
                   />
                 </div>
+              </div>
+
+              {/* 텔레그램 알림 Chat ID */}
+              <div className="form-group space-y-1 bg-[#f8f9fc] p-3 rounded-2xl border border-[#e5e8eb]">
+                <label className="font-bold text-[#191f28] flex items-center gap-1.5">
+                  <span>📱 텔레그램 Chat ID (개인 알림 수신용)</span>
+                </label>
+                <input
+                  type="text"
+                  value={newAdminTelegramChatId}
+                  onChange={(e) => setNewAdminTelegramChatId(e.target.value)}
+                  placeholder="예: 123456789"
+                  className="form-input text-xs py-2.5 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48]"
+                />
+                <p className="text-[10px] text-[#8b95a1] pt-0.5">
+                  💡 담당 지점에서 발생하는 포인트 충전 알림을 받을 본인의 텔레그램 Chat ID를 입력하세요. (비워두면 최고관리자에게 전송됩니다)
+                </p>
               </div>
 
               {/* 성함 & 연락처 */}

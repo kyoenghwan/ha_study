@@ -68,6 +68,7 @@ export interface UserAccount {
   points: number;
   branchPoints?: Record<string, number>; // 지점별 독립 포인트 계좌: { 'yeouido': 20000, 'daebang': 10000 }
   branchIds?: string[]; // 담당 지점 목록 (다중 지점 관리 지원: ['yeouido', 'mapo'] 등)
+  telegramChatId?: string; // 관리자 전용 텔레그램 Chat ID (해당 지점 알림 수신용)
 }
 
 export interface PointTransaction {
