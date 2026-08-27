@@ -6,7 +6,7 @@ import {
   CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight, ReceiptText, RotateCcw, Bell, Send, Volume2, MessageSquare, CheckCheck 
 } from 'lucide-react';
 import type { NotificationSettings } from '../lib/notificationService';
-import { DEFAULT_NOTIFICATION_SETTINGS, playNotificationSound, sendTelegramMessage, requestNotificationPermission } from '../lib/notificationService';
+import { DEFAULT_NOTIFICATION_SETTINGS, OFFICIAL_TELEGRAM_BOT_TOKEN, playNotificationSound, sendTelegramMessage, requestNotificationPermission } from '../lib/notificationService';
 import { BarcodeView } from './BarcodeView';
 
 interface AdminDashboardProps {
@@ -317,7 +317,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // 🔔 알림 설정 로컬 상태
   const [notifSoundEnabled, setNotifSoundEnabled] = useState(notificationSettings.soundEnabled);
   const [notifTelegramEnabled, setNotifTelegramEnabled] = useState(notificationSettings.telegramEnabled);
-  const [notifBotToken, setNotifBotToken] = useState(notificationSettings.telegramBotToken);
+
   const [notifChatId, setNotifChatId] = useState(notificationSettings.telegramChatId);
   const [notifSaveMsg, setNotifSaveMsg] = useState(false);
   const [notifTesting, setNotifTesting] = useState(false);
@@ -2597,67 +2597,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </label>
                   </div>
 
-                  <div className="space-y-2">
-                    {/* 봇 토큰 / 인풋필드 */}
+                  <div className="space-y-3">
+                    {/* 채팅 ID / 인풋필드 (토큰은 내장되어 숨김 처리됨) */}
                     <div 
                       className="py-1"
-                      style={{ display: 'grid', gridTemplateColumns: '120px 1fr', alignItems: 'center', gap: '8px' }}
+                      style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
                     >
-                      <label className="text-xs font-bold text-[#4e5968]">
-                        텔레그램 봇 토큰
-                      </label>
-                      <div>
-                        <input
-                          type="text"
-                          value={notifBotToken}
-                          onChange={(e) => setNotifBotToken(e.target.value)}
-                          placeholder="예: 7123456789:AAHk3_..."
-                          className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono w-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* 채팅 ID / 인풋필드 */}
-                    <div 
-                      className="py-1"
-                      style={{ display: 'grid', gridTemplateColumns: '120px 1fr', alignItems: 'center', gap: '8px' }}
-                    >
-                      <label className="text-xs font-bold text-[#4e5968]">
-                        채팅 ID (Chat ID)
+                      <label className="text-xs font-bold text-[#191f28]">
+                        내 텔레그램 Chat ID
                       </label>
                       <div>
                         <input
                           type="text"
                           value={notifChatId}
                           onChange={(e) => setNotifChatId(e.target.value)}
-                          placeholder="예: 123456789"
-                          className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono w-full"
+                          placeholder="예: 123456789 (숫자 ID 입력)"
+                          className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono w-full focus:border-[#0088cc]"
                         />
+                        <p className="text-[10px] text-[#8b95a1] mt-0.5">
+                          🔒 르하임 공식 텔레그램 봇 시스템이 안전하게 연동되어 있습니다.
+                        </p>
                       </div>
                     </div>
 
-                    <div className="pt-2 flex justify-end">
+                    <div className="pt-1 flex justify-end">
                       <button
                         type="button"
-                        disabled={notifTesting || !notifBotToken || !notifChatId}
+                        disabled={notifTesting || !notifChatId.trim()}
                         onClick={async () => {
                           setNotifTesting(true);
                           setNotifTestResult(null);
                           const res = await sendTelegramMessage(
-                            notifBotToken,
-                            notifChatId,
-                            `🔔 <b>[르하임 스터디카페] 텔레그램 알림 연동 성공!</b>\n\n관리자님의 스마트폰으로 포인트 충전 및 이전 신청 알림이 정상적으로 수신됩니다. 🚀`
+                            OFFICIAL_TELEGRAM_BOT_TOKEN,
+                            notifChatId.trim(),
+                            `🔔 <b>[르하임 스터디카페] 텔레그램 알림 연동 성공!</b>\n\n관리자님의 스마트폰으로 포인트 충전 및 이전 신청 알림이 정상 수신됩니다. 🚀`
                           );
                           setNotifTesting(false);
                           if (res.success) {
                             setNotifTestResult({ success: true, message: '스마트폰 텔레그램으로 테스트 알림이 성공적으로 전송되었습니다!' });
                           } else {
-                            setNotifTestResult({ success: false, message: res.error || '텔레그램 전송 실패 (토큰/Chat ID를 확인해 주세요)' });
+                            setNotifTestResult({ success: false, message: res.error || '텔레그램 전송 실패 (Chat ID를 확인해 주세요)' });
                           }
                         }}
-                        className="text-[11px] font-bold text-[#0088cc] bg-white hover:bg-[#0088cc]/10 border border-[#0088cc]/30 px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-xs disabled:opacity-50"
+                        className="text-xs font-bold text-[#0088cc] bg-white hover:bg-[#0088cc]/10 border border-[#0088cc]/30 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                       >
-                        <Send size={12} /> {notifTesting ? '발송 중...' : '🔔 텔레그램 테스트 메시지 발송'}
+                        <Send size={13} /> {notifTesting ? '발송 중...' : '🔔 텔레그램 테스트 메시지 발송'}
                       </button>
                     </div>
                   </div>
@@ -2683,7 +2667,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   const newSettings: NotificationSettings = {
                     soundEnabled: notifSoundEnabled,
                     telegramEnabled: notifTelegramEnabled,
-                    telegramBotToken: notifBotToken.trim(),
+                    telegramBotToken: OFFICIAL_TELEGRAM_BOT_TOKEN,
                     telegramChatId: notifChatId.trim(),
                     notifyOnChargeRequest: true,
                     notifyOnTransferRequest: true,

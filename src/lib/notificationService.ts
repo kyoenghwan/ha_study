@@ -14,10 +14,12 @@ export interface NotificationSettings {
   notifyOnTransferRequest: boolean;
 }
 
+export const OFFICIAL_TELEGRAM_BOT_TOKEN = '8608083217:AAFsHtMNceMV9T__xq_y18_7EWbIAelzMAs';
+
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   soundEnabled: true,
-  telegramEnabled: false,
-  telegramBotToken: '',
+  telegramEnabled: true,
+  telegramBotToken: '8608083217:AAFsHtMNceMV9T__xq_y18_7EWbIAelzMAs',
   telegramChatId: '',
   notifyOnChargeRequest: true,
   notifyOnTransferRequest: true,
