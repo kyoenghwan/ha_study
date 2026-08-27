@@ -53,22 +53,69 @@ interface UserRow {
   points: number | null;
 }
 
+const USERS_META_KEY = 'lheureux_users_meta';
+
+interface UserMetaRecord {
+  branchIds?: string[];
+  branchPoints?: Record<string, number>;
+  isSuperAdmin?: boolean;
+  role?: UserAccount['role'];
+}
+
 export const fetchDbUsers = async (): Promise<UserAccount[]> => {
   try {
-    const { data, error } = await supabase.from('users').select('*');
-    if (error || !data) return [];
-    return (data as UserRow[]).map((u) => ({
-      id: u.id,
-      userId: u.user_id,
-      password: u.password ?? undefined,
-      name: u.name,
-      phone: u.phone,
-      role: u.role,
-      points: u.points ?? 0,
-    }));
+    const [usersRes, metaRes] = await Promise.all([
+      supabase.from('users').select('*'),
+      supabase.from('app_settings').select('value').eq('key', USERS_META_KEY).maybeSingle(),
+    ]);
+
+    if (usersRes.error || !usersRes.data) return [];
+    const metaMap: Record<string, UserMetaRecord> = (metaRes.data?.value as Record<string, UserMetaRecord>) || {};
+
+    return (usersRes.data as UserRow[]).map((u) => {
+      const meta = metaMap[u.user_id] || metaMap[u.id] || {};
+      const isSuper = u.user_id === 'admin' || meta.isSuperAdmin === true;
+      const finalRole = meta.role || (isSuper ? 'admin' : (meta.branchIds && meta.branchIds.length > 0 ? 'admin' : u.role));
+
+      return {
+        id: u.id,
+        userId: u.user_id,
+        password: u.password ?? undefined,
+        name: u.name,
+        phone: u.phone,
+        role: finalRole,
+        isSuperAdmin: isSuper,
+        points: u.points ?? 0,
+        branchIds: meta.branchIds,
+        branchPoints: meta.branchPoints,
+      };
+    });
   } catch (err) {
     console.warn('[DB] users 조회 실패, 로컬 캐시로 대체합니다:', err);
     return [];
+  }
+};
+
+export const saveDbUsersMeta = async (users: UserAccount[]): Promise<DbResult> => {
+  try {
+    const metaMap: Record<string, UserMetaRecord> = {};
+    users.forEach((u) => {
+      metaMap[u.userId] = {
+        branchIds: u.branchIds,
+        branchPoints: u.branchPoints,
+        isSuperAdmin: u.userId === 'admin' ? true : u.isSuperAdmin,
+        role: u.role,
+      };
+    });
+
+    const { error } = await supabase.from('app_settings').upsert({
+      key: USERS_META_KEY,
+      value: metaMap,
+      updated_at: new Date().toISOString(),
+    });
+    return error ? fail('회원 메타데이터 저장', error) : ok();
+  } catch (err) {
+    return fail('회원 메타데이터 저장', err);
   }
 };
 
@@ -110,6 +157,24 @@ export const updateDbUser = async (user: UserAccount): Promise<DbResult> => {
         ...(user.password ? { password: user.password } : {}),
       })
       .eq('user_id', user.userId);
+
+    // app_settings 에도 메타데이터(지점권한/포인트/슈퍼관리자) 즉시 병합
+    try {
+      const { data } = await supabase.from('app_settings').select('value').eq('key', USERS_META_KEY).maybeSingle();
+      const metaMap: Record<string, UserMetaRecord> = (data?.value as Record<string, UserMetaRecord>) || {};
+      metaMap[user.userId] = {
+        branchIds: user.branchIds,
+        branchPoints: user.branchPoints,
+        isSuperAdmin: user.userId === 'admin' ? true : user.isSuperAdmin,
+        role: user.role,
+      };
+      await supabase.from('app_settings').upsert({
+        key: USERS_META_KEY,
+        value: metaMap,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (metaErr) {}
+
     return error ? fail('회원 정보 갱신', error) : ok();
   } catch (err) {
     return fail('회원 정보 갱신', err);
