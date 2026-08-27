@@ -222,8 +222,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   }, [activeTab, currentAdminRole]);
 
-  // 룸 지점 필터 상태
-  const [roomBranchFilter, setRoomBranchFilter] = useState<string>('all');
+
   // 룸 삭제 확인 모달 상태
   const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
 
@@ -671,45 +670,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* TAB 1: 룸 및 예약 관리 */}
         {activeTab === 'rooms_reservations' && (
           <div className="space-y-5">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-[#e5e8eb] shadow-sm">
+            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#e5e8eb] shadow-sm">
               <div>
                 <h2 className="text-base font-bold text-[#191f28] flex items-center gap-2">
                   <span>스터디룸 및 예약 목록</span>
                   <span className="text-xs font-bold text-[#a67c48] bg-[#a67c48]/10 px-2.5 py-0.5 rounded-full">
-                    총 {rooms.filter(r => roomBranchFilter === 'all' || (r.branchId || 'yeouido') === roomBranchFilter).length}개 룸
+                    총 {rooms.filter(r => (r.branchId || 'yeouido') === (selectedBranchId || 'yeouido')).length}개 룸
                   </span>
                 </h2>
                 <p className="text-xs text-[#8b95a1] pt-0.5">공부방을 추가/삭제하거나 실제 예약자의 예약을 변경/취소합니다.</p>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                {/* 🏢 지점 선택 필터 (최고관리자는 전체 지점 통합 또는 개별 지점 선택) */}
-                <select
-                  value={roomBranchFilter}
-                  onChange={(e) => setRoomBranchFilter(e.target.value)}
-                  className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-[#f8f9fc] font-bold text-[#191f28] focus:border-[#a67c48]"
-                >
-                  <option value="all">🌐 전체 지점 룸 통합 보기</option>
-                  {branches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      🏢 {b.fullName || b.name}
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  onClick={() => setShowAddRoomModal(true)}
-                  className="gold-btn flex items-center gap-1.5 text-xs py-2.5 px-3.5 rounded-xl shadow shrink-0"
-                >
-                  <Plus size={15} /> 새 룸 추가
-                </button>
-              </div>
+              <button
+                onClick={() => setShowAddRoomModal(true)}
+                className="gold-btn flex items-center gap-1.5 text-xs py-2.5 px-4 rounded-xl shadow shrink-0"
+              >
+                <Plus size={15} /> 새 룸 추가
+              </button>
             </div>
 
-            {/* 방 카드 목록 */}
+            {/* 방 카드 목록 (상단 헤더에서 선택된 현재 지점 기준) */}
             <div className="space-y-4">
               {(() => {
-                const displayedRooms = rooms.filter(r => roomBranchFilter === 'all' || (r.branchId || 'yeouido') === roomBranchFilter);
+                const displayedRooms = rooms.filter(r => (r.branchId || 'yeouido') === (selectedBranchId || 'yeouido'));
                 if (displayedRooms.length === 0) {
                   return (
                     <div className="text-center py-10 text-[#8e8e93] border border-dashed border-[#e5e5ea] rounded-xl bg-white space-y-2">
