@@ -1538,8 +1538,8 @@ function App() {
         {role === 'admin' ? (
           <AdminDashboard
             currentUser={currentUser}
-            rooms={isSuperAdmin ? rooms : currentBranchRooms}
-            reservations={isSuperAdmin ? reservations : currentBranchReservations}
+            rooms={rooms}
+            reservations={reservations}
             branches={branches}
             selectedBranchId={selectedBranch}
             getBranchPoints={getBranchPoints}

@@ -196,16 +196,32 @@ interface RoomRow {
   description: string | null;
 }
 
+const ROOMS_META_KEY = 'lheureux_rooms_meta';
+
+interface RoomMetaRecord {
+  branchId?: string;
+}
+
 export const fetchDbRooms = async (): Promise<Room[]> => {
   try {
-    const { data, error } = await supabase.from('rooms').select('*').order('id');
-    if (error || !data) return [];
-    return (data as RoomRow[]).map((r) => ({
-      id: r.id,
-      name: r.name,
-      capacity: r.capacity ?? 1,
-      description: r.description ?? '',
-    }));
+    const [roomsRes, metaRes] = await Promise.all([
+      supabase.from('rooms').select('*').order('id'),
+      supabase.from('app_settings').select('value').eq('key', ROOMS_META_KEY).maybeSingle(),
+    ]);
+
+    if (roomsRes.error || !roomsRes.data) return [];
+    const metaMap: Record<string, RoomMetaRecord> = (metaRes.data?.value as Record<string, RoomMetaRecord>) || {};
+
+    return (roomsRes.data as RoomRow[]).map((r) => {
+      const meta = metaMap[r.id] || {};
+      return {
+        id: r.id,
+        name: r.name,
+        capacity: r.capacity ?? 1,
+        description: r.description ?? '',
+        branchId: meta.branchId || (r.id.includes('daebang') ? 'daebang' : (r.id.includes('mapo') ? 'mapo' : 'yeouido')),
+      };
+    });
   } catch (err) {
     console.warn('[DB] rooms 조회 실패, 로컬 캐시로 대체합니다:', err);
     return [];
@@ -215,15 +231,30 @@ export const fetchDbRooms = async (): Promise<Room[]> => {
 export const saveDbRooms = async (rooms: Room[]): Promise<DbResult> => {
   if (rooms.length === 0) return ok();
   try {
-    const { error } = await supabase.from('rooms').upsert(
-      rooms.map((r) => ({
-        id: r.id,
-        name: r.name,
-        capacity: r.capacity,
-        description: r.description,
-      })),
-    );
-    return error ? fail('공간 저장', error) : ok();
+    const metaMap: Record<string, RoomMetaRecord> = {};
+    rooms.forEach((r) => {
+      metaMap[r.id] = { branchId: r.branchId || 'yeouido' };
+    });
+
+    const [upsertRooms, upsertMeta] = await Promise.all([
+      supabase.from('rooms').upsert(
+        rooms.map((r) => ({
+          id: r.id,
+          name: r.name,
+          capacity: r.capacity,
+          description: r.description,
+        }))
+      ),
+      supabase.from('app_settings').upsert({
+        key: ROOMS_META_KEY,
+        value: metaMap,
+        updated_at: new Date().toISOString(),
+      }),
+    ]);
+
+    if (upsertRooms.error) return fail('공간 저장', upsertRooms.error);
+    if (upsertMeta.error) return fail('공간 메타데이터 저장', upsertMeta.error);
+    return ok();
   } catch (err) {
     return fail('공간 저장', err);
   }

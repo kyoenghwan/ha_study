@@ -328,11 +328,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [notifTesting, setNotifTesting] = useState(false);
   const [notifTestResult, setNotifTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  // 룸 추가 처리
+  // 룸 추가 처리 (현재 지점 ID 확실히 바인딩)
   const handleAddRoomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomName.trim()) return;
-    onAddRoom({ name: roomName, capacity, description });
+    onAddRoom({ 
+      name: roomName.trim(), 
+      capacity, 
+      description: description.trim(),
+      branchId: selectedBranchId || 'yeouido'
+    });
     setRoomName('');
     setCapacity(4);
     setDescription('');
