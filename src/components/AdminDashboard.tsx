@@ -2268,7 +2268,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* TAB 5: 계좌 및 환경 설정 */}
         {activeTab === 'bank_settings' && (
           <div className="space-y-6 max-w-5xl mx-auto">
-            {/* 상단 안내 배너 */}
+            {/* 상단 안내 헤더 */}
             <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
                 <h3 className="text-base font-bold text-[#191f28] flex items-center gap-2">
@@ -2278,13 +2278,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   담당 관리자 정보(성함, 고객 문의용 연락처, 비밀번호)와 무통장 입금 계좌 및 스마트폰 텔레그램 알림을 설정합니다.
                 </p>
               </div>
-              <span className="text-xs font-bold text-[#a67c48] bg-[#a67c48]/10 px-3 py-1.5 rounded-xl border border-[#a67c48]/30">
+              <span className="text-xs font-bold text-[#a67c48] bg-[#a67c48]/10 px-3 py-1.5 rounded-xl border border-[#a67c48]/30 shrink-0">
                 🏢 현재 지점: {branches.find(b => b.id === selectedBranchId)?.fullName || selectedBranchId}
               </span>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 1. 👤 담당 관리자 계정 & 문의 연락처 설정 */}
+              {/* 1. 👤 담당 관리자 정보 설정 (수평 텍스트 / 인풋 필드 레이아웃) */}
               <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
                 <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
                   <Users className="text-[#a67c48]" size={20} />
@@ -2331,67 +2331,89 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       }
                     }
                   }}
-                  className="space-y-4"
+                  className="space-y-3"
                 >
-                  <div className="form-group space-y-1">
-                    <label className="text-xs font-bold text-[#191f28]">관리자 아이디</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={currentUser?.userId || ''}
-                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-[#f8f9fc] text-[#8b95a1] font-mono cursor-not-allowed"
-                    />
-                    <p className="text-[10px] text-[#8b95a1]">아이디는 변경할 수 없습니다.</p>
-                  </div>
-
-                  <div className="form-group space-y-1">
-                    <label className="text-xs font-bold text-[#191f28]">담당자 성함 (이름)</label>
-                    <input
-                      type="text"
-                      required
-                      value={adminProfileName}
-                      onChange={(e) => setAdminProfileName(e.target.value)}
-                      placeholder="예: 김하윤"
-                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48]"
-                    />
-                  </div>
-
-                  <div className="form-group space-y-1">
-                    <label className="text-xs font-bold text-[#191f28] flex items-center justify-between">
-                      <span>지점 담당자 문의 연락처 (휴대폰 번호)</span>
-                      <span className="text-[10px] text-[#a67c48] font-semibold">★ 메인 이용안내에 자동 노출</span>
+                  {/* 관리자 아이디 / 인풋필드 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
+                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                      관리자 아이디
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={adminProfilePhone}
-                      onChange={(e) => setAdminProfilePhone(e.target.value)}
-                      placeholder="예: 010-3957-3425"
-                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] font-mono"
-                    />
-                    <p className="text-[10px] text-[#8b95a1]">
-                      💡 입력하신 휴대폰 번호가 이용자 예약 화면의 <strong>'지점 담당자 문의: 010-XXXX-XXXX'</strong>로 즉시 노출됩니다.
-                    </p>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        disabled
+                        value={currentUser?.userId || ''}
+                        className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-[#f8f9fc] text-[#8b95a1] font-mono cursor-not-allowed w-full"
+                      />
+                      <p className="text-[10px] text-[#8b95a1] mt-0.5">아이디는 변경할 수 없습니다.</p>
+                    </div>
                   </div>
 
-                  <div className="form-group space-y-1">
-                    <label className="text-xs font-bold text-[#191f28]">새 로그인 비밀번호 (선택 변경)</label>
-                    <input
-                      type="password"
-                      value={adminProfilePassword}
-                      onChange={(e) => setAdminProfilePassword(e.target.value)}
-                      placeholder="변경할 비밀번호 입력 (미입력 시 기존 유지)"
-                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48]"
-                    />
+                  {/* 담당자 성함 (이름) / 인풋필드 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
+                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                      담당자 성함 (이름)
+                    </label>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        required
+                        value={adminProfileName}
+                        onChange={(e) => setAdminProfileName(e.target.value)}
+                        placeholder="예: 김하윤"
+                        className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] w-full"
+                      />
+                    </div>
                   </div>
 
-                  <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5">
-                    <Check size={14} /> 담당자 정보 저장하기
-                  </button>
+                  {/* 지점 문의 연락처 / 인풋필드 */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:pt-2 gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
+                    <div className="w-36 shrink-0">
+                      <label className="text-xs font-bold text-[#191f28] block">
+                        지점 문의 연락처
+                      </label>
+                      <span className="text-[10px] text-[#a67c48] font-bold block mt-0.5">★ 메인 화면 노출</span>
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        required
+                        value={adminProfilePhone}
+                        onChange={(e) => setAdminProfilePhone(e.target.value)}
+                        placeholder="예: 010-3957-3425"
+                        className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] font-mono w-full"
+                      />
+                      <p className="text-[10px] text-[#8b95a1] mt-1 leading-snug">
+                        💡 입력하신 번호가 이용자 예약 화면의 <strong>'지점 담당자 문의: 010-XXXX-XXXX'</strong>로 실시간 노출됩니다.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 새 로그인 비밀번호 / 인풋필드 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
+                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                      새 로그인 비밀번호
+                    </label>
+                    <div className="flex-1">
+                      <input
+                        type="password"
+                        value={adminProfilePassword}
+                        onChange={(e) => setAdminProfilePassword(e.target.value)}
+                        placeholder="변경할 비밀번호 입력 (미입력 시 기존 유지)"
+                        className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5">
+                      <Check size={14} /> 담당자 정보 저장하기
+                    </button>
+                  </div>
                 </form>
               </div>
 
-              {/* 2. 💳 지점 무통장 입금 계좌 설정 */}
+              {/* 2. 💳 지점 무통장 입금 계좌 설정 (수평 텍스트 / 인풋 필드 레이아웃) */}
               <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
                 <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
                   <CreditCard className="text-[#a67c48]" size={20} />
@@ -2409,46 +2431,63 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 )}
 
-                <form onSubmit={handleBankSave} className="space-y-4">
-                  <div className="form-group space-y-1">
-                    <label className="text-xs font-bold text-[#191f28]">은행명</label>
-                    <input
-                      type="text"
-                      value={bankName}
-                      onChange={(e) => setBankName(e.target.value)}
-                      placeholder="예: 신한은행, 카카오뱅크, 국민은행"
-                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48]"
-                      required
-                    />
+                <form onSubmit={handleBankSave} className="space-y-3">
+                  {/* 은행명 / 인풋필드 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
+                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                      은행명
+                    </label>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        placeholder="예: 신한은행, 카카오뱅크, 국민은행"
+                        className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] w-full"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  <div className="form-group space-y-1">
-                    <label className="text-xs font-bold text-[#191f28]">계좌 번호</label>
-                    <input
-                      type="text"
-                      value={accountNumber}
-                      onChange={(e) => setAccountNumber(e.target.value)}
-                      placeholder="예: 110-384-918234"
-                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] font-mono"
-                      required
-                    />
+                  {/* 계좌 번호 / 인풋필드 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
+                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                      계좌 번호
+                    </label>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value)}
+                        placeholder="예: 110-384-918234"
+                        className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] font-mono w-full"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  <div className="form-group space-y-1">
-                    <label className="text-xs font-bold text-[#191f28]">예금주명</label>
-                    <input
-                      type="text"
-                      value={accountHolder}
-                      onChange={(e) => setAccountHolder(e.target.value)}
-                      placeholder="예: (주)르하임 스터디카페"
-                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48]"
-                      required
-                    />
+                  {/* 예금주명 / 인풋필드 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
+                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                      예금주명
+                    </label>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={accountHolder}
+                        onChange={(e) => setAccountHolder(e.target.value)}
+                        placeholder="예: (주)르하임 스터디카페"
+                        className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] w-full"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5">
-                    <Check size={14} /> 계좌 정보 저장하기
-                  </button>
+                  <div className="pt-2">
+                    <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5">
+                      <Check size={14} /> 계좌 정보 저장하기
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
@@ -2485,7 +2524,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* 🔊 사운드 & 브라우저 푸시 */}
                 <div className="p-4 bg-[#f8f9fc] rounded-2xl border border-[#e5e8eb] space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#e5e8eb]">
                     <div className="flex items-center gap-2">
                       <Volume2 size={16} className="text-[#a67c48]" />
                       <span className="text-xs font-bold text-[#191f28]">브라우저 딩동(Ding-Dong) 소리 알림</span>
@@ -2501,11 +2540,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </label>
                   </div>
 
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => playNotificationSound()}
-                      className="text-[11px] font-bold text-[#a67c48] bg-white hover:bg-[#a67c48]/10 border border-[#a67c48]/30 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 shadow-xs"
+                      className="text-[11px] font-bold text-[#a67c48] bg-white hover:bg-[#a67c48]/10 border border-[#a67c48]/30 px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-xs"
                     >
                       <Volume2 size={13} /> 🔊 알림음 미리듣기
                     </button>
@@ -2515,16 +2554,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         const granted = await requestNotificationPermission();
                         alert(granted ? '브라우저 시스템 푸시 알림 권한이 허용되었습니다.' : '브라우저 알림 권한이 거부되었거나 지원되지 않습니다.');
                       }}
-                      className="text-[11px] font-bold text-[#4e5968] bg-white hover:bg-[#f1f3f5] border border-[#e5e8eb] px-3 py-1.5 rounded-xl transition-all"
+                      className="text-[11px] font-bold text-[#4e5968] bg-white hover:bg-[#f1f3f5] border border-[#e5e8eb] px-3 py-2 rounded-xl transition-all"
                     >
                       📱 푸시 권한 요청
                     </button>
                   </div>
                 </div>
 
-                {/* 📲 텔레그램 스마트폰 봇 알림 연동 */}
+                {/* 📲 텔레그램 스마트폰 봇 알림 연동 (수평 텍스트 / 인풋 레이아웃) */}
                 <div className="p-4 bg-[#f8f9fc] rounded-2xl border border-[#e5e8eb] space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#e5e8eb]">
                     <div className="flex items-center gap-2">
                       <MessageSquare size={16} className="text-[#0088cc]" />
                       <span className="text-xs font-bold text-[#191f28]">텔레그램(Telegram) 스마트폰 알림</span>
@@ -2540,30 +2579,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </label>
                   </div>
 
-                  <div className="space-y-2 pt-1">
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-[#4e5968]">텔레그램 봇 토큰 (Bot Token)</label>
-                      <input
-                        type="text"
-                        value={notifBotToken}
-                        onChange={(e) => setNotifBotToken(e.target.value)}
-                        placeholder="예: 7123456789:AAHk3_AbCdEfGhIjKlMnOpQr"
-                        className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono"
-                      />
+                  <div className="space-y-2">
+                    {/* 봇 토큰 / 인풋필드 */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-1">
+                      <label className="w-32 shrink-0 text-xs font-bold text-[#4e5968]">
+                        텔레그램 봇 토큰
+                      </label>
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={notifBotToken}
+                          onChange={(e) => setNotifBotToken(e.target.value)}
+                          placeholder="예: 7123456789:AAHk3_..."
+                          className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono w-full"
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-[#4e5968]">내 텔레그램 채팅 ID (Chat ID)</label>
-                      <input
-                        type="text"
-                        value={notifChatId}
-                        onChange={(e) => setNotifChatId(e.target.value)}
-                        placeholder="예: 123456789"
-                        className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono"
-                      />
+                    {/* 채팅 ID / 인풋필드 */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-1">
+                      <label className="w-32 shrink-0 text-xs font-bold text-[#4e5968]">
+                        채팅 ID (Chat ID)
+                      </label>
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={notifChatId}
+                          onChange={(e) => setNotifChatId(e.target.value)}
+                          placeholder="예: 123456789"
+                          className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono w-full"
+                        />
+                      </div>
                     </div>
 
-                    <div className="pt-2">
+                    <div className="pt-2 flex justify-end">
                       <button
                         type="button"
                         disabled={notifTesting || !notifBotToken || !notifChatId}
@@ -2582,7 +2631,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             setNotifTestResult({ success: false, message: res.error || '텔레그램 전송 실패 (토큰/Chat ID를 확인해 주세요)' });
                           }
                         }}
-                        className="text-[11px] font-bold text-[#0088cc] bg-white hover:bg-[#0088cc]/10 border border-[#0088cc]/30 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 shadow-xs disabled:opacity-50"
+                        className="text-[11px] font-bold text-[#0088cc] bg-white hover:bg-[#0088cc]/10 border border-[#0088cc]/30 px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-xs disabled:opacity-50"
                       >
                         <Send size={12} /> {notifTesting ? '발송 중...' : '🔔 텔레그램 테스트 메시지 발송'}
                       </button>
