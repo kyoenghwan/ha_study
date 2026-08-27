@@ -318,6 +318,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [notifSoundEnabled, setNotifSoundEnabled] = useState(notificationSettings.soundEnabled);
   const [notifTelegramEnabled, setNotifTelegramEnabled] = useState(notificationSettings.telegramEnabled);
 
+  const [notifBotToken, setNotifBotToken] = useState(notificationSettings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN);
   const [notifChatId, setNotifChatId] = useState(notificationSettings.telegramChatId);
   const [notifSaveMsg, setNotifSaveMsg] = useState(false);
   const [notifTesting, setNotifTesting] = useState(false);
@@ -2598,7 +2599,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   <div className="space-y-3">
-                    {/* 채팅 ID / 인풋필드 (토큰은 내장되어 숨김 처리됨) */}
+                    {/* 👑 최고 관리자 전용: 텔레그램 봇 토큰 수정 필드 */}
+                    {(isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin') && (
+                      <div 
+                        className="py-1 border-b border-[#e5e8eb]/60 pb-2.5"
+                        style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
+                      >
+                        <div>
+                          <label className="text-xs font-bold text-[#a67c48] flex items-center gap-1">
+                            👑 텔레그램 봇 토큰
+                          </label>
+                          <span className="text-[9px] text-[#8b95a1] font-semibold block mt-0.5">(최고관리자 전용)</span>
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            value={notifBotToken}
+                            onChange={(e) => setNotifBotToken(e.target.value)}
+                            placeholder="예: 8608083217:AAFsHt..."
+                            className="form-input text-xs py-2 px-3 rounded-xl border border-[#a67c48]/50 bg-[#fffdfa] font-mono w-full focus:border-[#a67c48]"
+                          />
+                          <p className="text-[10px] text-[#a67c48] mt-0.5">
+                            💡 최고 관리자만 수정 가능하며, 모든 지점의 기본 알림 발신 봇으로 작동합니다.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 채팅 ID / 인풋필드 (모든 관리자 공통) */}
                     <div 
                       className="py-1"
                       style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
@@ -2615,7 +2643,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono w-full focus:border-[#0088cc]"
                         />
                         <p className="text-[10px] text-[#8b95a1] mt-0.5">
-                          🔒 르하임 공식 텔레그램 봇 시스템이 안전하게 연동되어 있습니다.
+                          🔒 충전/이전 신청 알림을 수신할 관리자님의 개인 또는 지점 단톡방 Chat ID입니다.
                         </p>
                       </div>
                     </div>
@@ -2627,8 +2655,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         onClick={async () => {
                           setNotifTesting(true);
                           setNotifTestResult(null);
+                          const tokenToUse = (isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin')
+                            ? (notifBotToken.trim() || OFFICIAL_TELEGRAM_BOT_TOKEN)
+                            : (notificationSettings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN);
                           const res = await sendTelegramMessage(
-                            OFFICIAL_TELEGRAM_BOT_TOKEN,
+                            tokenToUse,
                             notifChatId.trim(),
                             `🔔 <b>[르하임 스터디카페] 텔레그램 알림 연동 성공!</b>\n\n관리자님의 스마트폰으로 포인트 충전 및 이전 신청 알림이 정상 수신됩니다. 🚀`
                           );
@@ -2664,10 +2695,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  const tokenToSave = (isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin')
+                    ? (notifBotToken.trim() || OFFICIAL_TELEGRAM_BOT_TOKEN)
+                    : (notificationSettings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN);
+
                   const newSettings: NotificationSettings = {
                     soundEnabled: notifSoundEnabled,
                     telegramEnabled: notifTelegramEnabled,
-                    telegramBotToken: OFFICIAL_TELEGRAM_BOT_TOKEN,
+                    telegramBotToken: tokenToSave,
                     telegramChatId: notifChatId.trim(),
                     notifyOnChargeRequest: true,
                     notifyOnTransferRequest: true,
