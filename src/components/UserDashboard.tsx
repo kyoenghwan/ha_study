@@ -67,7 +67,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   currentUser,
   rooms,
   reservations,
-  bankInfo,
+  bankInfo: _bankInfo,
   branches = [],
   masterBarcode,
   selectedBranchId = 'yeouido',
@@ -365,10 +365,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             <p>출입 바코드는 <strong className="text-[#191f28]">이용 시작 5분 전</strong>에 자동 활성화되며, <strong className="text-[#191f28]">이용 시간 종료 시 자동 소멸</strong>됩니다.</p>
           </div>
 
-          <div className="flex items-start gap-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#a67c48] shrink-0 mt-1.5" />
-            <p>무통장 입금 계좌: <strong className="text-[#191f28]">{bankInfo.bankName} {bankInfo.accountNumber}</strong> (예금주: {bankInfo.accountHolder})</p>
-          </div>
+
 
           {branchManagerContact && (
             <div className="flex items-start gap-2.5">
