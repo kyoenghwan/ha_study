@@ -5,7 +5,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
 import { AuthModal } from './components/AuthModal';
-import { Shield, LogOut, Coins, Plus, Building2, ChevronRight, Search, ArrowLeftRight } from 'lucide-react';
+import { Shield, LogOut, Coins, Plus, Building2, ChevronRight, Search, ArrowLeftRight, Bell, X } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 import { FA_CREATE_RESERVATIONS } from './atoms/reservation/FA_create_reservations';
 import type { AuthContext, RoleCode, RoleGrant } from './atoms/auth/DA_auth';
@@ -56,7 +56,8 @@ import type { NotificationSettings } from './lib/notificationService';
 import { 
   DEFAULT_NOTIFICATION_SETTINGS, 
   triggerChargeRequestNotification, 
-  triggerTransferRequestNotification 
+  triggerTransferRequestNotification,
+  playNotificationSound 
 } from './lib/notificationService';
 
 // 르하임 멀티테넌트 지점 목록 정의
@@ -90,6 +91,30 @@ function App() {
     const saved = localStorage.getItem('lheureux_notification_settings');
     return saved ? JSON.parse(saved) : DEFAULT_NOTIFICATION_SETTINGS;
   });
+
+  // 🔔 자체 인앱 실시간 알림 토스트 배너 상태
+  const [inAppToast, setInAppToast] = useState<{
+    id: string;
+    title: string;
+    message: string;
+    amount?: number;
+    userName?: string;
+    type: 'charge' | 'transfer';
+  } | null>(null);
+
+  // 인앱 알림 트리거 헬퍼 함수
+  const triggerInAppToast = (toast: {
+    title: string;
+    message: string;
+    amount?: number;
+    userName?: string;
+    type: 'charge' | 'transfer';
+  }) => {
+    setInAppToast({ ...toast, id: `toast-${Date.now()}` });
+    if (notificationSettings.soundEnabled) {
+      playNotificationSound();
+    }
+  };
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   
 
@@ -194,7 +219,15 @@ function App() {
     const nextList = [newReq, ...pointTransferRequests];
     updatePointTransferRequests(nextList);
 
-    // 🔔 관리자 스마트폰 텔레그램 / 사운드 / 푸시 알림 즉시 발송!
+    // 🔔 자체 앱 알림 토스트 & 텔레그램 / 사운드 즉시 발송!
+    triggerInAppToast({
+      title: '🔄 지점 간 포인트 이전 신청 접수!',
+      message: `${currentUser.name}님이 [${fromBranchName} ➔ ${toBranchName}] ${data.amount.toLocaleString()}P 이전을 신청했습니다.`,
+      userName: currentUser.name,
+      amount: data.amount,
+      type: 'transfer',
+    });
+
     triggerTransferRequestNotification(notificationSettings, {
       userName: currentUser.name,
       userId: currentUser.userId,
@@ -572,6 +605,16 @@ function App() {
     };
   }, [currentUserId, currentUserLegacyRole]);
 
+  // 인앱 알림 토스트 7초 후 자동 소멸 타이머
+  useEffect(() => {
+    if (inAppToast) {
+      const timer = setTimeout(() => {
+        setInAppToast(null);
+      }, 7000);
+      return () => clearTimeout(timer);
+    }
+  }, [inAppToast]);
+
   // 관리자 반응형 레이아웃 토글 (#root 엘리먼트 클래스 조절)
   useEffect(() => {
     const rootEl = document.getElementById('root');
@@ -670,7 +713,15 @@ function App() {
     persist('포인트 충전 신청', () => saveDbPointTransaction(newTx));
     setShowPointModal(false);
 
-    // 🔔 관리자 스마트폰 텔레그램 / 사운드 / 푸시 알림 즉시 발송!
+    // 🔔 자체 앱 알림 토스트 & 텔레그램 / 사운드 즉시 발송!
+    triggerInAppToast({
+      title: '🔔 포인트 충전 신청 접수!',
+      message: `${currentUser.name}님이 [${branchObj?.name || '지점'}] ${amount.toLocaleString()}P 충전을 신청했습니다.`,
+      userName: currentUser.name,
+      amount,
+      type: 'charge',
+    });
+
     triggerChargeRequestNotification(notificationSettings, {
       userName: currentUser.name,
       userId: currentUser.userId,
@@ -1399,8 +1450,33 @@ function App() {
           </h1>
         </div>
 
-        {/* 헤더 우측 컨트롤: 권한 뱃지 + 화면 전환 버튼(관리자 전용) + 로그아웃 */}
+        {/* 헤더 우측 컨트롤: 알림 벨 뱃지 + 화면 전환 버튼 + 권한 뱃지 + 로그아웃 */}
         <div className="flex items-center gap-2">
+          {/* 🔔 관리자 미승인 대기 알림 벨 (충전/이전 대기 합산 카운트) */}
+          {(canAccessAdminConsole || currentUser?.role === 'admin' || isSuperAdmin || (currentUser?.branchIds && currentUser.branchIds.length > 0)) && (() => {
+            const pendingCharges = pointTransactions.filter(t => (t.type === 'charge_request' || !t.type) && t.status === 'pending').length;
+            const pendingTransfers = pointTransferRequests.filter(r => r.status === 'pending').length;
+            const totalPending = pendingCharges + pendingTransfers;
+
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  setRole('admin');
+                }}
+                className="relative p-2 rounded-xl border border-[#e5e8eb] bg-white hover:bg-[#f8f9fc] text-[#4e5968] transition-all"
+                title={`승인 대기 건: 충전 ${pendingCharges}건 / 이전 ${pendingTransfers}건`}
+              >
+                <Bell size={16} className={totalPending > 0 ? 'text-[#a67c48]' : 'text-[#8b95a1]'} />
+                {totalPending > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#e93d3d] text-white font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-sm">
+                    {totalPending}
+                  </span>
+                )}
+              </button>
+            );
+          })()}
+
           {/* 👑 관리자 권한 보유 계정(최고관리자 / 지점관리자) 전용 화면 전환 버튼 (인라인 스타일 보장) */}
           {(canAccessAdminConsole || currentUser?.role === 'admin' || isSuperAdmin || (currentUser?.branchIds && currentUser.branchIds.length > 0)) && (
             <button
@@ -1539,6 +1615,47 @@ function App() {
       <footer className="py-2.5 px-4 bg-[#f8f9fc] border-t border-[#e5e8eb] text-center text-xs text-[#8b95a1] shrink-0">
         © 2026 HA-STUDY Platform. L'Heux Study Cafe.
       </footer>
+
+      {/* 🔔 자체 앱 실시간 알림 토스트 플로팅 팝업 배너 */}
+      {inAppToast && (
+        <div 
+          className="fixed top-5 right-5 z-50 max-w-sm w-full bg-white border-2 border-[#a67c48] rounded-2xl shadow-2xl p-4 transition-all duration-300 animate-bounce"
+          style={{ boxShadow: '0 10px 25px -5px rgba(166, 124, 72, 0.3)' }}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="p-2 rounded-xl bg-[#a67c48]/10 text-[#a67c48]">
+                <Bell size={18} />
+              </span>
+              <div>
+                <h4 className="text-xs font-black text-[#191f28]">{inAppToast.title}</h4>
+                <p className="text-[11px] text-[#4e5968] mt-0.5 leading-snug">{inAppToast.message}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setInAppToast(null)}
+              className="text-[#8b95a1] hover:text-[#191f28] p-1 text-xs"
+              title="알림 닫기"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-[#f1f3f5] flex justify-between items-center text-[11px]">
+            <span className="text-[#8b95a1]">방금 전 도착</span>
+            <button
+              onClick={() => {
+                setRole('admin');
+                setInAppToast(null);
+              }}
+              className="font-bold text-[#a67c48] hover:underline flex items-center gap-0.5"
+            >
+              <span>관리자 콘솔에서 승인하기</span>
+              <ChevronRight size={13} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 무통장 입금 포인트 충전 모달 */}
       {showPointModal && (
