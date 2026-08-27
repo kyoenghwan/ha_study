@@ -1703,7 +1703,7 @@ function App() {
                   <span className="text-[10px] text-[#8b95a1] font-normal">최소 1,000원 이상</span>
                 </label>
 
-                <div className="relative flex items-center">
+                <div className="flex items-center">
                   <input
                     type="number"
                     min="1000"
@@ -1711,11 +1711,8 @@ function App() {
                     value={customChargeAmount}
                     onChange={(e) => setCustomChargeAmount(e.target.value)}
                     placeholder="예: 25000"
-                    className="form-input text-base font-extrabold text-[#191f28] py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-white w-full pr-10 focus:border-[#a67c48]"
+                    className="form-input text-base font-extrabold text-[#191f28] py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-white w-full focus:border-[#a67c48]"
                   />
-                  <span className="absolute right-3.5 text-xs font-bold text-[#a67c48]">
-                    P
-                  </span>
                 </div>
 
                 {/* 퀵 빠른 선택 버튼 (원클릭 입력) */}
