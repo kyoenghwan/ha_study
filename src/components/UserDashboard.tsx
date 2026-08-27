@@ -13,6 +13,7 @@ interface UserDashboardProps {
   selectedBranchId?: string;
   selectedBranchName?: string;
   currentBranchPoints?: number;
+  branchManagerContact?: string;
   getBranchPoints?: (user: UserAccount | null, bId: string) => number;
   pointTransferRequests?: PointTransferRequest[];
   onApplyPointTransfer?: (data: { fromBranchId: string; toBranchId: string; amount: number; reason?: string }) => boolean;
@@ -72,6 +73,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   selectedBranchId = 'yeouido',
   selectedBranchName = '해당 지점',
   currentBranchPoints,
+  branchManagerContact,
   getBranchPoints,
   pointTransferRequests = [],
   onApplyPointTransfer,
@@ -367,6 +369,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-[#a67c48] shrink-0 mt-1.5" />
             <p>무통장 입금 계좌: <strong className="text-[#191f28]">{bankInfo.bankName} {bankInfo.accountNumber}</strong> (예금주: {bankInfo.accountHolder})</p>
           </div>
+
+          {branchManagerContact && (
+            <div className="flex items-start gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#a67c48] shrink-0 mt-1.5" />
+              <p>
+                지점 담당자 문의: <a href={`tel:${branchManagerContact.split(' / ')[0]}`} className="text-[#191f28] font-bold hover:underline hover:text-[#a67c48] transition-colors">{branchManagerContact}</a>
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

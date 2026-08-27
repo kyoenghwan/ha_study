@@ -1422,6 +1422,13 @@ function App() {
             selectedBranchId={selectedBranch}
             selectedBranchName={currentBranchObj.fullName || currentBranchObj.name}
             currentBranchPoints={getBranchPoints(currentUser, selectedBranch)}
+            branchManagerContact={
+              users
+                .filter((u) => u.branchIds?.includes(selectedBranch))
+                .map((u) => u.phone)
+                .filter(Boolean)
+                .join(' / ') || '010-9999-8888'
+            }
             getBranchPoints={getBranchPoints}
             pointTransferRequests={pointTransferRequests.filter((r) => r.userId === currentUser?.userId || r.userId === currentUser?.id)}
             onApplyPointTransfer={handleApplyPointTransfer}
