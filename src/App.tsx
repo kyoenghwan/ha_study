@@ -1041,7 +1041,11 @@ function App() {
         {/* 🏢 지점 선택 및 검색 팝업 모달 */}
         <BranchSelectModal
           isOpen={showBranchSelectModal}
-          branches={BRANCHES}
+          branches={
+            currentUser?.branchIds && currentUser.branchIds.length > 0
+              ? BRANCHES.filter((b) => currentUser.branchIds?.includes(b.id))
+              : BRANCHES
+          }
           selectedBranchId={selectedBranch}
           onSelectBranch={handleSelectBranch}
           onClose={() => setShowBranchSelectModal(false)}
@@ -1050,9 +1054,9 @@ function App() {
     );
   }
 
-  // 🏢 최고 관리자 전용: 지점별 관리자 신규 계정 생성 및 권한 부여
+  // 🏢 최고 관리자 전용: 지점별 관리자 신규 계정 생성 및 다중 지점 권한 부여 (N:M 매칭)
   const handleCreateBranchAdmin = (data: {
-    branchId: string;
+    branchIds: string[];
     roleCode: RoleCode;
     userId: string;
     name: string;
@@ -1073,6 +1077,7 @@ function App() {
       phone: data.phone,
       role: 'admin',
       points: 0,
+      branchIds: data.branchIds,
     };
 
     const nextUsers = [...users, newAdminUser];
@@ -1082,8 +1087,10 @@ function App() {
     // 권한(Grant) 부여
     void handleGrantRole(newAdminUser.id, data.roleCode);
 
-    const branchName = BRANCHES.find((b) => b.id === data.branchId)?.name || data.branchId;
-    alert(`[${branchName}] 지점 관리자 계정('${data.userId}')이 성공적으로 생성되었습니다!`);
+    const branchNames = data.branchIds
+      .map((id) => BRANCHES.find((b) => b.id === id)?.name || id)
+      .join(', ');
+    alert(`[${branchNames}] 담당 관리자 계정('${data.userId}')이 성공적으로 등록 및 권한 발급되었습니다!`);
     return true;
   };
 

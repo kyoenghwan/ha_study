@@ -56,6 +56,7 @@ export interface UserAccount {
   phone: string;
   role: Role;
   points: number;
+  branchIds?: string[]; // 담당 지점 목록 (다중 지점 관리 지원: ['yeouido', 'mapo'] 등)
 }
 
 export interface PointTransaction {

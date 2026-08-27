@@ -45,7 +45,7 @@ interface AdminDashboardProps {
     roleCode: RoleCode,
   ) => Promise<{ success: boolean; message?: string }>;
   onCreateBranchAdmin?: (data: {
-    branchId: string;
+    branchIds: string[];
     roleCode: RoleCode;
     userId: string;
     name: string;
@@ -99,9 +99,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRevokeRole,
   onCreateBranchAdmin,
 }) => {
-  // 🏢 지점 관리자 등록 모달 상태
+  // 🏢 지점 관리자 등록 모달 상태 (다중 지점 선택 지원)
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
-  const [newAdminBranchId, setNewAdminBranchId] = useState('mapo');
+  const [newAdminBranchIds, setNewAdminBranchIds] = useState<string[]>(['mapo']);
   const [newAdminRoleCode, setNewAdminRoleCode] = useState<RoleCode>('BRANCH_ADMIN');
   const [newAdminUserId, setNewAdminUserId] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('1234');
@@ -1877,9 +1877,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   alert('모든 필수 항목을 입력해 주세요.');
                   return;
                 }
+                if (newAdminBranchIds.length === 0) {
+                  alert('담당할 지점을 최소 1개 이상 선택해 주세요.');
+                  return;
+                }
                 if (onCreateBranchAdmin) {
                   const success = onCreateBranchAdmin({
-                    branchId: newAdminBranchId,
+                    branchIds: newAdminBranchIds,
                     roleCode: newAdminRoleCode,
                     userId: newAdminUserId.trim(),
                     password: newAdminPassword.trim() || '1234',
@@ -1891,29 +1895,89 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     setNewAdminUserId('');
                     setNewAdminName('');
                     setNewAdminPhone('');
+                    setNewAdminBranchIds(['mapo']);
                   }
                 }
               }}
               className="space-y-4 pt-3 text-xs"
             >
-              <div className="bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] space-y-1">
-                <p className="text-[11px] font-bold text-[#a67c48]">👑 최고 관리자 권한 안내</p>
+              <div className="bg-[#f8f9fc] p-3.5 rounded-2xl border border-[#e5e8eb] space-y-1">
+                <p className="text-[11px] font-bold text-[#a67c48] flex items-center gap-1">
+                  <span>👑 다중 점포 관리자 등록 안내</span>
+                </p>
                 <p className="text-[11px] text-[#8b95a1] leading-relaxed">
-                  지점별 관리자를 등록하면 해당 계정은 지정된 지점의 룸/예약/출입 바코드/포인트만 독립적으로 관리하게 됩니다.
+                  한 명의 관리자가 <strong>여러 지점(예: 여의도점 + 마포점 등)</strong>을 복수로 담당할 수 있습니다. 해당 관리자로 로그인 시 체크된 지점들만 전환하며 관리하게 됩니다.
                 </p>
               </div>
 
-              {/* 담당 지점 선택 */}
-              <div className="form-group space-y-1">
-                <label className="font-bold text-[#191f28]">담당 지점 선택</label>
-                <select
-                  value={newAdminBranchId}
-                  onChange={(e) => setNewAdminBranchId(e.target.value)}
-                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
-                >
-                  <option value="yeouido">르하임 스터디카페 여의도점</option>
-                  <option value="mapo">르하임 스터디카페 마포점</option>
-                </select>
+              {/* 🏢 담당 지점 다중 선택 (복수 체크박스) */}
+              <div className="form-group space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="font-bold text-[#191f28] flex items-center gap-1">
+                    <span>담당 지점 선택</span>
+                    <strong className="text-[#a67c48]">({newAdminBranchIds.length}개 선택됨)</strong>
+                  </label>
+                  <div className="flex gap-1.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setNewAdminBranchIds(['yeouido', 'mapo', 'gangnam', 'hongdae', 'pangyo', 'haeundae', 'dongseongro'])}
+                      className="text-[#a67c48] hover:underline font-semibold"
+                    >
+                      전체 선택
+                    </button>
+                    <span className="text-[#8b95a1]">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewAdminBranchIds([])}
+                      className="text-[#8b95a1] hover:underline"
+                    >
+                      선택 해제
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#f8f9fc] p-3 rounded-2xl border border-[#e5e8eb] max-h-48 overflow-y-auto">
+                  {[
+                    { id: 'yeouido', name: '르하임 여의도점', address: '영등포구 여의도동' },
+                    { id: 'mapo', name: '르하임 마포점', address: '마포구 도화동' },
+                    { id: 'gangnam', name: '르하임 강남점', address: '강남구 역삼동' },
+                    { id: 'hongdae', name: '르하임 홍대입구점', address: '마포구 서교동' },
+                    { id: 'pangyo', name: '르하임 판교역점', address: '분당구 삼평동' },
+                    { id: 'haeundae', name: '르하임 부산 해운대점', address: '해운대구 우동' },
+                    { id: 'dongseongro', name: '르하임 대구 동성로점', address: '대구 중구 동성로' },
+                  ].map((branch) => {
+                    const isChecked = newAdminBranchIds.includes(branch.id);
+                    return (
+                      <label
+                        key={branch.id}
+                        className={`flex items-start gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                          isChecked
+                            ? 'bg-[#ffffff] border-[#a67c48] shadow-sm'
+                            : 'bg-transparent border-transparent hover:bg-[#ffffff]/60'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewAdminBranchIds([...newAdminBranchIds, branch.id]);
+                            } else {
+                              setNewAdminBranchIds(newAdminBranchIds.filter((id) => id !== branch.id));
+                            }
+                          }}
+                          className="mt-0.5 rounded text-[#a67c48] focus:ring-[#a67c48]"
+                        />
+                        <div className="min-w-0">
+                          <p className={`text-xs font-bold ${isChecked ? 'text-[#191f28]' : 'text-[#4e5968]'}`}>
+                            {branch.name}
+                          </p>
+                          <p className="text-[10px] text-[#8b95a1] truncate">{branch.address}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* 직급 및 권한 */}
