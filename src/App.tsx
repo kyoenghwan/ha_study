@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction } from './types';
+import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction, Branch } from './types';
 import { INITIAL_ROOMS, INITIAL_RESERVATIONS, INITIAL_BANK_INFO, INITIAL_ADMIN_BARCODES, INITIAL_MASTER_BARCODE, INITIAL_USERS } from './utils/mockData';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
@@ -47,14 +47,6 @@ import type { DbResult } from './lib/supabase';
 import { BranchSelectModal } from './components/BranchSelectModal';
 
 // 르하임 멀티테넌트 지점 목록 정의
-export interface Branch {
-  id: string;
-  name: string;
-  fullName: string;
-  address: string;
-  description: string;
-}
-
 export const BRANCHES: Branch[] = [
   {
     id: 'yeouido',
@@ -1069,9 +1061,7 @@ function App() {
                     </div>
                   </div>
 
-                  <p className="text-xs text-[#4e5968] bg-white/80 p-2 rounded-xl border border-[#a67c48]/20">
-                    💡 {currentBranchObj.description}
-                  </p>
+
                 </div>
               </div>
 

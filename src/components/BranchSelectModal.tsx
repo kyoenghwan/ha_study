@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Branch } from '../App';
+import type { Branch } from '../types';
 import { Search, MapPin, Check, X, Building2 } from 'lucide-react';
 
 interface BranchSelectModalProps {

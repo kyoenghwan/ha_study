@@ -116,7 +116,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [branchInputName, setBranchInputName] = useState('');
   const [branchInputFullName, setBranchInputFullName] = useState('');
   const [branchInputAddress, setBranchInputAddress] = useState('');
-  const [branchInputDescription, setBranchInputDescription] = useState('');
   // 🏢 지점 관리자 등록 모달 상태 (기존 회원 선택 / 신규 생성 듀얼 모드)
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [adminRegMode, setAdminRegMode] = useState<'existing' | 'new'>('existing');
@@ -1115,7 +1114,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     setBranchInputName('');
                     setBranchInputFullName('');
                     setBranchInputAddress('');
-                    setBranchInputDescription('');
                     setShowCreateBranchModal(true);
                   }}
                   className="gold-btn text-xs font-bold py-2.5 px-4 rounded-xl shadow flex items-center gap-1.5 shrink-0"
@@ -1157,7 +1155,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               setBranchInputName(branch.name);
                               setBranchInputFullName(branch.fullName);
                               setBranchInputAddress(branch.address);
-                              setBranchInputDescription(branch.description);
                               setShowCreateBranchModal(true);
                             }}
                             className="text-xs font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1"
@@ -1181,9 +1178,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                       </div>
 
-                      <p className="text-xs text-[#4e5968] bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] leading-relaxed">
-                        💡 {branch.description}
-                      </p>
+
 
                       <div className="flex items-center gap-3 pt-1 text-xs text-[#8b95a1]">
                         <span className="font-semibold">
@@ -2331,8 +2326,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       name: branchInputName.trim(),
                       fullName: branchInputFullName.trim(),
                       address: branchInputAddress.trim(),
-                      description: branchInputDescription.trim(),
-                    });
+                      });
                   }
                   setShowCreateBranchModal(false);
                 } else {
@@ -2342,8 +2336,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       name: branchInputName.trim(),
                       fullName: branchInputFullName.trim(),
                       address: branchInputAddress.trim(),
-                      description: branchInputDescription.trim(),
-                    });
+                      });
                     if (ok) {
                       setShowCreateBranchModal(false);
                     }
@@ -2419,17 +2412,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 />
               </div>
 
-              {/* 매장 설명 / 특징 */}
-              <div className="form-group space-y-1">
-                <label className="font-bold text-[#191f28]">매장 소개 / 특징</label>
-                <textarea
-                  rows={2}
-                  value={branchInputDescription}
-                  onChange={(e) => setBranchInputDescription(e.target.value)}
-                  placeholder="예: 24시간 프리미엄 방음 스터디존 & 대형 세미나실 완비"
-                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
-                />
-              </div>
+
 
               <div className="flex gap-2 pt-2">
                 <button

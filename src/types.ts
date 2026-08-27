@@ -3,7 +3,7 @@ export interface Branch {
   name: string;
   fullName: string;
   address: string;
-  description: string;
+  description?: string;
 }
 
 export type PaymentMethod = 'points' | 'bank_transfer';
