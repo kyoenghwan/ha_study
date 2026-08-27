@@ -9,6 +9,8 @@ interface UserDashboardProps {
   reservations: Reservation[];
   bankInfo: BankInfo;
   masterBarcode?: MasterBarcode;
+  selectedBranchName?: string;
+  currentBranchPoints?: number;
   onSelectRoom: (roomId: string) => void;
   onCancelAndRefundReservation?: (resId: string) => void;
   onOpenPointModal?: () => void;
@@ -61,11 +63,14 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   reservations,
   bankInfo,
   masterBarcode,
+  selectedBranchName = '해당 지점',
+  currentBranchPoints,
   onSelectRoom,
   onCancelAndRefundReservation,
   onOpenPointModal,
   onUpdateUserProfile,
 }) => {
+  const displayPoints = currentBranchPoints !== undefined ? currentBranchPoints : (currentUser?.points || 0);
   const [showMyReservationsModal, setShowMyReservationsModal] = useState(false);
   const [showMyProfileModal, setShowMyProfileModal] = useState(false);
   const [activeBarcodeReservation, setActiveBarcodeReservation] = useState<Reservation | null>(null);
@@ -241,8 +246,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           <div className="flex items-center gap-2">
             <Coins size={18} className="text-[#a67c48]" />
             <div>
-              <span className="text-[11px] text-[#8b95a1]">보유 포인트</span>
-              <p className="text-sm font-extrabold text-[#191f28]">{(currentUser?.points || 0).toLocaleString()} P</p>
+              <span className="text-[11px] text-[#8b95a1] flex items-center gap-1">
+                <strong className="text-[#a67c48] font-bold">[{selectedBranchName}]</strong> 전용 보유 포인트
+              </span>
+              <p className="text-sm font-extrabold text-[#191f28]">{displayPoints.toLocaleString()} P</p>
             </div>
           </div>
           {onOpenPointModal && (

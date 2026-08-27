@@ -64,6 +64,7 @@ export interface UserAccount {
   phone: string;
   role: Role;
   points: number;
+  branchPoints?: Record<string, number>; // 지점별 독립 포인트 계좌: { 'yeouido': 20000, 'daebang': 10000 }
   branchIds?: string[]; // 담당 지점 목록 (다중 지점 관리 지원: ['yeouido', 'mapo'] 등)
 }
 
@@ -71,6 +72,7 @@ export interface PointTransaction {
   id: string;
   userId: string;
   userName: string;
+  branchId?: string; // 충전/사용/환불 대상 지점 식별자
   type: 'charge_request' | 'charge_approved' | 'use' | 'refund';
   amount: number;
   description: string;

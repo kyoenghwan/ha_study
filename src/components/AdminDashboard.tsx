@@ -49,6 +49,8 @@ interface AdminDashboardProps {
   onEditBranch?: (branchId: string, updated: Omit<Branch, 'id'>) => void;
   onDeleteBranch?: (branchId: string) => void;
   isSuperAdmin?: boolean;
+  selectedBranchId?: string;
+  getBranchPoints?: (user: UserAccount | null, bId: string) => number;
   onCreateBranchAdmin?: (data: {
     branchIds: string[];
     roleCode: RoleCode;
@@ -108,6 +110,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onEditBranch,
   onDeleteBranch,
   isSuperAdmin = true,
+  selectedBranchId = 'yeouido',
+  getBranchPoints,
 }) => {
   // 🏢 지점 등록 / 수정 모달 상태
   const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
@@ -1244,51 +1248,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <td className="p-3 font-mono text-[#8e8e93]">{u.userId}</td>
                         <td className="p-3 text-[#8e8e93]">{u.phone}</td>
                         <td className="p-3 font-bold">
-                          <div className="flex flex-wrap items-center gap-1">
-                            {(userGrants[u.id] ?? []).filter((g) => g.roleCode !== 'CUSTOMER').length === 0 ? (
-                              <span className="text-[#8e8e93] bg-[#f0f0f2] px-2 py-0.5 rounded text-[10px]">
-                                일반 회원
-                              </span>
-                            ) : (
-                              (userGrants[u.id] ?? [])
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {/* 👑 최고 관리자 vs 🏢 지점 관리자 vs 👤 일반 회원 선명한 뱃지 */}
+                              {u.userId === 'admin' ? (
+                                <span className="inline-flex items-center gap-1 font-bold text-white bg-[#191f28] px-2.5 py-1 rounded-lg text-[10px] shadow-sm">
+                                  👑 최고 관리자 (전 지점 총괄)
+                                </span>
+                              ) : u.branchIds && u.branchIds.length > 0 ? (
+                                <span className="inline-flex items-center gap-1 font-extrabold text-[#a67c48] bg-[#a67c48]/15 border border-[#a67c48]/40 px-2.5 py-1 rounded-lg text-[10px] shadow-sm">
+                                  🏢 [{u.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ')}] 지점 관리자
+                                </span>
+                              ) : (
+                                <span className="text-[#8e8e93] bg-[#f0f0f2] px-2 py-0.5 rounded text-[10px]">
+                                  👤 일반 회원
+                                </span>
+                              )}
+
+                              {/* 지점 권한 관리 버튼 */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAssignAdminModal(u)}
+                                className="text-[10px] font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2 py-0.5 rounded-lg transition-colors whitespace-nowrap"
+                              >
+                                🏢 지점 권한 부여/수정
+                              </button>
+                            </div>
+
+                            {/* 세부 RBAC 권한 뱃지 & 추가 버튼 */}
+                            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                              {(userGrants[u.id] ?? [])
                                 .filter((g) => g.roleCode !== 'CUSTOMER')
                                 .map((g) => (
                                   <span
                                     key={g.id}
-                                    className="inline-flex items-center gap-1 text-[#b09168] bg-[#b09168]/10 px-2 py-0.5 rounded text-[10px]"
+                                    className="inline-flex items-center gap-1 text-[9px] font-semibold text-[#8b95a1] bg-[#f1f3f5] px-1.5 py-0.5 rounded"
                                   >
                                     {ROLE_LABEL[g.roleCode] ?? g.roleCode}
-                                    {(canManageRole?.(g.roleCode) ?? false) && onRevokeRole && (
+                                    {onRevokeRole && (
                                       <button
                                         type="button"
-                                        disabled={pendingRoleUserId !== null}
                                         onClick={() => void handleRevokeRoleClick(u, g)}
-                                        title={`${ROLE_LABEL[g.roleCode] ?? g.roleCode} 권한 회수`}
-                                        className="text-[#ff3b30] font-extrabold px-0.5"
+                                        className="text-[#e93d3d] hover:font-bold ml-0.5"
                                       >
                                         ×
                                       </button>
                                     )}
                                   </span>
-                                ))
-                            )}
-                            {assignableRoles
-                              .filter((code) => !(userGrants[u.id] ?? []).some((g) => g.roleCode === code))
-                              .map((code) => (
-                                <button
-                                  key={code}
-                                  type="button"
-                                  disabled={pendingRoleUserId !== null}
-                                  onClick={() => void handleGrantRoleClick(u, code)}
-                                  className="text-[#8e8e93] border border-[#e5e5ea] bg-[#f8f9fa] px-2 py-0.5 rounded text-[10px] font-bold"
-                                >
-                                  + {ROLE_LABEL[code] ?? code}
-                                </button>
-                              ))}
+                                ))}
+
+                              {assignableRoles
+                                .filter((code) => !(userGrants[u.id] ?? []).some((g) => g.roleCode === code))
+                                .map((code) => (
+                                  <button
+                                    key={code}
+                                    type="button"
+                                    onClick={() => void handleGrantRoleClick(u, code)}
+                                    className="text-[9px] text-[#8b95a1] hover:text-[#191f28] border border-[#e5e8eb] bg-[#f8f9fc] hover:bg-[#ffffff] px-1.5 py-0.5 rounded"
+                                  >
+                                    + {ROLE_LABEL[code] ?? code}
+                                  </button>
+                                ))}
+                            </div>
                           </div>
                         </td>
-                        <td className="p-3 font-extrabold text-[#b09168]">
-                          {(u.points || 0).toLocaleString()} P
+                        <td className="p-3">
+                          <div className="space-y-0.5">
+                            <p className="font-extrabold text-sm text-[#191f28]">
+                              {(getBranchPoints ? getBranchPoints(u, selectedBranchId) : (u.points || 0)).toLocaleString()} P
+                            </p>
+                            <p className="text-[10px] text-[#a67c48] font-semibold">
+                              [{branches.find(b => b.id === selectedBranchId)?.name || selectedBranchId} 전용]
+                            </p>
+                          </div>
                         </td>
                         <td className="p-3 text-center space-x-1">
                           <button

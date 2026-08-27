@@ -94,7 +94,35 @@ function App() {
     return BRANCHES;
   });
 
-  const updateBranches = (newBranches: Branch[]) => {
+  // 🏢 지점별 독립 포인트 조회 헬퍼
+  const getBranchPoints = (user: UserAccount | null, bId: string = selectedBranch): number => {
+    if (!user) return 0;
+    if (user.branchPoints && user.branchPoints[bId] !== undefined) {
+      return user.branchPoints[bId];
+    }
+    // 레거시 호환: 기존 points 값이 있으면 여의도점 기본값으로 처리
+    return bId === 'yeouido' ? (user.points || 0) : 0;
+  };
+
+  // 🏢 지점별 독립 포인트 수정 헬퍼
+  const adjustUserBranchPoints = (user: UserAccount, bId: string, deltaAmount: number): UserAccount => {
+    const currentPts = getBranchPoints(user, bId);
+    const newPts = Math.max(0, currentPts + deltaAmount);
+    const updatedBranchPoints = {
+      ...(user.branchPoints || {}),
+      [bId]: newPts,
+    };
+    // 총합 포인트 계산
+    const totalPoints = Object.values(updatedBranchPoints).reduce((acc, val) => acc + val, 0);
+
+    return {
+      ...user,
+      points: totalPoints,
+      branchPoints: updatedBranchPoints,
+    };
+  };
+
+    const updateBranches = (newBranches: Branch[]) => {
     setBranches(newBranches);
     localStorage.setItem('lheureux_branches', JSON.stringify(newBranches));
     persist('지점 목록 동기화', () => saveDbBranches(newBranches));
@@ -454,16 +482,7 @@ function App() {
     localStorage.setItem('lheureux_selected_branch', branchId);
   };
 
-  const handleUpdatePoints = (nextPoints: number) => {
-    if (!currentUser) return;
-    const updatedUser = { ...currentUser, points: nextPoints };
-    updateCurrentUser(updatedUser);
-    
-    const updatedUsers = users.map(u => u.id === currentUser.id ? updatedUser : u);
-    updateUsers(updatedUsers);
-    // 이전에는 DB 저장 호출이 아예 없어 예약 시 차감된 포인트가 저장되지 않았다.
-    persist('포인트 잔액', () => updateDbUser(updatedUser));
-  };
+
 
   // 무통장 입금 포인트 충전 신청 처리 (이용자용)
   const handleApplyPointCharge = (amount: number) => {
@@ -759,7 +778,9 @@ function App() {
       return { success: false, message: '선택된 공부방이 없습니다.' };
     }
 
-    const currentPoints = currentUser?.points ?? 0;
+    const currentBranchPts = getBranchPoints(currentUser, selectedBranch);
+    const branchName = branches.find((b) => b.id === selectedBranch)?.name || currentBranchObj.name;
+
     const flowResult = FA_CREATE_RESERVATIONS({
       authContext,
       roomId: targetRoomId,
@@ -768,7 +789,7 @@ function App() {
       userName: currentUser?.name || userName,
       userPhone: currentUser?.phone || userPhone,
       paymentMethod,
-      availablePoints: currentPoints,
+      availablePoints: currentBranchPts,
       barcodeId: masterBarcode?.value || '*M091063684*',
     });
     if (!flowResult.success || !flowResult.data) {
@@ -778,25 +799,28 @@ function App() {
 
     updateReservations([...reservations, ...newReservations]);
     
-    // 포인트 결제 시 사용 트랜잭션 기록
-    if (paymentMethod === 'points') {
-      handleUpdatePoints(currentPoints - totalCost);
+    // 포인트 결제 시 해당 지점 전용 포인트 차감 및 기록
+    if (paymentMethod === 'points' && currentUser) {
+      const updatedUser = adjustUserBranchPoints(currentUser, selectedBranch, -totalCost);
+      const nextUsers = users.map((u) => (u.id === currentUser.id ? updatedUser : u));
+      updateUsers(nextUsers);
+      setCurrentUser(updatedUser);
+      persist('포인트 결제 차감', () => updateDbUser(updatedUser));
 
-      if (currentUser) {
-        const useTx: PointTransaction = {
-          id: `tx-use-${Date.now()}`,
-          userId: currentUser.userId,
-          userName: currentUser.name,
-          type: 'use',
-          amount: totalCost,
-          description: `공부방 예약 포인트 차감 (${slots.length}개 슬롯)`,
-          status: 'completed',
-          createdAt: new Date().toISOString(),
-        };
+      const useTx: PointTransaction = {
+        id: `tx-use-${Date.now()}`,
+        userId: currentUser.userId,
+        userName: currentUser.name,
+        branchId: selectedBranch,
+        type: 'use',
+        amount: totalCost,
+        description: `[${branchName}] 공부방 예약 포인트 차감 (${slots.length}개 슬롯)`,
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+      };
 
-        updatePointTransactions([useTx, ...pointTransactions]);
-        persist('포인트 사용 이력', () => saveDbPointTransaction(useTx));
-      }
+      updatePointTransactions([useTx, ...pointTransactions]);
+      persist('포인트 사용 이력', () => saveDbPointTransaction(useTx));
     }
 
     return { success: true, createdReservations: newReservations };
@@ -1216,6 +1240,8 @@ function App() {
             rooms={currentBranchRooms}
             reservations={currentBranchReservations}
             branches={branches}
+            selectedBranchId={selectedBranch}
+            getBranchPoints={getBranchPoints}
             onCreateBranch={handleCreateBranch}
             onEditBranch={handleEditBranch}
             onDeleteBranch={handleDeleteBranch}
@@ -1261,6 +1287,8 @@ function App() {
             reservations={currentBranchReservations}
             bankInfo={bankInfo}
             masterBarcode={masterBarcode}
+            selectedBranchName={currentBranchObj.fullName || currentBranchObj.name}
+            currentBranchPoints={getBranchPoints(currentUser, selectedBranch)}
             onSelectRoom={(roomId) => setSelectedRoomId(roomId)}
             onCancelAndRefundReservation={handleCancelAndRefundReservation}
             onOpenPointModal={() => setShowPointModal(true)}
