@@ -5,7 +5,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
 import { AuthModal } from './components/AuthModal';
-import { Shield, LogOut, Coins, Plus, MapPin, Building2, ChevronRight, Search } from 'lucide-react';
+import { Shield, LogOut, Coins, Plus, Building2, ChevronRight, Search } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 import { FA_CREATE_RESERVATIONS } from './atoms/reservation/FA_create_reservations';
 import type { AuthContext, RoleCode, RoleGrant } from './atoms/auth/DA_auth';
@@ -1190,8 +1190,14 @@ function App() {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#a67c48] text-white flex items-center justify-center font-bold shadow-sm">
-                        <MapPin size={20} />
+                      {/* 🌟 세련된 지점 골드 엠블럼 타이포 뱃지 */}
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#c39b67] via-[#a67c48] to-[#7f5a2a] text-white flex flex-col items-center justify-center font-extrabold shadow-md border border-white/40 shrink-0">
+                        <span className="text-[13px] font-black tracking-tight leading-none">
+                          {currentBranchObj.name.replace(/점|역/g, '').slice(0, 2) || '르하'}
+                        </span>
+                        <span className="text-[8px] font-semibold text-[#f8f0e5] scale-90 tracking-widest mt-0.5">
+                          르하임
+                        </span>
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-[#191f28] group-hover:text-[#a67c48] transition-colors">

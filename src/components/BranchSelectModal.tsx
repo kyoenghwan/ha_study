@@ -130,12 +130,23 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
                     {/* 지점명 & 선택 상태 */}
                     <div className="text-left">
                       <div className="flex justify-between items-start">
-                        <p 
-                          className="text-[11px] font-semibold"
-                          style={{ color: isSelected ? '#faecd8' : '#8b95a1' }}
-                        >
-                          르하임 스터디카페
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <span 
+                            className="w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center shadow-xs shrink-0"
+                            style={{
+                              backgroundColor: isSelected ? '#ffffff' : '#a67c48',
+                              color: isSelected ? '#a67c48' : '#ffffff',
+                            }}
+                          >
+                            {branch.name.replace(/점|역/g, '').slice(0, 2)}
+                          </span>
+                          <p 
+                            className="text-[11px] font-semibold"
+                            style={{ color: isSelected ? '#faecd8' : '#8b95a1' }}
+                          >
+                            르하임 스터디카페
+                          </p>
+                        </div>
                         {isSelected ? (
                           <span 
                             className="px-2 py-0.5 rounded-md text-[10px] font-extrabold flex items-center gap-1 shadow-sm"
