@@ -16,6 +16,7 @@ interface AdminDashboardProps {
   bankInfo: BankInfo;
   notificationSettings?: NotificationSettings;
   onUpdateNotificationSettings?: (settings: NotificationSettings) => void;
+  onUpdateUserProfile?: (userId: string, data: { name: string; phone: string; password?: string }) => Promise<{ success: boolean; message?: string }>;
   users?: UserAccount[];
   pointTransactions?: PointTransaction[];
   adminBarcodes?: AdminBarcodeItem[];
@@ -91,6 +92,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   bankInfo,
   notificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
   onUpdateNotificationSettings,
+  onUpdateUserProfile,
   users = [],
   pointTransactions = [],
   adminBarcodes = [],
@@ -195,24 +197,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return 'BRANCH_ADMIN';
   }, [isSuperAdmin, currentUser]);
 
-  // 탭별 접근 권한 매트릭스 검사 함수
+  // 탭별 접근 권한 매트릭스 검사 함수 (모든 관리자에게 지점 운영 및 관리자 설정 탭 접근 허용)
   const canAccessTab = (tab: TabType): boolean => {
     // 1. 최고 관리자 (PLATFORM_ADMIN): 모든 탭 접근 가능
     if (currentAdminRole === 'PLATFORM_ADMIN') return true;
 
-    // 2. 지점 오너 / 점주 (BRANCH_OWNER): 지점(점포) 관리 탭만 제외
-    if (currentAdminRole === 'BRANCH_OWNER') {
+    // 2. 지점 관리자 / 점주: 본사 전용인 지점(점포) 관리 탭만 제외하고 모두 접근 가능
+    if (currentAdminRole === 'BRANCH_ADMIN' || currentAdminRole === 'BRANCH_OWNER') {
       return tab !== 'branches_management';
     }
 
-    // 3. 지점 총괄 관리자 (BRANCH_ADMIN): 지점(점포) 관리, 통장 계좌 설정 제외
-    if (currentAdminRole === 'BRANCH_ADMIN') {
-      return tab !== 'branches_management' && tab !== 'bank_settings';
-    }
-
-    // 4. 지점 직원 / 매니저 (STAFF): 룸&예약 관리, 포인트/입금 승인, 포인트 사용내역, 바코드 검증/발급 접근 가능
+    // 3. 지점 직원 / 매니저 (STAFF): 실무 관련 탭 + 관리자 설정 접근 가능
     if (currentAdminRole === 'STAFF') {
-      return tab === 'rooms_reservations' || tab === 'point_management' || tab === 'point_usage_history' || tab === 'barcode_management';
+      return tab === 'rooms_reservations' || tab === 'point_management' || tab === 'point_usage_history' || tab === 'barcode_management' || tab === 'bank_settings';
     }
 
     return true;
@@ -311,6 +308,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [accountNumber, setAccountNumber] = useState(bankInfo.accountNumber);
   const [accountHolder, setAccountHolder] = useState(bankInfo.accountHolder);
   const [bankSaveMsg, setBankSaveMsg] = useState(false);
+  // 👤 관리자 본인 정보 수정 상태
+  const [adminProfileName, setAdminProfileName] = useState(currentUser?.name || '');
+  const [adminProfilePhone, setAdminProfilePhone] = useState(currentUser?.phone || '');
+  const [adminProfilePassword, setAdminProfilePassword] = useState('');
+  const [adminProfileSaveMsg, setAdminProfileSaveMsg] = useState(false);
+  const [adminProfileErrorMsg, setAdminProfileErrorMsg] = useState('');
   // 🔔 알림 설정 로컬 상태
   const [notifSoundEnabled, setNotifSoundEnabled] = useState(notificationSettings.soundEnabled);
   const [notifTelegramEnabled, setNotifTelegramEnabled] = useState(notificationSettings.telegramEnabled);
@@ -652,7 +655,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
             }`}
           >
-            <Settings size={15} /> 통장 계좌 및 알림 설정
+            <Settings size={15} /> 지점 운영 및 관리자 설정
           </button>
         )}
       </div>
@@ -2264,74 +2267,198 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* TAB 5: 계좌 및 환경 설정 */}
         {activeTab === 'bank_settings' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            {/* 1. 무통장 입금 계좌 설정 */}
-            <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
-              <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
-                <Settings className="text-[#a67c48]" size={20} />
-                <div>
-                  <h2 className="text-base font-bold text-[#191f28]">무통장 입금 계좌 설정</h2>
-                  <p className="text-[11px] text-[#8b95a1] pt-0.5">
-                    회원들이 포인트 충전 시 안내받을 대표 입금 계좌 정보입니다.
-                  </p>
-                </div>
+          <div className="space-y-6 max-w-5xl mx-auto">
+            {/* 상단 안내 배너 */}
+            <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className="text-base font-bold text-[#191f28] flex items-center gap-2">
+                  <Settings className="text-[#a67c48]" size={20} /> 지점 운영 & 관리자 환경 설정
+                </h3>
+                <p className="text-xs text-[#8b95a1] mt-1 leading-relaxed">
+                  담당 관리자 정보(성함, 고객 문의용 연락처, 비밀번호)와 무통장 입금 계좌 및 스마트폰 텔레그램 알림을 설정합니다.
+                </p>
               </div>
-
-              {bankSaveMsg && (
-                <div className="p-3 text-xs font-semibold text-[#28a745] bg-[#28a745]/10 border border-[#28a745]/30 rounded-xl flex items-center gap-2">
-                  <CheckCircle2 size={16} /> 계좌 정보가 안전하게 저장되었습니다.
-                </div>
-              )}
-
-              <form onSubmit={handleBankSave} className="space-y-4">
-                <div className="form-group space-y-1">
-                  <label className="text-xs font-bold text-[#191f28]">은행명</label>
-                  <input
-                    type="text"
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    placeholder="예: 신한은행, 카카오뱅크"
-                    className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb]"
-                    required
-                  />
-                </div>
-
-                <div className="form-group space-y-1">
-                  <label className="text-xs font-bold text-[#191f28]">계좌 번호</label>
-                  <input
-                    type="text"
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
-                    placeholder="예: 110-384-918234"
-                    className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb]"
-                    required
-                  />
-                </div>
-
-                <div className="form-group space-y-1">
-                  <label className="text-xs font-bold text-[#191f28]">예금주명</label>
-                  <input
-                    type="text"
-                    value={accountHolder}
-                    onChange={(e) => setAccountHolder(e.target.value)}
-                    placeholder="예: (주)르하임 여의도점"
-                    className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb]"
-                    required
-                  />
-                </div>
-
-                <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
-                  계좌 정보 저장하기
-                </button>
-              </form>
+              <span className="text-xs font-bold text-[#a67c48] bg-[#a67c48]/10 px-3 py-1.5 rounded-xl border border-[#a67c48]/30">
+                🏢 현재 지점: {branches.find(b => b.id === selectedBranchId)?.fullName || selectedBranchId}
+              </span>
             </div>
 
-            {/* 2. 🔔 실시간 알림 설정 (텔레그램 & 딩동 사운드) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 1. 👤 담당 관리자 계정 & 문의 연락처 설정 */}
+              <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
+                <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
+                  <Users className="text-[#a67c48]" size={20} />
+                  <div>
+                    <h4 className="text-base font-bold text-[#191f28]">담당 관리자 정보 설정</h4>
+                    <p className="text-[11px] text-[#8b95a1] pt-0.5">
+                      이용 안내 화면에 노출되는 지점 담당자 연락처와 관리자 계정 정보를 수정합니다.
+                    </p>
+                  </div>
+                </div>
+
+                {adminProfileSaveMsg && (
+                  <div className="p-3 text-xs font-semibold text-[#28a745] bg-[#28a745]/10 border border-[#28a745]/30 rounded-xl flex items-center gap-2">
+                    <CheckCircle2 size={16} /> 관리자 정보가 성공적으로 변경되었습니다.
+                  </div>
+                )}
+
+                {adminProfileErrorMsg && (
+                  <div className="p-3 text-xs font-semibold text-[#e93d3d] bg-[#e93d3d]/10 border border-[#e93d3d]/30 rounded-xl flex items-center gap-2">
+                    <AlertCircle size={16} /> {adminProfileErrorMsg}
+                  </div>
+                )}
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!adminProfileName.trim() || !adminProfilePhone.trim()) {
+                      alert('담당자 성함과 연락처를 입력해 주세요.');
+                      return;
+                    }
+                    if (onUpdateUserProfile && currentUser) {
+                      const res = await onUpdateUserProfile(currentUser.id, {
+                        name: adminProfileName.trim(),
+                        phone: adminProfilePhone.trim(),
+                        ...(adminProfilePassword.trim() ? { password: adminProfilePassword.trim() } : {}),
+                      });
+                      if (res.success) {
+                        setAdminProfileSaveMsg(true);
+                        setAdminProfileErrorMsg('');
+                        setAdminProfilePassword('');
+                        setTimeout(() => setAdminProfileSaveMsg(false), 3000);
+                      } else {
+                        setAdminProfileErrorMsg(res.message || '저장 실패');
+                      }
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="form-group space-y-1">
+                    <label className="text-xs font-bold text-[#191f28]">관리자 아이디</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={currentUser?.userId || ''}
+                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-[#f8f9fc] text-[#8b95a1] font-mono cursor-not-allowed"
+                    />
+                    <p className="text-[10px] text-[#8b95a1]">아이디는 변경할 수 없습니다.</p>
+                  </div>
+
+                  <div className="form-group space-y-1">
+                    <label className="text-xs font-bold text-[#191f28]">담당자 성함 (이름)</label>
+                    <input
+                      type="text"
+                      required
+                      value={adminProfileName}
+                      onChange={(e) => setAdminProfileName(e.target.value)}
+                      placeholder="예: 김하윤"
+                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48]"
+                    />
+                  </div>
+
+                  <div className="form-group space-y-1">
+                    <label className="text-xs font-bold text-[#191f28] flex items-center justify-between">
+                      <span>지점 담당자 문의 연락처 (휴대폰 번호)</span>
+                      <span className="text-[10px] text-[#a67c48] font-semibold">★ 메인 이용안내에 자동 노출</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={adminProfilePhone}
+                      onChange={(e) => setAdminProfilePhone(e.target.value)}
+                      placeholder="예: 010-3957-3425"
+                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] font-mono"
+                    />
+                    <p className="text-[10px] text-[#8b95a1]">
+                      💡 입력하신 휴대폰 번호가 이용자 예약 화면의 <strong>'지점 담당자 문의: 010-XXXX-XXXX'</strong>로 즉시 노출됩니다.
+                    </p>
+                  </div>
+
+                  <div className="form-group space-y-1">
+                    <label className="text-xs font-bold text-[#191f28]">새 로그인 비밀번호 (선택 변경)</label>
+                    <input
+                      type="password"
+                      value={adminProfilePassword}
+                      onChange={(e) => setAdminProfilePassword(e.target.value)}
+                      placeholder="변경할 비밀번호 입력 (미입력 시 기존 유지)"
+                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48]"
+                    />
+                  </div>
+
+                  <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5">
+                    <Check size={14} /> 담당자 정보 저장하기
+                  </button>
+                </form>
+              </div>
+
+              {/* 2. 💳 지점 무통장 입금 계좌 설정 */}
+              <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
+                <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
+                  <CreditCard className="text-[#a67c48]" size={20} />
+                  <div>
+                    <h4 className="text-base font-bold text-[#191f28]">무통장 입금 계좌 설정</h4>
+                    <p className="text-[11px] text-[#8b95a1] pt-0.5">
+                      회원들이 포인트 충전 시 안내받을 지점 대표 입금 계좌 정보입니다.
+                    </p>
+                  </div>
+                </div>
+
+                {bankSaveMsg && (
+                  <div className="p-3 text-xs font-semibold text-[#28a745] bg-[#28a745]/10 border border-[#28a745]/30 rounded-xl flex items-center gap-2">
+                    <CheckCircle2 size={16} /> 계좌 정보가 안전하게 저장되었습니다.
+                  </div>
+                )}
+
+                <form onSubmit={handleBankSave} className="space-y-4">
+                  <div className="form-group space-y-1">
+                    <label className="text-xs font-bold text-[#191f28]">은행명</label>
+                    <input
+                      type="text"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="예: 신한은행, 카카오뱅크, 국민은행"
+                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48]"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group space-y-1">
+                    <label className="text-xs font-bold text-[#191f28]">계좌 번호</label>
+                    <input
+                      type="text"
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value)}
+                      placeholder="예: 110-384-918234"
+                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48] font-mono"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group space-y-1">
+                    <label className="text-xs font-bold text-[#191f28]">예금주명</label>
+                    <input
+                      type="text"
+                      value={accountHolder}
+                      onChange={(e) => setAccountHolder(e.target.value)}
+                      placeholder="예: (주)르하임 스터디카페"
+                      className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] focus:border-[#a67c48]"
+                      required
+                    />
+                  </div>
+
+                  <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5">
+                    <Check size={14} /> 계좌 정보 저장하기
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* 3. 🔔 실시간 알림 설정 (스마트폰 텔레그램 & 딩동 사운드) */}
             <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
               <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
                 <Bell className="text-[#a67c48]" size={20} />
                 <div>
-                  <h2 className="text-base font-bold text-[#191f28]">실시간 충전 알림 설정 (스마트폰 & 소리)</h2>
+                  <h4 className="text-base font-bold text-[#191f28]">실시간 충전 알림 설정 (스마트폰 텔레그램 & 딩동 소리)</h4>
                   <p className="text-[11px] text-[#8b95a1] pt-0.5">
                     회원이 포인트 충전/이전 신청 시 관리자 폰(텔레그램) 및 브라우저로 실시간 알림을 보냅니다.
                   </p>
@@ -2355,8 +2482,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               )}
 
-              <div className="space-y-4">
-                {/* 🔊 사운드 알림 토글 & 테스트 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* 🔊 사운드 & 브라우저 푸시 */}
                 <div className="p-4 bg-[#f8f9fc] rounded-2xl border border-[#e5e8eb] space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -2374,7 +2501,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </label>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-2">
                     <button
                       type="button"
                       onClick={() => playNotificationSound()}
@@ -2390,7 +2517,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       }}
                       className="text-[11px] font-bold text-[#4e5968] bg-white hover:bg-[#f1f3f5] border border-[#e5e8eb] px-3 py-1.5 rounded-xl transition-all"
                     >
-                      📱 브라우저 푸시 권한 요청
+                      📱 푸시 권한 요청
                     </button>
                   </div>
                 </div>
@@ -2436,7 +2563,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       />
                     </div>
 
-                    <div className="pt-2 flex justify-between items-center">
+                    <div className="pt-2">
                       <button
                         type="button"
                         disabled={notifTesting || !notifBotToken || !notifChatId}
@@ -2474,30 +2601,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </ol>
                   </div>
                 </div>
-
-                {/* 알림 설정 최종 저장 버튼 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newSettings: NotificationSettings = {
-                      soundEnabled: notifSoundEnabled,
-                      telegramEnabled: notifTelegramEnabled,
-                      telegramBotToken: notifBotToken.trim(),
-                      telegramChatId: notifChatId.trim(),
-                      notifyOnChargeRequest: true,
-                      notifyOnTransferRequest: true,
-                    };
-                    if (onUpdateNotificationSettings) {
-                      onUpdateNotificationSettings(newSettings);
-                      setNotifSaveMsg(true);
-                      setTimeout(() => setNotifSaveMsg(false), 3000);
-                    }
-                  }}
-                  className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5"
-                >
-                  <Bell size={14} /> 알림 설정 저장하기
-                </button>
               </div>
+
+              {/* 알림 설정 최종 저장 버튼 */}
+              <button
+                type="button"
+                onClick={() => {
+                  const newSettings: NotificationSettings = {
+                    soundEnabled: notifSoundEnabled,
+                    telegramEnabled: notifTelegramEnabled,
+                    telegramBotToken: notifBotToken.trim(),
+                    telegramChatId: notifChatId.trim(),
+                    notifyOnChargeRequest: true,
+                    notifyOnTransferRequest: true,
+                  };
+                  if (onUpdateNotificationSettings) {
+                    onUpdateNotificationSettings(newSettings);
+                    setNotifSaveMsg(true);
+                    setTimeout(() => setNotifSaveMsg(false), 3000);
+                  }
+                }}
+                className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5"
+              >
+                <Bell size={14} /> 알림 설정 저장하기
+              </button>
             </div>
           </div>
         )}

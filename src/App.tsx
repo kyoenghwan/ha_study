@@ -1541,6 +1541,7 @@ function App() {
             bankInfo={bankInfo}
             notificationSettings={notificationSettings}
             onUpdateNotificationSettings={handleUpdateNotificationSettings}
+            onUpdateUserProfile={handleUpdateUserProfile}
             users={users}
             pointTransactions={pointTransactions}
             adminBarcodes={adminBarcodes}
