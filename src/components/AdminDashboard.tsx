@@ -1,3 +1,4 @@
+import type { RoleCode, RoleGrant } from '../atoms/auth/DA_auth';
 import React, { useState } from 'react';
 import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction, Branch, PointTransferRequest } from '../types';
 import { 
@@ -5,8 +6,6 @@ import {
   CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight 
 } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
-import type { RoleCode, RoleGrant } from '../atoms/auth/DA_auth';
-import { CURRENTLY_ASSIGNABLE_ROLE_CODES, ROLE_LABEL } from '../atoms/auth/CA_auth';
 
 interface AdminDashboardProps {
   rooms: Room[];
@@ -103,10 +102,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateMasterBarcode,
   onApprovePointCharge,
   onManualAdjustPoint,
-  userGrants = {},
-  canManageRole,
-  onGrantRole,
-  onRevokeRole,
+  userGrants: _userGrants = {},
+  canManageRole: _canManageRole,
+  onGrantRole: _onGrantRole,
+  onRevokeRole: _onRevokeRole,
   onCreateBranchAdmin,
   branches = [],
   onCreateBranch,
@@ -202,43 +201,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setEditingRoom(null);
   };
 
-  // 권한 변경 진행 중인 계정. 다중 클릭을 프레임워크 단계에서 차단한다.
-  const [pendingRoleUserId, setPendingRoleUserId] = useState<string | null>(null);
-
-  /** 현재 요청자가 UI에서 부여할 수 있는 권한 목록. */
-  const assignableRoles = CURRENTLY_ASSIGNABLE_ROLE_CODES.filter(
-    (code) => canManageRole?.(code) ?? false,
-  );
-
-  const handleGrantRoleClick = async (user: UserAccount, roleCode: RoleCode) => {
-    if (pendingRoleUserId) return;
-    if (!onGrantRole) return;
-    if (!confirm(`'${user.name}'(${user.userId}) 계정에 ${ROLE_LABEL[roleCode]} 권한을 부여할까요?`)) return;
-    setPendingRoleUserId(user.id);
-    try {
-      const res = await onGrantRole(user.id, roleCode);
-      alert(res.success
-        ? `'${user.name}' 계정에 ${ROLE_LABEL[roleCode]} 권한을 부여했습니다.`
-        : res.message ?? '권한 부여에 실패했습니다.');
-    } finally {
-      setPendingRoleUserId(null);
-    }
-  };
-
-  const handleRevokeRoleClick = async (user: UserAccount, grant: RoleGrant) => {
-    if (pendingRoleUserId) return;
-    if (!onRevokeRole) return;
-    if (!confirm(`'${user.name}'(${user.userId}) 계정의 ${ROLE_LABEL[grant.roleCode]} 권한을 회수할까요?`)) return;
-    setPendingRoleUserId(user.id);
-    try {
-      const res = await onRevokeRole(grant.id, user.id, grant.roleCode);
-      alert(res.success
-        ? `'${user.name}' 계정의 ${ROLE_LABEL[grant.roleCode]} 권한을 회수했습니다.`
-        : res.message ?? '권한 회수에 실패했습니다.');
-    } finally {
-      setPendingRoleUserId(null);
-    }
-  };
+  // 3단계 직관적 권한 체계 (Super Admin, Branch Admin, Regular User)
+  const [_pendingRoleUserId] = useState<string | null>(null);
 
   // 방 추가 모달
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
@@ -1246,7 +1210,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 {branches.map((branch) => {
                   const branchRoomCount = rooms.filter((r) => r.branchId === branch.id).length;
-                  const branchAdminCount = users.filter((u) => u.branchIds?.includes(branch.id)).length;
 
                   return (
                     <div
@@ -1300,13 +1263,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
 
 
-                      <div className="flex items-center gap-3 pt-1 text-xs text-[#8b95a1]">
+                      {/* 등록 룸 및 담당 관리자 현황 */}
+                      <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-[#8b95a1]">
                         <span className="font-semibold">
                           🏢 등록 룸: <strong className="text-[#191f28]">{branchRoomCount}개</strong>
                         </span>
                         <span>•</span>
                         <span className="font-semibold">
-                          👤 담당 관리자: <strong className="text-[#a67c48]">{branchAdminCount}명</strong>
+                          👤 담당 지점 관리자: <strong className="text-[#a67c48] font-bold">
+                            {users.filter(u => u.userId !== 'admin' && u.branchIds?.includes(branch.id)).length}명
+                          </strong>
+                          {users.filter(u => u.userId !== 'admin' && u.branchIds?.includes(branch.id)).length > 0 && (
+                            <span className="text-[#4e5968] font-normal ml-1">
+                              ({users.filter(u => u.userId !== 'admin' && u.branchIds?.includes(branch.id)).map(u => `${u.name}(${u.userId})`).join(', ')})
+                            </span>
+                          )}
+                        </span>
+                        <span>•</span>
+                        <span className="text-[11px] text-[#8b95a1] bg-[#f1f3f5] px-2 py-0.5 rounded">
+                          전 지점 총괄: 최고관리자(admin)
                         </span>
                       </div>
                     </div>
@@ -1364,68 +1339,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <td className="p-3 font-mono text-[#8e8e93]">{u.userId}</td>
                         <td className="p-3 text-[#8e8e93]">{u.phone}</td>
                         <td className="p-3 font-bold">
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {/* 👑 최고 관리자 vs 🏢 지점 관리자 vs 👤 일반 회원 선명한 뱃지 */}
-                              {u.userId === 'admin' ? (
-                                <span className="inline-flex items-center gap-1 font-bold text-white bg-[#191f28] px-2.5 py-1 rounded-lg text-[10px] shadow-sm">
-                                  👑 최고 관리자 (전 지점 총괄)
-                                </span>
-                              ) : u.branchIds && u.branchIds.length > 0 ? (
-                                <span className="inline-flex items-center gap-1 font-extrabold text-[#a67c48] bg-[#a67c48]/15 border border-[#a67c48]/40 px-2.5 py-1 rounded-lg text-[10px] shadow-sm">
+                          <div className="flex items-center gap-2">
+                            {/* 3단계 명확한 권한 뱃지 시스템 */}
+                            {u.userId === 'admin' ? (
+                              <span className="inline-flex items-center gap-1.5 font-extrabold text-white bg-[#191f28] px-3 py-1.5 rounded-xl text-xs shadow-sm">
+                                👑 최고 관리자 (전 지점 총괄)
+                              </span>
+                            ) : u.branchIds && u.branchIds.length > 0 ? (
+                              <div className="flex flex-col gap-1">
+                                <span className="inline-flex items-center gap-1 font-extrabold text-[#8a6230] bg-[#faecd8] border border-[#a67c48]/50 px-2.5 py-1 rounded-lg text-[11px] shadow-sm">
                                   🏢 [{u.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ')}] 지점 관리자
                                 </span>
-                              ) : (
-                                <span className="text-[#8e8e93] bg-[#f0f0f2] px-2 py-0.5 rounded text-[10px]">
-                                  👤 일반 회원
-                                </span>
-                              )}
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[#8b95a1] bg-[#f1f3f5] px-2.5 py-1 rounded-lg text-xs font-semibold">
+                                👤 일반 회원
+                              </span>
+                            )}
 
-                              {/* 지점 권한 관리 버튼 */}
+                            {/* 지점 권한 관리 버튼 (최고 관리자 외 계정에 노출) */}
+                            {u.userId !== 'admin' && (
                               <button
                                 type="button"
                                 onClick={() => handleOpenAssignAdminModal(u)}
-                                className="text-[10px] font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2 py-0.5 rounded-lg transition-colors whitespace-nowrap"
+                                className="text-[11px] font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
+                                title="담당 지점 권한 부여 또는 수정"
                               >
-                                🏢 지점 권한 부여/수정
+                                {u.branchIds && u.branchIds.length > 0 ? '⚙️ 권한 수정' : '+ 지점 관리자 임명'}
                               </button>
-                            </div>
-
-                            {/* 세부 RBAC 권한 뱃지 & 추가 버튼 */}
-                            <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                              {(userGrants[u.id] ?? [])
-                                .filter((g) => g.roleCode !== 'CUSTOMER')
-                                .map((g) => (
-                                  <span
-                                    key={g.id}
-                                    className="inline-flex items-center gap-1 text-[9px] font-semibold text-[#8b95a1] bg-[#f1f3f5] px-1.5 py-0.5 rounded"
-                                  >
-                                    {ROLE_LABEL[g.roleCode] ?? g.roleCode}
-                                    {onRevokeRole && (
-                                      <button
-                                        type="button"
-                                        onClick={() => void handleRevokeRoleClick(u, g)}
-                                        className="text-[#e93d3d] hover:font-bold ml-0.5"
-                                      >
-                                        ×
-                                      </button>
-                                    )}
-                                  </span>
-                                ))}
-
-                              {assignableRoles
-                                .filter((code) => !(userGrants[u.id] ?? []).some((g) => g.roleCode === code))
-                                .map((code) => (
-                                  <button
-                                    key={code}
-                                    type="button"
-                                    onClick={() => void handleGrantRoleClick(u, code)}
-                                    className="text-[9px] text-[#8b95a1] hover:text-[#191f28] border border-[#e5e8eb] bg-[#f8f9fc] hover:bg-[#ffffff] px-1.5 py-0.5 rounded"
-                                  >
-                                    + {ROLE_LABEL[code] ?? code}
-                                  </button>
-                                ))}
-                            </div>
+                            )}
                           </div>
                         </td>
                         <td className="p-3">
