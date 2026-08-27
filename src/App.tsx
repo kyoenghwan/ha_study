@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction } from './types';
 import { INITIAL_ROOMS, INITIAL_RESERVATIONS, INITIAL_BANK_INFO, INITIAL_ADMIN_BARCODES, INITIAL_MASTER_BARCODE, INITIAL_USERS } from './utils/mockData';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -866,6 +866,28 @@ function App() {
     handleCancelAndRefundReservation(resId);
   };
 
+  // 👑 최고 관리자 여부 확인
+  const isSuperAdmin = currentUser?.userId === 'admin' || (role === 'admin' && (!currentUser?.branchIds || currentUser.branchIds.length === 0));
+
+  // 🏢 접근 가능한 지점 목록 (지점 권한이 있는 경우 부여된 지점만 노출)
+  const accessibleBranches = useMemo(() => {
+    if (role === 'admin' && !isSuperAdmin && currentUser?.branchIds && currentUser.branchIds.length > 0) {
+      return BRANCHES.filter((b) => currentUser.branchIds?.includes(b.id));
+    }
+    return BRANCHES;
+  }, [currentUser, role, isSuperAdmin]);
+
+  // 지점 관리자의 경우 현재 선택된 지점이 접근 가능 지점에 없으면 첫 번째 담당 지점으로 자동 보정
+  useEffect(() => {
+    if (role === 'admin' && !isSuperAdmin && currentUser?.branchIds && currentUser.branchIds.length > 0) {
+      if (!currentUser.branchIds.includes(selectedBranch)) {
+        const firstBranch = currentUser.branchIds[0];
+        setSelectedBranch(firstBranch);
+        localStorage.setItem('lheureux_selected_branch', firstBranch);
+      }
+    }
+  }, [role, isSuperAdmin, currentUser, selectedBranch]);
+
   const currentBranchObj = BRANCHES.find((b) => b.id === selectedBranch) || BRANCHES[0];
   
   // 🏢 현재 선택된 지점(selectedBranch)의 룸 및 예약 필터링
@@ -1038,14 +1060,10 @@ function App() {
 
 
 
-        {/* 🏢 지점 선택 및 검색 팝업 모달 */}
+        {/* 🏢 지점 선택 및 검색 팝업 모달 (게이트 화면) */}
         <BranchSelectModal
           isOpen={showBranchSelectModal}
-          branches={
-            currentUser?.branchIds && currentUser.branchIds.length > 0
-              ? BRANCHES.filter((b) => currentUser.branchIds?.includes(b.id))
-              : BRANCHES
-          }
+          branches={accessibleBranches}
           selectedBranchId={selectedBranch}
           onSelectBranch={handleSelectBranch}
           onClose={() => setShowBranchSelectModal(false)}
@@ -1258,10 +1276,10 @@ function App() {
         </div>
       )}
 
-      {/* 🏢 지점 선택 및 검색 팝업 모달 */}
+      {/* 🏢 지점 선택 및 검색 팝업 모달 (메인 대시보드 화면) */}
       <BranchSelectModal
         isOpen={showBranchSelectModal}
-        branches={BRANCHES}
+        branches={accessibleBranches}
         selectedBranchId={selectedBranch}
         onSelectBranch={handleSelectBranch}
         onClose={() => setShowBranchSelectModal(false)}
