@@ -355,21 +355,19 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </h4>
 
         <div className="space-y-2.5 text-xs text-[#4e5968] leading-relaxed">
-          <div className="flex items-start gap-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#a67c48] shrink-0 mt-1.5" />
+          <div className="flex items-start gap-2">
+            <span className="text-[#a67c48] font-black text-base leading-none select-none shrink-0">•</span>
             <p>공부방 예약은 <strong className="text-[#191f28]">30분 단위</strong>로 원하는 시간만큼 자유롭게 신청할 수 있습니다.</p>
           </div>
 
-          <div className="flex items-start gap-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#a67c48] shrink-0 mt-1.5" />
+          <div className="flex items-start gap-2">
+            <span className="text-[#a67c48] font-black text-base leading-none select-none shrink-0">•</span>
             <p>출입 바코드는 <strong className="text-[#191f28]">이용 시작 5분 전</strong>에 자동 활성화되며, <strong className="text-[#191f28]">이용 시간 종료 시 자동 소멸</strong>됩니다.</p>
           </div>
 
-
-
           {branchManagerContact && (
-            <div className="flex items-start gap-2.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#a67c48] shrink-0 mt-1.5" />
+            <div className="flex items-start gap-2">
+              <span className="text-[#a67c48] font-black text-base leading-none select-none shrink-0">•</span>
               <p>
                 지점 담당자 문의: <a href={`tel:${branchManagerContact.split(' / ')[0]}`} className="text-[#191f28] font-bold hover:underline hover:text-[#a67c48] transition-colors">{branchManagerContact}</a>
               </p>
