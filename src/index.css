@@ -185,6 +185,108 @@ input, select, textarea {
   border-color: var(--border-focus);
 }
 
+/* PWA 설치 안내 */
+.pwa-install-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.pwa-install-copy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.pwa-install-copy p,
+.pwa-ios-guide p {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.pwa-install-icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-gold);
+  background: var(--bg-container);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.pwa-install-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  color: var(--primary-gold);
+  background: var(--bg-container);
+  border: 1px solid var(--primary-gold);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pwa-install-button:hover {
+  background: var(--bg-card);
+}
+
+.pwa-ios-guide {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 36px 12px 12px;
+  color: var(--primary-gold);
+  background: var(--bg-container);
+  border: 1px solid var(--border-focus);
+  border-radius: var(--radius-md);
+}
+
+.pwa-ios-guide strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.pwa-guide-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: var(--text-muted);
+}
+
+@media (min-width: 501px) {
+  .pwa-install-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .pwa-install-button {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .pwa-ios-guide {
+    flex-basis: 100%;
+  }
+}
+
 .glass-panel {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
@@ -219,6 +321,43 @@ input, select, textarea {
 .form-input:focus {
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(166, 124, 72, 0.12);
+}
+
+/* 인증 화면은 모바일 높이를 줄이기 위해 라벨과 입력창을 한 행에 배치한다. */
+.auth-inline-field {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 4px;
+  margin-bottom: 8px;
+}
+
+.auth-inline-field label {
+  white-space: nowrap;
+}
+
+.auth-inline-field .form-input {
+  min-width: 0;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  min-height: 40px;
+}
+
+.auth-inline-field > p {
+  grid-column: 2;
+  margin: 0;
+}
+
+@media (max-width: 360px) {
+  .auth-inline-field {
+    grid-template-columns: 74px minmax(0, 1fr);
+    column-gap: 6px;
+  }
+
+  .auth-inline-field label {
+    font-size: 12px;
+  }
 }
 
 /* Modal Overlay Styling */

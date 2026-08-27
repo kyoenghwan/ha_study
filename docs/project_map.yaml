@@ -57,3 +57,21 @@ data_layer:
     Supabase 클라이언트와 저수준 CRUD. 레거시 경로이며 8-Atom 미적용 구간이다.
     신규 도메인은 QA/OA 원자로 작성한다. 쓰기 결과는 DbResult 로 반환하고
     App.tsx 의 persist() 헬퍼가 실패를 사용자에게 알린다.
+
+platform:
+  pwa:
+    process: docs/processes/pwa_install_process.md
+    config: vite.config.ts
+    assets:
+      - public/pwa-192x192.png
+      - public/pwa-512x512.png
+      - public/pwa-maskable-512x512.png
+      - public/apple-touch-icon.png
+    ui:
+      install_prompt:
+        file: src/components/PwaInstallPrompt.tsx
+        responsive_variants: [mobile, desktop]
+      login_entry:
+        file: src/components/AuthModal.tsx
+        responsive_variants: [mobile, desktop]
+        note: 로그인 탭 하단에서 설치 가능 상태 또는 iOS 설치 안내를 표시한다.

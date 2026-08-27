@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import type { UserAccount } from '../types';
-import { User, LogIn, UserPlus, Phone, Lock, Sparkles, CheckCircle2 } from 'lucide-react';
+import { User, LogIn, UserPlus, Phone, Lock, CheckCircle2 } from 'lucide-react';
 import logoImg from '../assets/르하임로고.jfif';
 import { FindAccountModal } from './FindAccountModal';
+import { PwaInstallPrompt } from './PwaInstallPrompt';
 import { RA_PHONE_FORMAT, RA_PHONE_IS_VALID } from '../atoms/common/RA_phone';
 
 interface AuthModalProps {
@@ -82,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (!RA_PHONE_IS_VALID(regPhone)) {
-      setRegError('휴대폰 번호를 올바르게 입력해 주세요. (예: 010-1234-5678)');
+      setRegError('휴대폰 번호 11자리를 숫자로만 입력해 주세요.');
       return;
     }
 
@@ -170,7 +171,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       {tab === 'login' && (
         <form onSubmit={handleLoginSubmit} className="space-y-4 pt-1">
           <div className="space-y-3.5">
-            <div className="form-group">
+            <div className="form-group auth-inline-field">
               <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
                 <User size={14} className="text-[#b09168]" /> 아이디
               </label>
@@ -178,12 +179,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="text"
                 value={loginUserId}
                 onChange={(e) => setLoginUserId(e.target.value)}
-                placeholder="아이디를 입력하세요 (예: user1 / admin)"
+                placeholder="아이디를 입력하세요"
                 className="form-input text-sm w-full"
               />
             </div>
 
-            <div className="form-group">
+            <div className="form-group auth-inline-field">
               <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
                 <Lock size={14} className="text-[#b09168]" /> 비밀번호
               </label>
@@ -191,7 +192,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="비밀번호를 입력하세요 (예: 123)"
+                placeholder="비밀번호를 입력하세요"
                 className="form-input text-sm w-full"
               />
             </div>
@@ -234,45 +235,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           </div>
 
-          {/* 테스트 빠른 접속 가이드 */}
-          <div className="bg-[#f8f9fa] p-3.5 rounded-xl border border-[#e5e5ea] text-xs text-[#8e8e93] space-y-2 mt-4">
-            <p className="font-bold text-[#b09168] flex items-center gap-1 text-xs">
-              <Sparkles size={13} /> 빠른 테스트 계정
-            </p>
-            <div className="flex justify-between items-center pt-1 border-t border-[#e5e5ea]/80">
-              <span>일반회원: <strong className="text-[#1c1c1e]">user1</strong> (비번: 123)</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginUserId('user1');
-                  setLoginPassword('123');
-                }}
-                className="text-[#b09168] font-bold hover:underline px-2 py-0.5 rounded bg-[#b09168]/10"
-              >
-                자동 입력
-              </button>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>관리자: <strong className="text-[#1c1c1e]">admin</strong> (비번: 123)</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginUserId('admin');
-                  setLoginPassword('123');
-                }}
-                className="text-[#b09168] font-bold hover:underline px-2 py-0.5 rounded bg-[#b09168]/10"
-              >
-                자동 입력
-              </button>
-            </div>
-          </div>
         </form>
       )}
 
       {/* 2. 회원가입 폼 */}
       {tab === 'register' && (
         <form onSubmit={handleRegisterSubmit} className="space-y-3.5 pt-1">
-          <div className="form-group">
+          <div className="form-group auth-inline-field">
             <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
               <User size={14} className="text-[#b09168]" /> 아이디
             </label>
@@ -285,7 +254,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group auth-inline-field">
             <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
               <Lock size={14} className="text-[#b09168]" /> 비밀번호
             </label>
@@ -298,7 +267,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group auth-inline-field">
             <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
               <Lock size={14} className="text-[#b09168]" /> 비밀번호 확인
             </label>
@@ -321,7 +290,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
           </div>
 
-          <div className="form-group">
+          <div className="form-group auth-inline-field">
             <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
               <User size={14} className="text-[#b09168]" /> 성함
             </label>
@@ -334,7 +303,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group auth-inline-field">
             <label className="text-xs font-semibold text-[#1c1c1e] flex items-center gap-1">
               <Phone size={14} className="text-[#b09168]" /> 휴대폰 번호
             </label>
@@ -344,7 +313,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               value={regPhone}
               // 숫자만 입력해도 자동으로 하이픈이 붙는다. (01012341234 -> 010-1234-1234)
               onChange={(e) => setRegPhone(RA_PHONE_FORMAT(e.target.value))}
-              placeholder="010-1234-5678"
+              placeholder="숫자만 입력하세요 (하이픈 자동 입력)"
               maxLength={13}
               className="form-input text-sm w-full"
             />
@@ -373,6 +342,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         </form>
       )}
+      {tab === 'login' && <PwaInstallPrompt />}
       {/* 🔍 아이디 찾기 및 비밀번호 재설정 모달 */}
       {showFindModal && (
         <FindAccountModal
