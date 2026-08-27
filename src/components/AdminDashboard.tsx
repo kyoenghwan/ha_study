@@ -148,6 +148,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setNewAdminName(user.name);
       setNewAdminPhone(user.phone);
       setNewAdminPassword(user.password || '1234');
+      if (user.userId === 'admin' || user.isSuperAdmin) {
+        setNewAdminRoleCode('PLATFORM_ADMIN');
+      } else if (user.branchIds && user.branchIds.length > 0) {
+        setNewAdminRoleCode('BRANCH_ADMIN');
+      } else {
+        setNewAdminRoleCode('BRANCH_ADMIN');
+      }
       setNewAdminBranchIds(user.branchIds && user.branchIds.length > 0 ? user.branchIds : (branches.length > 0 ? [branches[0].id] : ['yeouido']));
     } else {
       setAdminRegMode('existing');
@@ -1342,34 +1349,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <td className="p-3 text-[#8e8e93]">{u.phone}</td>
                         <td className="p-3 font-bold">
                           <div className="flex items-center gap-2">
-                            {/* 3단계 명확한 권한 뱃지 시스템 */}
-                            {u.userId === 'admin' ? (
-                              <span className="inline-flex items-center gap-1.5 font-extrabold text-white bg-[#191f28] px-3 py-1.5 rounded-xl text-xs shadow-sm">
+                            {/* 3단계 명확하고 선명한 권한 뱃지 (인라인 스타일 보장) */}
+                            {u.userId === 'admin' || u.isSuperAdmin === true || (u.role === 'admin' && (!u.branchIds || u.branchIds.length === 0)) ? (
+                              <span 
+                                className="inline-flex items-center gap-1.5 font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-sm"
+                                style={{ backgroundColor: '#191f28', color: '#ffffff' }}
+                              >
                                 👑 최고 관리자 (전 지점 총괄)
                               </span>
                             ) : u.branchIds && u.branchIds.length > 0 ? (
-                              <div className="flex flex-col gap-1">
-                                <span className="inline-flex items-center gap-1 font-extrabold text-[#8a6230] bg-[#faecd8] border border-[#a67c48]/50 px-2.5 py-1 rounded-lg text-[11px] shadow-sm">
-                                  🏢 [{u.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ')}] 지점 관리자
-                                </span>
-                              </div>
+                              <span 
+                                className="inline-flex items-center gap-1.5 font-extrabold px-2.5 py-1.5 rounded-xl text-xs shadow-sm"
+                                style={{ backgroundColor: '#faecd8', color: '#8a6230', border: '1px solid rgba(166,124,72,0.4)' }}
+                              >
+                                🏢 [{u.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ')}] 지점 관리자
+                              </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[#8b95a1] bg-[#f1f3f5] px-2.5 py-1 rounded-lg text-xs font-semibold">
+                              <span 
+                                className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1.5 rounded-xl text-xs"
+                                style={{ backgroundColor: '#f1f3f5', color: '#8b95a1' }}
+                              >
                                 👤 일반 회원
                               </span>
                             )}
 
-                            {/* 지점 권한 관리 버튼 (최고 관리자 외 계정에 노출) */}
-                            {u.userId !== 'admin' && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenAssignAdminModal(u)}
-                                className="text-[11px] font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
-                                title="담당 지점 권한 부여 또는 수정"
-                              >
-                                {u.branchIds && u.branchIds.length > 0 ? '⚙️ 권한 수정' : '+ 지점 관리자 임명'}
-                              </button>
-                            )}
+                            {/* 권한 관리 버튼 (모든 계정에 노출되어 자유로운 승격/수정 가능) */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAssignAdminModal(u)}
+                              className="text-[11px] font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
+                              title="관리 권한 및 담당 지점 설정"
+                            >
+                              ⚙️ 권한 설정
+                            </button>
                           </div>
                         </td>
                         <td className="p-3">
@@ -2365,18 +2377,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </div>
 
-              {/* 직급 및 권한 */}
-              <div className="form-group space-y-1">
-                <label className="font-bold text-[#191f28]">직급 / 관리 권한</label>
+              {/* 직급 및 관리 권한 선택 (최고 관리자 / 지점 관리자 / 일반 회원) */}
+              <div className="form-group space-y-1 bg-[#ffffff] p-3 rounded-2xl border border-[#e5e8eb]">
+                <label className="font-bold text-[#191f28] flex items-center gap-1.5">
+                  <span>👑 부여할 관리 권한 등급</span>
+                </label>
                 <select
                   value={newAdminRoleCode}
-                  onChange={(e) => setNewAdminRoleCode(e.target.value as RoleCode)}
-                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                  onChange={(e) => {
+                    const code = e.target.value as RoleCode;
+                    setNewAdminRoleCode(code);
+                    if (code === 'PLATFORM_ADMIN' || code === 'BRAND_ADMIN') {
+                      setNewAdminBranchIds(branches.map(b => b.id));
+                    }
+                  }}
+                  className="form-input text-xs py-2.5 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white font-bold text-[#191f28] focus:border-[#a67c48]"
                 >
-                  <option value="BRANCH_ADMIN">지점 총괄 관리자 (BRANCH_ADMIN)</option>
-                  <option value="BRANCH_OWNER">지점 오너 / 점주 (BRANCH_OWNER)</option>
-                  <option value="STAFF">지점 근무 직원 / 매니저 (STAFF)</option>
+                  <option value="PLATFORM_ADMIN">👑 최고 관리자 (전 지점 총괄 슈퍼 관리자)</option>
+                  <option value="BRANCH_ADMIN">🏢 지점 총괄 관리자 (선택한 지점 관리)</option>
+                  <option value="BRANCH_OWNER">🏢 지점 오너 / 점주 (선택한 지점 관리)</option>
+                  <option value="STAFF">🏢 지점 직원 / 매니저 (선택한 지점 관리)</option>
+                  <option value="CUSTOMER">👤 일반 회원으로 권한 회수</option>
                 </select>
+                <p className="text-[10px] text-[#8b95a1] pt-0.5">
+                  {newAdminRoleCode === 'PLATFORM_ADMIN'
+                    ? '💡 최고 관리자는 전국의 모든 지점 추가/삭제 및 전 지점 관제 권한을 가집니다.'
+                    : newAdminRoleCode === 'CUSTOMER'
+                    ? '💡 관리자 권한을 해제하고 일반 회원으로 변경합니다.'
+                    : '💡 아래에서 체크한 담당 지점에 대해서만 관리 권한이 부여됩니다.'}
+                </p>
               </div>
 
               {/* 아이디 & 비밀번호 */}

@@ -1058,8 +1058,8 @@ function App() {
     handleCancelAndRefundReservation(resId);
   };
 
-  // 👑 최고 관리자 여부 확인
-  const isSuperAdmin = currentUser?.userId === 'admin' || (role === 'admin' && (!currentUser?.branchIds || currentUser.branchIds.length === 0));
+  // 👑 최고 관리자 여부 확인 (admin 아이디 또는 isSuperAdmin=true 또는 지점제한 없는 admin)
+  const isSuperAdmin = currentUser?.userId === 'admin' || currentUser?.isSuperAdmin === true || (role === 'admin' && (!currentUser?.branchIds || currentUser.branchIds.length === 0));
 
   // 🏢 접근 가능한 지점 목록 (지점 권한이 있는 경우 부여된 지점만 노출)
   const accessibleBranches = useMemo(() => {

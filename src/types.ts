@@ -63,6 +63,7 @@ export interface UserAccount {
   name: string;
   phone: string;
   role: Role;
+  isSuperAdmin?: boolean; // 최고 관리자(전 지점 총괄) 여부
   points: number;
   branchPoints?: Record<string, number>; // 지점별 독립 포인트 계좌: { 'yeouido': 20000, 'daebang': 10000 }
   branchIds?: string[]; // 담당 지점 목록 (다중 지점 관리 지원: ['yeouido', 'mapo'] 등)
