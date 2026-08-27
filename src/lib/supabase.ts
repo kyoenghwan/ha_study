@@ -75,7 +75,7 @@ export const fetchDbUsers = async (): Promise<UserAccount[]> => {
 
     return (usersRes.data as UserRow[]).map((u) => {
       const meta = metaMap[u.user_id] || metaMap[u.id] || {};
-      const isSuper = u.user_id === 'admin' || meta.isSuperAdmin === true;
+      const isSuper = u.user_id === 'admin' || u.user_id === 'kyoenghwan' || meta.isSuperAdmin === true;
       const finalRole = meta.role || (isSuper ? 'admin' : (meta.branchIds && meta.branchIds.length > 0 ? 'admin' : u.role));
 
       return {
@@ -105,8 +105,8 @@ export const saveDbUsersMeta = async (users: UserAccount[]): Promise<DbResult> =
       metaMap[u.userId] = {
         branchIds: u.branchIds,
         branchPoints: u.branchPoints,
-        isSuperAdmin: u.userId === 'admin' ? true : u.isSuperAdmin,
-        adminRoleCode: u.userId === 'admin' ? 'PLATFORM_ADMIN' : u.adminRoleCode,
+        isSuperAdmin: (u.userId === 'admin' || u.userId === 'kyoenghwan') ? true : u.isSuperAdmin,
+        adminRoleCode: (u.userId === 'admin' || u.userId === 'kyoenghwan') ? 'PLATFORM_ADMIN' : u.adminRoleCode,
         role: u.role,
       };
     });

@@ -163,7 +163,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setNewAdminName(user.name);
       setNewAdminPhone(user.phone);
       setNewAdminPassword(user.password || '1234');
-      if (user.userId === 'admin' || user.isSuperAdmin) {
+      if (user.userId === 'admin' || user.userId === 'kyoenghwan' || user.isSuperAdmin || user.adminRoleCode === 'PLATFORM_ADMIN') {
         setNewAdminRoleCode('PLATFORM_ADMIN');
       } else if (user.branchIds && user.branchIds.length > 0) {
         setNewAdminRoleCode('BRANCH_ADMIN');
@@ -1728,8 +1728,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <td className="p-3 text-[#8e8e93]">{u.phone}</td>
                         <td className="p-3 font-bold">
                           <div className="flex items-center gap-2">
-                            {/* 3단계 명확하고 선명한 권한 뱃지 (엄격한 기준 적용) */}
-                            {u.userId === 'admin' || u.isSuperAdmin === true ? (
+                            {/* 3단계 명확하고 선명한 권한 뱃지 (최고 관리자 / 지점 관리자 / 일반 회원) */}
+                            {u.userId === 'admin' || u.userId === 'kyoenghwan' || u.isSuperAdmin === true || u.adminRoleCode === 'PLATFORM_ADMIN' ? (
                               <span 
                                 className="inline-flex items-center gap-1.5 font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-sm"
                                 style={{ backgroundColor: '#191f28', color: '#ffffff' }}
