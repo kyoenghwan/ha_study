@@ -5,7 +5,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
 import { AuthModal } from './components/AuthModal';
-import { Shield, LogOut, Coins, Plus, Building2, ChevronRight, Search } from 'lucide-react';
+import { Shield, LogOut, Coins, Plus, Building2, ChevronRight, Search, ArrowLeftRight } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 import { FA_CREATE_RESERVATIONS } from './atoms/reservation/FA_create_reservations';
 import type { AuthContext, RoleCode, RoleGrant } from './atoms/auth/DA_auth';
@@ -1350,16 +1350,50 @@ function App() {
           </h1>
         </div>
 
-        {/* 헤더 우측 컨트롤 */}
+        {/* 헤더 우측 컨트롤: 권한 뱃지 + 화면 전환 버튼(관리자 전용) + 로그아웃 */}
         <div className="flex items-center gap-2">
-          {role === 'admin' && (
-            <span className="text-xs text-[#a67c48] font-bold bg-[#a67c48]/10 px-2.5 py-1 rounded-lg">
-              최고 관리자
+          {/* 👑 관리자 권한 보유 계정(최고관리자 / 지점관리자) 전용 화면 전환 버튼 */}
+          {(canAccessAdminConsole || currentUser?.role === 'admin' || isSuperAdmin || (currentUser?.branchIds && currentUser.branchIds.length > 0)) && (
+            <button
+              onClick={() => setRole(role === 'admin' ? 'user' : 'admin')}
+              className={`flex items-center gap-1.5 text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-sm ${
+                role === 'admin'
+                  ? 'bg-[#a67c48] text-white hover:bg-[#8a6230]'
+                  : 'bg-[#191f28] text-white hover:bg-[#000000]'
+              }`}
+              title={role === 'admin' ? '일반 이용자 예약 화면으로 전환' : '관리자 콘솔 화면으로 전환'}
+            >
+              <ArrowLeftRight size={13} />
+              <span>{role === 'admin' ? '일반 예약 화면으로 이동' : '👑 관리자 콘솔로 이동'}</span>
+            </button>
+          )}
+
+          {/* 현재 로그인 계정 권한 뱃지 */}
+          {role === 'admin' ? (
+            isSuperAdmin ? (
+              <span 
+                className="hidden sm:inline-flex items-center gap-1 font-extrabold text-xs px-2.5 py-1 rounded-lg shadow-xs"
+                style={{ backgroundColor: '#191f28', color: '#ffffff' }}
+              >
+                👑 최고 관리자
+              </span>
+            ) : (
+              <span 
+                className="hidden sm:inline-flex items-center gap-1 font-extrabold text-xs px-2.5 py-1 rounded-lg shadow-xs"
+                style={{ backgroundColor: '#faecd8', color: '#8a6230', border: '1px solid rgba(166,124,72,0.4)' }}
+              >
+                🏢 [{currentBranchObj.name}] 관리자
+              </span>
+            )
+          ) : (
+            <span className="hidden sm:inline-block text-xs font-bold text-[#4e5968] bg-[#f1f3f5] px-2.5 py-1 rounded-lg">
+              {currentUser.name}님
             </span>
           )}
+
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1 text-xs font-semibold py-2 px-3 rounded-lg border border-[#e5e8eb] text-[#8b95a1] hover:text-[#e93d3d] hover:bg-[#f8f9fc] transition-all"
+            className="flex items-center gap-1 text-xs font-semibold py-1.5 px-3 rounded-xl border border-[#e5e8eb] text-[#8b95a1] hover:text-[#e93d3d] hover:bg-[#f8f9fc] transition-all"
             title="로그아웃"
           >
             <LogOut size={14} /> 로그아웃

@@ -2231,9 +2231,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </span>
                   </div>
 
-                  {/* 🔍 회원 아이디 / 이름 / 연락처 실시간 검색창 */}
-                  <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b95a1]" />
+                  {/* 🔍 회원 아이디 / 이름 / 연락처 실시간 검색창 (돋보기 우측 끝 배치) */}
+                  <div className="relative flex items-center">
                     <input
                       type="text"
                       value={adminUserSearchQuery}
@@ -2255,17 +2254,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         }
                       }}
                       placeholder="회원 아이디, 성함, 연락처를 입력하여 빠른 검색..."
-                      className="form-input text-xs py-2.5 pl-8 pr-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48] shadow-xs"
+                      className="form-input text-xs py-2.5 pl-3.5 pr-10 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48] shadow-xs"
                     />
-                    {adminUserSearchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setAdminUserSearchQuery('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8b95a1] hover:text-[#191f28] text-xs font-bold px-1"
-                      >
-                        ✕
-                      </button>
-                    )}
+                    <div className="absolute right-3 flex items-center gap-1.5">
+                      {adminUserSearchQuery ? (
+                        <button
+                          type="button"
+                          onClick={() => setAdminUserSearchQuery('')}
+                          className="text-[#8b95a1] hover:text-[#191f28] text-xs font-bold p-0.5"
+                          title="검색어 지우기"
+                        >
+                          ✕
+                        </button>
+                      ) : (
+                        <Search size={16} className="text-[#a67c48]" />
+                      )}
+                    </div>
                   </div>
 
                   {/* 필터링된 회원 드롭다운 목록 */}
