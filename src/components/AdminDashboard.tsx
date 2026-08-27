@@ -3280,11 +3280,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </p>
             </div>
 
-            <div className="flex gap-2 pt-4">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', paddingTop: '16px' }}>
               <button
                 type="button"
                 onClick={() => setRoomToDelete(null)}
-                className="gold-btn-outline flex-1 py-2.5 text-xs font-bold rounded-xl"
+                className="gold-btn-outline rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer"
+                style={{ height: '44px', width: '100%' }}
               >
                 취소
               </button>
@@ -3296,14 +3297,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     setRoomToDelete(null);
                   }
                 }}
-                className="flex-1 py-3 text-xs font-extrabold rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-90"
+                className="rounded-xl text-xs font-extrabold shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-90"
                 style={{
                   backgroundColor: '#e93d3d',
                   color: '#ffffff',
                   border: '1px solid #c92a2a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  height: '44px',
+                  width: '100%',
                 }}
               >
                 <Trash2 size={15} color="#ffffff" strokeWidth={2.5} />
