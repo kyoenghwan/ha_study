@@ -337,7 +337,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               </div>
 
               <div className="shrink-0 pl-2">
-                <div className="bg-[#a67c48] text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-sm flex items-center gap-1 transition-all group-hover:bg-[#8c6535] group-hover:shadow-md">
+                <div 
+                  className="text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-sm flex items-center gap-1 transition-all group-hover:shadow-md"
+                  style={{ backgroundColor: '#a67c48', color: '#ffffff' }}
+                >
                   예약하기 <ChevronRight size={14} strokeWidth={3} />
                 </div>
               </div>
