@@ -986,6 +986,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {/* TAB 3: 포인트 충전 승인 & 지점 간 이전 관제 */}
         {activeTab === 'point_management' && (
           <div className="space-y-6">
+            {/* 1. 최상단: 포인트 충전 승인 & 지점 간 이전 관제 (가장 중요한 핵심 승인 업무) */}
             <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
@@ -993,7 +994,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <Coins className="text-[#a67c48]" size={20} /> 포인트 충전 승인 & 지점 간 이전 관제
                   </h3>
                   <p className="text-xs text-[#8b95a1] mt-1 leading-relaxed">
-                    무통장 입금 충전 승인 및 지점 간 포인트 이전 요청을 관리자가 검토하고 최종 승인합니다.
+                    회원들의 무통장 입금 충전 승인 및 지점 간 포인트 이전 요청을 관리자가 검토하고 최종 승인합니다.
                   </p>
                 </div>
 
@@ -1006,7 +1007,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       pointTabSubMode === 'charge' ? 'bg-white text-[#a67c48] shadow-sm' : 'text-[#8b95a1] hover:text-[#191f28]'
                     }`}
                   >
-                    무통장 충전 승인 ({pointTransactions.filter(t => t.status === 'pending').length})
+                    무통장 충전 승인 ({pointTransactions.filter(t => (t.type === 'charge_request' || !t.type) && t.status === 'pending').length})
                   </button>
                   <button
                     type="button"
@@ -1106,138 +1107,202 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
               ) : (
-                /* 💳 무통장 입금 충전 승인 섹션 */
+                /* 💳 무통장 입금 충전 승인 섹션 (충전 신청 및 승인 건만 집중 표시) */
                 <div className="space-y-4">
-                  {/* 📱 모바일 전용 카드 뷰 */}
-                  <div className="block md:hidden space-y-3">
-                    {pointTransactions.length === 0 ? (
-                      <div className="p-8 text-center text-xs text-[#8b95a1] bg-[#f8f9fc] rounded-2xl border border-dashed border-[#e5e8eb]">
-                        포인트 충전 또는 환불 신청 내역이 없습니다.
-                      </div>
-                    ) : (
-                      pointTransactions.map((tx) => (
-                        <div key={tx.id} className="border border-[#e5e8eb] rounded-2xl p-4 bg-[#ffffff] shadow-sm space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <span className="text-sm font-bold text-[#191f28]">{tx.userName}</span>
-                              <span className="text-xs text-[#8b95a1] ml-1.5">({tx.userId})</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              {tx.status === 'pending' && (
-                                <span className="text-[10px] font-bold bg-[#f59e0b]/10 text-[#f59e0b] px-2 py-0.5 rounded-full animate-pulse">
-                                  ● 입금 대기
-                                </span>
-                              )}
-                              {tx.status === 'completed' && (
-                                <span className="text-[10px] font-bold bg-[#28a745]/10 text-[#28a745] px-2 py-0.5 rounded-full">
-                                  처리 완료
-                                </span>
-                              )}
-                              {tx.status === 'cancelled' && (
-                                <span className="text-[10px] font-bold bg-[#8b95a1]/10 text-[#8b95a1] px-2 py-0.5 rounded-full">
-                                  취소됨
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                  {(() => {
+                    const chargeTransactions = pointTransactions.filter(
+                      (t) => t.type === 'charge_request' || t.type === 'charge_approved' || !t.type
+                    );
 
-                          <div className="flex justify-between items-center bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb]">
-                            <div className="space-y-0.5">
-                              <span className="text-[10px] font-bold text-[#8b95a1]">
-                                {tx.type === 'charge_request' && '무통장 충전 신청'}
-                                {tx.type === 'charge_approved' && '충전 승인 완료'}
-                                {tx.type === 'use' && '포인트 사용 차감'}
-                                {tx.type === 'refund' && '포인트 자동 환불'}
-                              </span>
-                              <p className="text-xs font-medium text-[#4e5968]">{tx.description}</p>
-                            </div>
-                            <span className="text-base font-extrabold text-[#191f28] shrink-0 pl-2">
-                              {tx.amount.toLocaleString()} P
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between items-center pt-2 border-t border-[#f1f3f5] text-xs">
-                            <span className="text-[#8b95a1] font-mono text-[11px]">
-                              {(tx.createdAt || '').split('T')[0] || '-'}
-                            </span>
-                            {tx.status === 'pending' && onApprovePointCharge && (
-                              <button
-                                onClick={() => onApprovePointCharge(tx.id)}
-                                className="gold-btn py-1.5 px-3 text-xs font-bold rounded-lg shadow-sm"
-                              >
-                                입금 확인 & 즉시 승인
-                              </button>
-                            )}
-                          </div>
+                    return (
+                      <>
+                        <div className="bg-[#f8f9fc] p-3.5 rounded-2xl border border-[#e5e8eb] text-xs text-[#4e5968] flex items-center justify-between">
+                          <span className="font-semibold text-[#191f28]">
+                            💳 충전 승인 대기: <strong className="text-[#a67c48] font-bold">{chargeTransactions.filter(t => t.status === 'pending').length}건</strong>
+                          </span>
+                          <span className="text-[11px] text-[#8b95a1]">회원이 입금 후 충전 신청한 내역을 확인하고 승인합니다.</span>
                         </div>
-                      ))
-                    )}
-                  </div>
 
-                  {/* 💻 데스크톱 전용 테이블 */}
-                  <div className="hidden md:block overflow-x-auto border border-[#e5e8eb] rounded-xl">
+                        {/* 모바일 뷰 */}
+                        <div className="block md:hidden space-y-3">
+                          {chargeTransactions.length === 0 ? (
+                            <div className="p-8 text-center text-xs text-[#8b95a1] bg-[#f8f9fc] rounded-2xl border border-dashed border-[#e5e8eb]">
+                              포인트 충전 신청 내역이 없습니다.
+                            </div>
+                          ) : (
+                            chargeTransactions.map((tx) => (
+                              <div key={tx.id} className="border border-[#e5e8eb] rounded-2xl p-4 bg-[#ffffff] shadow-sm space-y-3">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <span className="text-sm font-bold text-[#191f28]">{tx.userName}</span>
+                                    <span className="text-xs text-[#8b95a1] ml-1.5">({tx.userId})</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    {tx.status === 'pending' && (
+                                      <span className="text-[10px] font-bold bg-[#f59e0b]/10 text-[#f59e0b] px-2 py-0.5 rounded-full animate-pulse">
+                                        ● 입금 대기
+                                      </span>
+                                    )}
+                                    {tx.status === 'completed' && (
+                                      <span className="text-[10px] font-bold bg-[#28a745]/10 text-[#28a745] px-2 py-0.5 rounded-full">
+                                        충전 완료
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-between items-center bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb]">
+                                  <p className="text-xs font-medium text-[#4e5968]">{tx.description}</p>
+                                  <span className="text-base font-extrabold text-[#191f28] shrink-0 pl-2">
+                                    {tx.amount.toLocaleString()} P
+                                  </span>
+                                </div>
+
+                                <div className="flex justify-between items-center pt-2 border-t border-[#f1f3f5] text-xs">
+                                  <span className="text-[#8b95a1] font-mono text-[11px]">
+                                    {(tx.createdAt || '').split('T')[0] || '-'}
+                                  </span>
+                                  {tx.status === 'pending' && onApprovePointCharge && (
+                                    <button
+                                      onClick={() => onApprovePointCharge(tx.id)}
+                                      className="gold-btn py-1.5 px-3 text-xs font-bold rounded-lg shadow-sm"
+                                    >
+                                      입금 확인 & 즉시 승인
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* 데스크톱 테이블 */}
+                        <div className="hidden md:block overflow-x-auto border border-[#e5e8eb] rounded-xl">
+                          <table className="w-full text-left text-xs min-w-[650px]">
+                            <thead className="bg-[#f8f9fc] border-b border-[#e5e8eb] text-[#191f28]">
+                              <tr>
+                                <th className="p-3">신청 일시</th>
+                                <th className="p-3">회원명 (아이디)</th>
+                                <th className="p-3">신청 금액</th>
+                                <th className="p-3">입금 확인 메모</th>
+                                <th className="p-3">상태</th>
+                                <th className="p-3 text-center">관리 조치</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#e5e8eb]">
+                              {chargeTransactions.length === 0 ? (
+                                <tr>
+                                  <td colSpan={6} className="p-8 text-center text-[#8b95a1]">
+                                    포인트 충전 신청 내역이 없습니다.
+                                  </td>
+                                </tr>
+                              ) : (
+                                chargeTransactions.map((tx) => (
+                                  <tr key={tx.id} className="hover:bg-[#f8f9fc]">
+                                    <td className="p-3 text-[#8b95a1] font-mono">{(tx.createdAt || '').split('T')[0] || '-'}</td>
+                                    <td className="p-3 font-bold text-[#191f28]">
+                                      {tx.userName} <span className="text-[10px] text-[#8b95a1] font-normal">({tx.userId})</span>
+                                    </td>
+                                    <td className="p-3 font-extrabold text-sm text-[#191f28]">
+                                      {tx.amount.toLocaleString()} P
+                                    </td>
+                                    <td className="p-3 text-[#4e5968] max-w-[240px] truncate">{tx.description}</td>
+                                    <td className="p-3 font-bold">
+                                      {tx.status === 'pending' && <span className="text-[#f59e0b] bg-[#f59e0b]/10 px-2 py-0.5 rounded">입금대기</span>}
+                                      {tx.status === 'completed' && <span className="text-[#28a745] bg-[#28a745]/10 px-2 py-0.5 rounded">충전완료</span>}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {tx.status === 'pending' && onApprovePointCharge ? (
+                                        <button
+                                          onClick={() => onApprovePointCharge(tx.id)}
+                                          className="gold-btn py-1.5 px-3 text-[11px] font-bold rounded-lg shadow-sm"
+                                        >
+                                          입금확인 & 승인
+                                        </button>
+                                      ) : (
+                                        <span className="text-[10px] text-[#8b95a1]">완료됨</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* 2. 하단: 회원 포인트 사용 및 차감 내역 (공부방 예약 시 차감 로그 등 참고용) */}
+            <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="text-sm font-bold text-[#191f28] flex items-center gap-2">
+                    <span>📋 회원 포인트 사용 및 차감 내역 (참고용 로그)</span>
+                    <span className="text-xs font-semibold text-[#8b95a1]">
+                      총 {pointTransactions.filter(t => t.type === 'use' || t.type === 'refund').length}건
+                    </span>
+                  </h4>
+                  <p className="text-xs text-[#8b95a1] pt-0.5">
+                    회원들이 스터디룸 예약 시 자동으로 결제/차감되거나 환불된 전체 포인트 사용 로그입니다.
+                  </p>
+                </div>
+              </div>
+
+              {(() => {
+                const usageLogs = pointTransactions.filter(t => t.type === 'use' || t.type === 'refund');
+
+                if (usageLogs.length === 0) {
+                  return (
+                    <div className="p-8 text-center text-xs text-[#8b95a1] bg-[#f8f9fc] rounded-2xl border border-dashed border-[#e5e8eb]">
+                      포인트 사용 또는 차감 이력이 없습니다.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="overflow-x-auto border border-[#e5e8eb] rounded-xl">
                     <table className="w-full text-left text-xs min-w-[650px]">
                       <thead className="bg-[#f8f9fc] border-b border-[#e5e8eb] text-[#191f28]">
                         <tr>
-                          <th className="p-3">신청 일시</th>
+                          <th className="p-3">일시</th>
                           <th className="p-3">회원명 (아이디)</th>
-                          <th className="p-3">유형</th>
-                          <th className="p-3">신청 금액</th>
-                          <th className="p-3">내용 / 메모</th>
+                          <th className="p-3">구분</th>
+                          <th className="p-3">차감/환불 금액</th>
+                          <th className="p-3">사용 내역 / 사유</th>
                           <th className="p-3">상태</th>
-                          <th className="p-3 text-center">관리 조치</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#e5e8eb]">
-                        {pointTransactions.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} className="p-8 text-center text-[#8b95a1]">
-                              포인트 충전 또는 환불 신청 내역이 없습니다.
+                        {usageLogs.map((tx) => (
+                          <tr key={tx.id} className="hover:bg-[#f8f9fc]">
+                            <td className="p-3 text-[#8b95a1] font-mono">{(tx.createdAt || '').split('T')[0] || '-'}</td>
+                            <td className="p-3 font-bold text-[#191f28]">
+                              {tx.userName} <span className="text-[10px] text-[#8b95a1] font-normal">({tx.userId})</span>
+                            </td>
+                            <td className="p-3 font-bold">
+                              {tx.type === 'use' && <span className="text-[#f59e0b]">포인트 차감</span>}
+                              {tx.type === 'refund' && <span className="text-[#28a745]">포인트 환불</span>}
+                            </td>
+                            <td className={`p-3 font-extrabold ${tx.type === 'refund' ? 'text-[#28a745]' : 'text-[#191f28]'}`}>
+                              {tx.type === 'refund' ? `+${tx.amount.toLocaleString()}` : `-${tx.amount.toLocaleString()}`} P
+                            </td>
+                            <td className="p-3 text-[#4e5968] max-w-[280px] truncate">{tx.description}</td>
+                            <td className="p-3">
+                              <span className="text-[10px] text-[#28a745] bg-[#28a745]/10 px-2 py-0.5 rounded font-bold">
+                                처리완료
+                              </span>
                             </td>
                           </tr>
-                        ) : (
-                          pointTransactions.map((tx) => (
-                            <tr key={tx.id} className="hover:bg-[#f8f9fc]">
-                              <td className="p-3 text-[#8b95a1] font-mono">{(tx.createdAt || '').split('T')[0] || '-'}</td>
-                              <td className="p-3 font-bold text-[#191f28]">
-                                {tx.userName} <span className="text-[10px] text-[#8b95a1] font-normal">({tx.userId})</span>
-                              </td>
-                              <td className="p-3 font-bold">
-                                {tx.type === 'charge_request' && <span className="text-[#007aff]">무통장 충전 신청</span>}
-                                {tx.type === 'charge_approved' && <span className="text-[#28a745]">충전 승인 완료</span>}
-                                {tx.type === 'use' && <span className="text-[#f59e0b]">포인트 사용</span>}
-                                {tx.type === 'refund' && <span className="text-[#e93d3d]">포인트 환불</span>}
-                              </td>
-                              <td className="p-3 font-extrabold text-[#191f28]">
-                                {tx.amount.toLocaleString()} P
-                              </td>
-                              <td className="p-3 text-[#4e5968] max-w-[200px] truncate">{tx.description}</td>
-                              <td className="p-3 font-bold">
-                                {tx.status === 'pending' && <span className="text-[#f59e0b] bg-[#f59e0b]/10 px-2 py-0.5 rounded">입금대기</span>}
-                                {tx.status === 'completed' && <span className="text-[#28a745] bg-[#28a745]/10 px-2 py-0.5 rounded">처리완료</span>}
-                                {tx.status === 'cancelled' && <span className="text-[#8b95a1] bg-[#8b95a1]/10 px-2 py-0.5 rounded">취소됨</span>}
-                              </td>
-                              <td className="p-3 text-center">
-                                {tx.status === 'pending' && onApprovePointCharge && (
-                                  <button
-                                    onClick={() => onApprovePointCharge(tx.id)}
-                                    className="gold-btn py-1.5 px-3 text-[11px] font-bold rounded-lg shadow-sm"
-                                  >
-                                    입금확인 & 승인
-                                  </button>
-                                )}
-                                {tx.status === 'completed' && (
-                                  <span className="text-[10px] text-[#8b95a1]">완료됨</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))
-                        )}
+                        ))}
                       </tbody>
                     </table>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         )}
