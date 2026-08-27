@@ -304,16 +304,29 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
 
 
-      {/* 르하임 스터디카페 이용 안내 배너 */}
-      <div className="bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-4 space-y-2 text-xs text-[#4e5968] leading-relaxed">
-        <h4 className="font-bold text-[#a67c48] text-xs flex items-center gap-1">
-          📌 르하임 이용 안내
+      {/* 르하임 스터디카페 이용 안내 배너 (넉넉한 안쪽 여백 및 세련된 아이콘 정렬) */}
+      <div className="bg-[#ffffff] border border-[#e5e8eb] rounded-2xl p-5 space-y-3.5 shadow-sm">
+        <h4 className="font-bold text-[#a67c48] text-sm flex items-center gap-1.5 border-b border-[#f1f3f5] pb-2.5">
+          <span>📌</span>
+          <span>르하임 이용 안내</span>
         </h4>
-        <ul className="list-disc pl-4 space-y-1 text-xs text-[#4e5968]">
-          <li>공부방 예약은 <strong>30분 단위</strong>로 원하는 시간만큼 자유롭게 신청할 수 있습니다.</li>
-          <li>출입 바코드는 <strong>이용 시작 5분 전</strong>에 자동 활성화되며, <strong>이용 시간 종료 시 자동 소멸</strong>됩니다.</li>
-          <li>무통장 입금 계좌: <strong>{bankInfo.bankName} {bankInfo.accountNumber} (예금주: {bankInfo.accountHolder})</strong></li>
-        </ul>
+
+        <div className="space-y-2.5 text-xs text-[#4e5968] leading-relaxed">
+          <div className="flex items-start gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#a67c48] shrink-0 mt-1.5" />
+            <p>공부방 예약은 <strong className="text-[#191f28]">30분 단위</strong>로 원하는 시간만큼 자유롭게 신청할 수 있습니다.</p>
+          </div>
+
+          <div className="flex items-start gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#a67c48] shrink-0 mt-1.5" />
+            <p>출입 바코드는 <strong className="text-[#191f28]">이용 시작 5분 전</strong>에 자동 활성화되며, <strong className="text-[#191f28]">이용 시간 종료 시 자동 소멸</strong>됩니다.</p>
+          </div>
+
+          <div className="flex items-start gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#a67c48] shrink-0 mt-1.5" />
+            <p>무통장 입금 계좌: <strong className="text-[#191f28]">{bankInfo.bankName} {bankInfo.accountNumber}</strong> (예금주: {bankInfo.accountHolder})</p>
+          </div>
+        </div>
       </div>
 
       {/* 📱 화면 중앙 출입 바코드 팝업 모달 */}
