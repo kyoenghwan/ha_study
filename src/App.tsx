@@ -1720,20 +1720,23 @@ function App() {
 
                 {/* 퀵 빠른 선택 버튼 (원클릭 입력) */}
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {[10000, 30000, 50000, 100000, 200000].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setCustomChargeAmount(String(amt))}
-                      className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
-                        customChargeAmount === String(amt)
-                          ? 'bg-[#a67c48] text-white border-[#a67c48] shadow-xs'
-                          : 'bg-white text-[#4e5968] border-[#e5e8eb] hover:bg-[#f1f3f5]'
-                      }`}
-                    >
-                      +{(amt / 10000)}만P
-                    </button>
-                  ))}
+                  {[10000, 30000, 50000, 100000, 200000].map((amt) => {
+                    const isSelected = customChargeAmount === String(amt);
+                    return (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setCustomChargeAmount(String(amt))}
+                        className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer"
+                        style={isSelected
+                          ? { backgroundColor: '#a67c48', color: '#ffffff', borderColor: '#a67c48', fontWeight: 800 }
+                          : { backgroundColor: '#ffffff', color: '#4e5968', borderColor: '#e5e8eb' }
+                        }
+                      >
+                        +{(amt / 10000)}만P
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* 충전 신청 버튼 */}
