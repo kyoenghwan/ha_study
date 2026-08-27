@@ -224,6 +224,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // 룸 지점 필터 상태
   const [roomBranchFilter, setRoomBranchFilter] = useState<string>('all');
+  // 룸 삭제 확인 모달 상태
+  const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
 
   // 룸 수정 모달 상태
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -757,11 +759,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <span>수정</span>
                           </button>
                           <button
-                            onClick={() => {
-                              if (confirm(`'${room.name}'을(를) 삭제하시겠습니까?\n해당 방의 모든 예약도 함께 삭제됩니다.`)) {
-                                onDeleteRoom(room.id);
-                              }
-                            }}
+                            type="button"
+                            onClick={() => setRoomToDelete(room)}
                             className="text-xs font-bold text-[#e93d3d] bg-[#e93d3d]/10 hover:bg-[#e93d3d]/20 border border-[#e93d3d]/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all"
                             title="룸 삭제"
                           >
@@ -3275,6 +3274,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+            {/* 🗑️ 룸 삭제 확인 모달 (브라우저 confirm 차단 방지용 인앱 모달) */}
+      {roomToDelete && (
+        <div className="modal-overlay" onClick={() => setRoomToDelete(null)}>
+          <div className="modal-content max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center space-y-3 p-2">
+              <div className="w-12 h-12 bg-[#e93d3d]/10 text-[#e93d3d] rounded-full flex items-center justify-center mx-auto">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-base font-bold text-[#191f28]">스터디룸 삭제</h3>
+              <p className="text-xs text-[#4e5968] leading-relaxed">
+                <strong className="text-[#191f28]">'{roomToDelete.name}'</strong> 공부방을 정말 삭제하시겠습니까?<br />
+                <span className="text-[11px] text-[#e93d3d]">해당 방의 모든 예약 내역도 함께 영구 삭제됩니다.</span>
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <button
+                type="button"
+                onClick={() => setRoomToDelete(null)}
+                className="gold-btn-outline flex-1 py-2.5 text-xs font-bold rounded-xl"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (roomToDelete) {
+                    onDeleteRoom(roomToDelete.id);
+                    setRoomToDelete(null);
+                  }
+                }}
+                className="flex-1 py-2.5 text-xs font-bold rounded-xl bg-[#e93d3d] hover:bg-[#d63030] text-white shadow transition-all flex items-center justify-center gap-1"
+              >
+                <Trash2 size={14} /> 영구 삭제하기
+              </button>
+            </div>
           </div>
         </div>
       )}
