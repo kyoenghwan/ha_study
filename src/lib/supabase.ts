@@ -8,6 +8,7 @@ import type {
   AdminBarcodeItem,
   BankInfo,
   Branch,
+  PointTransferRequest,
 } from '../types';
 
 const DEFAULT_SUPABASE_URL = 'https://aonpiwzphpngucrtrnmq.supabase.co';
@@ -478,5 +479,38 @@ export const saveDbBranches = async (branches: Branch[]): Promise<DbResult> => {
     return error ? fail('지점 목록 저장', error) : ok();
   } catch (err) {
     return fail('지점 목록 저장', err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// 9. point_transfers — 지점 간 포인트 이전 신청 및 승인
+// ─────────────────────────────────────────────────────────────
+
+const POINT_TRANSFERS_KEY = 'lheureux_point_transfers';
+
+export const fetchDbPointTransfers = async (): Promise<PointTransferRequest[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', POINT_TRANSFERS_KEY)
+      .single();
+    if (error || !data?.value) return [];
+    return data.value as PointTransferRequest[];
+  } catch (err) {
+    return [];
+  }
+};
+
+export const saveDbPointTransfers = async (transfers: PointTransferRequest[]): Promise<DbResult> => {
+  try {
+    const { error } = await supabase.from('app_settings').upsert({
+      key: POINT_TRANSFERS_KEY,
+      value: transfers,
+      updated_at: new Date().toISOString(),
+    });
+    return error ? fail('포인트 이전 내역 저장', error) : ok();
+  } catch (err) {
+    return fail('포인트 이전 내역 저장', err);
   }
 };

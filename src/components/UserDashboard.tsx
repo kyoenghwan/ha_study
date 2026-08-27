@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { Room, Reservation, BankInfo, MasterBarcode, UserAccount } from '../types';
-import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles, Clock, Lock, User, Coins, FileText, Edit2, Check } from 'lucide-react';
+import type { Room, Reservation, BankInfo, MasterBarcode, UserAccount, Branch, PointTransferRequest } from '../types';
+import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles, Clock, Lock, User, Coins, FileText, Edit2, Check, ArrowLeftRight } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
 
 interface UserDashboardProps {
@@ -8,9 +8,14 @@ interface UserDashboardProps {
   rooms: Room[];
   reservations: Reservation[];
   bankInfo: BankInfo;
+  branches?: Branch[];
   masterBarcode?: MasterBarcode;
+  selectedBranchId?: string;
   selectedBranchName?: string;
   currentBranchPoints?: number;
+  getBranchPoints?: (user: UserAccount | null, bId: string) => number;
+  pointTransferRequests?: PointTransferRequest[];
+  onApplyPointTransfer?: (data: { fromBranchId: string; toBranchId: string; amount: number; reason?: string }) => boolean;
   onSelectRoom: (roomId: string) => void;
   onCancelAndRefundReservation?: (resId: string) => void;
   onOpenPointModal?: () => void;
@@ -62,15 +67,30 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   rooms,
   reservations,
   bankInfo,
+  branches = [],
   masterBarcode,
+  selectedBranchId = 'yeouido',
   selectedBranchName = '해당 지점',
   currentBranchPoints,
+  getBranchPoints,
+  pointTransferRequests = [],
+  onApplyPointTransfer,
   onSelectRoom,
   onCancelAndRefundReservation,
   onOpenPointModal,
   onUpdateUserProfile,
 }) => {
   const displayPoints = currentBranchPoints !== undefined ? currentBranchPoints : (currentUser?.points || 0);
+
+  // 🔄 지점 간 포인트 이전 신청 모달 상태
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferFromBranch, setTransferFromBranch] = useState(selectedBranchId);
+  const [transferToBranch, setTransferToBranch] = useState(() => {
+    const other = branches.find(b => b.id !== selectedBranchId);
+    return other ? other.id : (branches[1]?.id || 'daebang');
+  });
+  const [transferAmount, setTransferAmount] = useState('10000');
+  const [transferReason, setTransferReason] = useState('');
   const [showMyReservationsModal, setShowMyReservationsModal] = useState(false);
   const [showMyProfileModal, setShowMyProfileModal] = useState(false);
   const [activeBarcodeReservation, setActiveBarcodeReservation] = useState<Reservation | null>(null);
@@ -252,14 +272,28 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               <p className="text-sm font-extrabold text-[#191f28]">{displayPoints.toLocaleString()} P</p>
             </div>
           </div>
-          {onOpenPointModal && (
+          <div className="flex gap-1.5 shrink-0">
             <button
-              onClick={onOpenPointModal}
-              className="gold-btn text-xs py-1.5 px-3.5 rounded-lg font-bold shadow-sm"
+              onClick={() => {
+                setTransferFromBranch(selectedBranchId);
+                const other = branches.find(b => b.id !== selectedBranchId);
+                if (other) setTransferToBranch(other.id);
+                setShowTransferModal(true);
+              }}
+              className="gold-btn-outline text-xs py-1.5 px-2.5 rounded-lg font-bold shadow-sm flex items-center gap-1"
+              title="다른 지점으로 포인트 이전 신청"
             >
-              충전
+              <ArrowLeftRight size={13} /> 이전 신청
             </button>
-          )}
+            {onOpenPointModal && (
+              <button
+                onClick={onOpenPointModal}
+                className="gold-btn text-xs py-1.5 px-3.5 rounded-lg font-bold shadow-sm"
+              >
+                충전
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -723,6 +757,164 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             >
               닫기
             </button>
+          </div>
+        </div>
+      )}
+      {/* 🔄 지점 간 포인트 이전 신청 모달 */}
+      {showTransferModal && (
+        <div className="modal-overlay" onClick={() => setShowTransferModal(false)}>
+          <div className="modal-content max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-3 border-b border-[#e5e8eb]">
+              <h3 className="text-base font-bold text-[#191f28] flex items-center gap-1.5">
+                <ArrowLeftRight size={18} className="text-[#a67c48]" /> 지점 간 포인트 이전 신청
+              </h3>
+              <button onClick={() => setShowTransferModal(false)} className="text-[#8b95a1] hover:text-[#191f28] text-2xl leading-none">
+                &times;
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const amt = parseInt(transferAmount, 10);
+                if (isNaN(amt) || amt <= 0) {
+                  alert('올바른 이전 금액을 입력해 주세요.');
+                  return;
+                }
+                if (transferFromBranch === transferToBranch) {
+                  alert('출발 지점과 도착 지점이 동일합니다. 다른 지점을 선택해 주세요.');
+                  return;
+                }
+                const fromPts = getBranchPoints ? getBranchPoints(currentUser || null, transferFromBranch) : displayPoints;
+                if (fromPts < amt) {
+                  alert(`출발 지점의 보유 포인트(${fromPts.toLocaleString()} P)가 부족합니다.`);
+                  return;
+                }
+                if (onApplyPointTransfer) {
+                  const ok = onApplyPointTransfer({
+                    fromBranchId: transferFromBranch,
+                    toBranchId: transferToBranch,
+                    amount: amt,
+                    reason: transferReason.trim() || '지점 이동 이용',
+                  });
+                  if (ok) {
+                    setShowTransferModal(false);
+                    setTransferReason('');
+                  }
+                }
+              }}
+              className="space-y-4 pt-3 text-xs"
+            >
+              <div className="bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] space-y-1">
+                <p className="text-[11px] font-bold text-[#a67c48]">💡 포인트 이전 승인 안내</p>
+                <p className="text-[11px] text-[#8b95a1] leading-relaxed">
+                  지점별 사업자 정산을 위해 <strong>지점 관리자의 승인 완료 후</strong> 최종 이전됩니다.
+                </p>
+              </div>
+
+              {/* 출발 지점 선택 */}
+              <div className="form-group space-y-1">
+                <label className="font-bold text-[#191f28]">보내는 지점 (출발)</label>
+                <select
+                  value={transferFromBranch}
+                  onChange={(e) => setTransferFromBranch(e.target.value)}
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white font-medium"
+                >
+                  {branches.map((b) => {
+                    const pts = getBranchPoints ? getBranchPoints(currentUser || null, b.id) : 0;
+                    return (
+                      <option key={b.id} value={b.id}>
+                        {b.fullName || b.name} (보유: {pts.toLocaleString()} P)
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* 도착 지점 선택 */}
+              <div className="form-group space-y-1">
+                <label className="font-bold text-[#191f28]">받는 지점 (도착)</label>
+                <select
+                  value={transferToBranch}
+                  onChange={(e) => setTransferToBranch(e.target.value)}
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white font-medium"
+                >
+                  {branches
+                    .filter((b) => b.id !== transferFromBranch)
+                    .map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.fullName || b.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* 이전 금액 */}
+              <div className="form-group space-y-1">
+                <label className="font-bold text-[#191f28]">이전 신청 포인트 (P)</label>
+                <input
+                  type="number"
+                  step={1000}
+                  min={1000}
+                  required
+                  value={transferAmount}
+                  onChange={(e) => setTransferAmount(e.target.value)}
+                  placeholder="예: 10000"
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48] font-bold"
+                />
+              </div>
+
+              {/* 사유 */}
+              <div className="form-group space-y-1">
+                <label className="font-bold text-[#191f28]">이전 사유 (선택)</label>
+                <input
+                  type="text"
+                  value={transferReason}
+                  onChange={(e) => setTransferReason(e.target.value)}
+                  placeholder="예: 이사로 인한 주 이용 지점 변경"
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                />
+              </div>
+
+              {/* 최근 나의 이전 신청 내역 요약 */}
+              {pointTransferRequests.length > 0 && (
+                <div className="bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] space-y-1.5 max-h-32 overflow-y-auto">
+                  <p className="font-bold text-[11px] text-[#191f28]">최근 나의 포인트 이전 신청 현황</p>
+                  {pointTransferRequests.map((r) => {
+                    const fromN = branches.find((b) => b.id === r.fromBranchId)?.name || r.fromBranchId;
+                    const toN = branches.find((b) => b.id === r.toBranchId)?.name || r.toBranchId;
+                    return (
+                      <div key={r.id} className="flex justify-between items-center text-[10px] bg-white p-2 rounded-lg border border-[#e5e8eb]">
+                        <span>{fromN} ➔ {toN} ({r.amount.toLocaleString()} P)</span>
+                        <span className={`font-bold px-1.5 py-0.5 rounded ${
+                          r.status === 'pending' ? 'bg-[#f59e0b]/10 text-[#f59e0b]' :
+                          r.status === 'approved' ? 'bg-[#28a745]/10 text-[#28a745]' :
+                          'bg-[#e93d3d]/10 text-[#e93d3d]'
+                        }`}>
+                          {r.status === 'pending' ? '승인대기' : r.status === 'approved' ? '이전완료' : '반려됨'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTransferModal(false)}
+                  className="gold-btn-outline flex-1 py-3 text-xs font-bold rounded-xl"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="gold-btn flex-1 py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1"
+                >
+                  <Check size={14} /> 이전 신청하기
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

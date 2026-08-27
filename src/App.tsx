@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction, Branch } from './types';
+import type { Room, Reservation, Role, BankInfo, PaymentMethod, PaymentStatus, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction, Branch, PointTransferRequest } from './types';
 import { INITIAL_ROOMS, INITIAL_RESERVATIONS, INITIAL_BANK_INFO, INITIAL_ADMIN_BARCODES, INITIAL_MASTER_BARCODE, INITIAL_USERS } from './utils/mockData';
 import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
@@ -41,6 +41,8 @@ import {
   saveDbBankInfo,
   fetchDbBranches,
   saveDbBranches,
+  fetchDbPointTransfers,
+  saveDbPointTransfers,
   fetchDbPointTransactions,
   saveDbPointTransaction,
 } from './lib/supabase';
@@ -128,7 +130,126 @@ function App() {
     persist('지점 목록 동기화', () => saveDbBranches(newBranches));
   };
 
-  // 새 지점 등록
+  // 🔄 지점 간 포인트 이전 신청 목록 상태
+  const [pointTransferRequests, setPointTransferRequests] = useState<PointTransferRequest[]>(() => {
+    const saved = localStorage.getItem('lheureux_point_transfers');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return [];
+  });
+
+  const updatePointTransferRequests = (newRequests: PointTransferRequest[]) => {
+    setPointTransferRequests(newRequests);
+    localStorage.setItem('lheureux_point_transfers', JSON.stringify(newRequests));
+    persist('포인트 이전 목록 동기화', () => saveDbPointTransfers(newRequests));
+  };
+
+  // 포인트 이전 신청 (사용자)
+  const handleApplyPointTransfer = (data: {
+    fromBranchId: string;
+    toBranchId: string;
+    amount: number;
+    reason?: string;
+  }): boolean => {
+    if (!currentUser) return false;
+    const currentFromPts = getBranchPoints(currentUser, data.fromBranchId);
+    if (currentFromPts < data.amount) {
+      alert(`선택하신 출발 지점의 보유 포인트(${currentFromPts.toLocaleString()} P)가 신청 금액보다 부족합니다.`);
+      return false;
+    }
+
+    const fromBranchName = branches.find((b) => b.id === data.fromBranchId)?.name || data.fromBranchId;
+    const toBranchName = branches.find((b) => b.id === data.toBranchId)?.name || data.toBranchId;
+
+    const newReq: PointTransferRequest = {
+      id: `ptr-${Date.now()}`,
+      userId: currentUser.userId,
+      userName: currentUser.name,
+      userPhone: currentUser.phone,
+      fromBranchId: data.fromBranchId,
+      toBranchId: data.toBranchId,
+      amount: data.amount,
+      reason: data.reason || '지점 이동 이용',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    const nextList = [newReq, ...pointTransferRequests];
+    updatePointTransferRequests(nextList);
+
+    alert(`[${fromBranchName} ➔ ${toBranchName}] ${data.amount.toLocaleString()} P 이전 신청이 접수되었습니다!\n담당 지점 관리자의 승인 완료 후 최종 이전됩니다.`);
+    return true;
+  };
+
+  // 포인트 이전 승인 (관리자)
+  const handleApprovePointTransfer = (reqId: string) => {
+    const req = pointTransferRequests.find((r) => r.id === reqId);
+    if (!req || req.status !== 'pending') return;
+
+    const targetUser = users.find((u) => u.userId === req.userId || u.id === req.userId);
+    if (!targetUser) {
+      alert('해당 신청 회원을 찾을 수 없습니다.');
+      return;
+    }
+
+    const fromPts = getBranchPoints(targetUser, req.fromBranchId);
+    if (fromPts < req.amount) {
+      alert(`해당 회원의 출발 지점 잔액(${fromPts.toLocaleString()} P)이 부족하여 이전할 수 없습니다.`);
+      return;
+    }
+
+    // 1. 출발 지점 차감
+    let updatedUser = adjustUserBranchPoints(targetUser, req.fromBranchId, -req.amount);
+    // 2. 도착 지점 적립
+    updatedUser = adjustUserBranchPoints(updatedUser, req.toBranchId, req.amount);
+
+    const nextUsers = users.map((u) => (u.id === targetUser.id ? updatedUser : u));
+    updateUsers(nextUsers);
+    persist('포인트 이전 회원 갱신', () => updateDbUser(updatedUser));
+
+    if (currentUser?.id === targetUser.id) {
+      setCurrentUser(updatedUser);
+    }
+
+    // 3. 상태 업데이트
+    const updatedReq: PointTransferRequest = {
+      ...req,
+      status: 'approved',
+      approvedAt: new Date().toISOString(),
+    };
+    const nextReqs = pointTransferRequests.map((r) => (r.id === req.id ? updatedReq : r));
+    updatePointTransferRequests(nextReqs);
+
+    const fromName = branches.find((b) => b.id === req.fromBranchId)?.name || req.fromBranchId;
+    const toName = branches.find((b) => b.id === req.toBranchId)?.name || req.toBranchId;
+
+    alert(`'${targetUser.name}' 회원님의 [${fromName} ➔ ${toName}] ${req.amount.toLocaleString()} P 이전이 성공적으로 승인 처리되었습니다!`);
+  };
+
+  // 포인트 이전 반려/거절 (관리자)
+  const handleRejectPointTransfer = (reqId: string) => {
+    const req = pointTransferRequests.find((r) => r.id === reqId);
+    if (!req || req.status !== 'pending') return;
+
+    if (!confirm(`'${req.userName}' 회원님의 ${req.amount.toLocaleString()} P 이전 신청을 반려하시겠습니까?`)) {
+      return;
+    }
+
+    const updatedReq: PointTransferRequest = {
+      ...req,
+      status: 'rejected',
+    };
+    const nextReqs = pointTransferRequests.map((r) => (r.id === req.id ? updatedReq : r));
+    updatePointTransferRequests(nextReqs);
+
+    alert('포인트 이전 신청이 반려되었습니다.');
+  };
+
+    // 새 지점 등록
   const handleCreateBranch = (newBranch: Branch): boolean => {
     if (branches.some((b) => b.id.toLowerCase() === newBranch.id.trim().toLowerCase())) {
       alert(`'${newBranch.id}' 지점 코드는 이미 등록되어 있습니다. 다른 코드를 사용해 주세요.`);
@@ -370,6 +491,13 @@ function App() {
       if (dbBranches && dbBranches.length > 0) {
         setBranches(dbBranches);
         localStorage.setItem('lheureux_branches', JSON.stringify(dbBranches));
+      }
+
+      // 9. Point Transfers (포인트 이전 신청) DB 실시간 로드
+      const dbTransfers = await fetchDbPointTransfers();
+      if (dbTransfers) {
+        setPointTransferRequests(dbTransfers);
+        localStorage.setItem('lheureux_point_transfers', JSON.stringify(dbTransfers));
       }
 
       // 8. 전체 계정의 활성 권한 로드 (관리자 회원 목록 표시용)
@@ -1242,6 +1370,9 @@ function App() {
             branches={branches}
             selectedBranchId={selectedBranch}
             getBranchPoints={getBranchPoints}
+            pointTransferRequests={pointTransferRequests}
+            onApprovePointTransfer={handleApprovePointTransfer}
+            onRejectPointTransfer={handleRejectPointTransfer}
             onCreateBranch={handleCreateBranch}
             onEditBranch={handleEditBranch}
             onDeleteBranch={handleDeleteBranch}
@@ -1286,9 +1417,14 @@ function App() {
             rooms={currentBranchRooms}
             reservations={currentBranchReservations}
             bankInfo={bankInfo}
+            branches={branches}
             masterBarcode={masterBarcode}
+            selectedBranchId={selectedBranch}
             selectedBranchName={currentBranchObj.fullName || currentBranchObj.name}
             currentBranchPoints={getBranchPoints(currentUser, selectedBranch)}
+            getBranchPoints={getBranchPoints}
+            pointTransferRequests={pointTransferRequests.filter((r) => r.userId === currentUser?.userId || r.userId === currentUser?.id)}
+            onApplyPointTransfer={handleApplyPointTransfer}
             onSelectRoom={(roomId) => setSelectedRoomId(roomId)}
             onCancelAndRefundReservation={handleCancelAndRefundReservation}
             onOpenPointModal={() => setShowPointModal(true)}

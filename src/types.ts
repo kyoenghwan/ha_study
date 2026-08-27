@@ -82,3 +82,18 @@ export interface PointTransaction {
 
 export type Role = 'admin' | 'user';
 
+
+export interface PointTransferRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhone?: string;
+  fromBranchId: string;
+  toBranchId: string;
+  amount: number;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  approvedAt?: string;
+}
+
