@@ -214,12 +214,22 @@ export const fetchDbRooms = async (): Promise<Room[]> => {
 
     return (roomsRes.data as RoomRow[]).map((r) => {
       const meta = metaMap[r.id] || {};
+      let branchId = meta.branchId;
+      if (!branchId) {
+        if (r.id.includes('daebang') || r.name.includes('대방')) {
+          branchId = 'daebang';
+        } else if (r.id.includes('mapo') || r.name.includes('마포')) {
+          branchId = 'mapo';
+        } else {
+          branchId = 'yeouido';
+        }
+      }
       return {
         id: r.id,
         name: r.name,
         capacity: r.capacity ?? 1,
         description: r.description ?? '',
-        branchId: meta.branchId || (r.id.includes('daebang') ? 'daebang' : (r.id.includes('mapo') ? 'mapo' : 'yeouido')),
+        branchId,
       };
     });
   } catch (err) {

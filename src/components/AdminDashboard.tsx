@@ -272,6 +272,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [roomName, setRoomName] = useState('');
   const [capacity, setCapacity] = useState(4);
   const [description, setDescription] = useState('');
+  const [newRoomBranchId, setNewRoomBranchId] = useState(selectedBranchId || 'yeouido');
 
   // 예약 수정 모달
   const [editingRes, setEditingRes] = useState<Reservation | null>(null);
@@ -328,7 +329,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [notifTesting, setNotifTesting] = useState(false);
   const [notifTestResult, setNotifTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  // 룸 추가 처리 (현재 지점 ID 확실히 바인딩)
+  // 룸 추가 처리 (선택된 지점에 정확히 저장)
   const handleAddRoomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomName.trim()) return;
@@ -336,7 +337,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       name: roomName.trim(), 
       capacity, 
       description: description.trim(),
-      branchId: selectedBranchId || 'yeouido'
+      branchId: newRoomBranchId || selectedBranchId || 'yeouido'
     });
     setRoomName('');
     setCapacity(4);
@@ -687,7 +688,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <button
-                onClick={() => setShowAddRoomModal(true)}
+                onClick={() => { setNewRoomBranchId(selectedBranchId || (branches.length > 0 ? branches[0].id : 'yeouido')); setShowAddRoomModal(true); }}
                 className="gold-btn flex items-center gap-1.5 text-xs py-2.5 px-4 rounded-xl shadow shrink-0"
               >
                 <Plus size={15} /> 새 룸 추가
@@ -703,7 +704,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div className="text-center py-10 text-[#8e8e93] border border-dashed border-[#e5e5ea] rounded-xl bg-white space-y-2">
                       <p className="font-bold">선택하신 지점에 등록된 공부방이 없습니다.</p>
                       <button
-                        onClick={() => setShowAddRoomModal(true)}
+                        onClick={() => { setNewRoomBranchId(selectedBranchId || (branches.length > 0 ? branches[0].id : 'yeouido')); setShowAddRoomModal(true); }}
                         className="text-xs font-bold text-[#a67c48] underline"
                       >
                         + 지금 새 공부방 추가하기
@@ -2741,12 +2742,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <button onClick={() => setShowAddRoomModal(false)} className="text-[#8e8e93] text-xl">&times;</button>
             </div>
             <form onSubmit={handleAddRoomSubmit} className="space-y-3">
+              {/* 🏢 등록할 지점 선택 */}
+              <div className="form-group space-y-1">
+                <label className="text-xs font-bold text-[#191f28] flex items-center gap-1">
+                  🏢 등록 대상 지점
+                </label>
+                <select
+                  value={newRoomBranchId}
+                  onChange={(e) => setNewRoomBranchId(e.target.value)}
+                  className="form-input text-xs py-2 px-3 rounded-xl border border-[#a67c48]/40 bg-[#fffdfa] font-bold text-[#a67c48] w-full focus:border-[#a67c48]"
+                >
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.fullName || b.name} ({b.name})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-[#8b95a1]">
+                  선택하신 지점에만 독립적으로 신규 룸이 생성됩니다.
+                </p>
+              </div>
+
               <div className="form-group">
                 <label className="text-xs font-bold">공부방 이름</label>
                 <input
                   type="text"
                   required
-                  placeholder="예: 스터디 존 D (8인실)"
+                  placeholder="예: 포커스 스터디룸 C (4인실)"
                   value={roomName}
                   onChange={(e) => setRoomName(e.target.value)}
                   className="form-input text-xs"
