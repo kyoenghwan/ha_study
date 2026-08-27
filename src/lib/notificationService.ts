@@ -5,6 +5,8 @@
  * - 텔레그램(Telegram) 봇 실시간 스마트폰 푸시 알림
  */
 
+import { fetchDbNotificationSettings } from './supabase';
+
 export interface NotificationSettings {
   soundEnabled: boolean;
   telegramEnabled: boolean;
@@ -135,6 +137,44 @@ export const sendTelegramMessage = async (
   }
 };
 
+
+/**
+ * 🔑 DB에서 최신 알림 설정(chatId, botToken)을 가져오는 헬퍼
+ * 일반 회원 브라우저에서는 관리자의 chatId가 localStorage에 없으므로
+ * 반드시 DB에서 직접 조회해야 합니다.
+ */
+const getLatestTelegramSettings = async (settings: NotificationSettings): Promise<{ token: string; chatId: string }> => {
+  let token = settings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN;
+  let chatId = settings.telegramChatId || '';
+
+  // DB에서 최신 설정 직접 조회 (가장 신뢰할 수 있는 소스)
+  if (!chatId) {
+    try {
+      const dbSettings = await fetchDbNotificationSettings();
+      if (dbSettings) {
+        chatId = dbSettings.telegramChatId || '';
+        token = dbSettings.telegramBotToken || token;
+      }
+    } catch (e) {
+      console.warn('[Telegram] DB 알림 설정 조회 실패:', e);
+    }
+  }
+
+  // localStorage 최종 fallback
+  if (!chatId) {
+    try {
+      const saved = localStorage.getItem('lheureux_notification_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        chatId = parsed.telegramChatId || '';
+        token = parsed.telegramBotToken || token;
+      }
+    } catch {}
+  }
+
+  return { token, chatId };
+};
+
 /**
  * 🔔 4. 통합 알림 트리거 헬퍼 (충전 신청용)
  */
@@ -159,21 +199,10 @@ export const triggerChargeRequestNotification = async (
     `${info.userName} (${info.userId}) 님이 ${info.amount.toLocaleString()}P 충전을 신청했습니다.`
   );
 
-  // 3. 텔레그램 알림
-  const tokenToUse = settings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN;
-  // localStorage fallback
-  let chatIdToUse = settings.telegramChatId;
-  if (!chatIdToUse) {
-    try {
-      const saved = localStorage.getItem('lheureux_notification_settings');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        chatIdToUse = parsed.telegramChatId;
-      }
-    } catch {}
-  }
+  // 3. 텔레그램 알림 (DB에서 최신 chatId를 직접 조회)
+  const { token: tokenToUse, chatId: chatIdToUse } = await getLatestTelegramSettings(settings);
 
-  if (chatIdToUse && (settings.telegramEnabled !== false)) {
+  if (chatIdToUse) {
     const branchText = info.branchName ? `\n🏢 <b>지점</b>: ${info.branchName}` : '';
     const message = `🔔 <b>[르하임 스터디카페] 포인트 충전 신청</b>${branchText}\n\n` +
       `👤 <b>회원명</b>: ${info.userName} (${info.userId})\n` +
@@ -183,7 +212,9 @@ export const triggerChargeRequestNotification = async (
       `👉 <i>관리자 콘솔에서 입금 확인 후 승인해 주세요!</i>`;
 
     const res = await sendTelegramMessage(tokenToUse, chatIdToUse, message);
-    console.log('[Telegram Notification Result]:', res);
+    console.log('[Telegram Charge Notification]:', res.success ? '✅ 발송 성공' : '❌ 발송 실패: ' + res.error);
+  } else {
+    console.warn('[Telegram] chatId가 설정되지 않아 텔레그램 알림을 보내지 못했습니다.');
   }
 };
 
@@ -212,20 +243,10 @@ export const triggerTransferRequestNotification = async (
     `${info.userName} (${info.fromBranchName} ➔ ${info.toBranchName}, ${info.amount.toLocaleString()}P)`
   );
 
-  // 3. 텔레그램 알림
-  const tokenToUse = settings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN;
-  let chatIdToUse = settings.telegramChatId;
-  if (!chatIdToUse) {
-    try {
-      const saved = localStorage.getItem('lheureux_notification_settings');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        chatIdToUse = parsed.telegramChatId;
-      }
-    } catch {}
-  }
+  // 3. 텔레그램 알림 (DB에서 최신 chatId를 직접 조회)
+  const { token: tokenToUse, chatId: chatIdToUse } = await getLatestTelegramSettings(settings);
 
-  if (chatIdToUse && (settings.telegramEnabled !== false)) {
+  if (chatIdToUse) {
     const message = `🔄 <b>[르하임 스터디카페] 지점 간 포인트 이전 신청</b>\n\n` +
       `👤 <b>회원명</b>: ${info.userName} (${info.userId})\n` +
       `🏢 <b>이전 경로</b>: ${info.fromBranchName} ➔ <b>${info.toBranchName}</b>\n` +
@@ -235,6 +256,8 @@ export const triggerTransferRequestNotification = async (
       `👉 <i>관리자 콘솔에서 확인 후 승인해 주세요!</i>`;
 
     const res = await sendTelegramMessage(tokenToUse, chatIdToUse, message);
-    console.log('[Telegram Transfer Notification Result]:', res);
+    console.log('[Telegram Transfer Notification]:', res.success ? '✅ 발송 성공' : '❌ 발송 실패: ' + res.error);
+  } else {
+    console.warn('[Telegram] chatId가 설정되지 않아 텔레그램 알림을 보내지 못했습니다.');
   }
 };
