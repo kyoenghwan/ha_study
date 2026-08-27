@@ -48,6 +48,9 @@ domains:
       admin_dashboard:
         file: src/components/AdminDashboard.tsx
         responsive_variants: [mobile, desktop]
+      branch_select_modal:
+        file: src/components/BranchSelectModal.tsx
+        responsive_variants: [mobile, desktop]
     notes:
       - AuthContext 는 auth_rbac 도메인(DA_auth.ts)이 SSOT 다.
 

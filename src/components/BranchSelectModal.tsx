@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Branch } from '../types';
-import { Search, MapPin, Check, X, Building2 } from 'lucide-react';
+import { Search, MapPin, X, Building2 } from 'lucide-react';
 
 interface BranchSelectModalProps {
   isOpen: boolean;
@@ -127,37 +127,14 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
                       borderColor: isSelected ? '#8a6230' : '#e5e8eb',
                     }}
                   >
-                    {/* 지점명 & 선택 상태 */}
+                    {/* 지점명 */}
                     <div className="text-left">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-1.5">
-                          <span 
-                            className="w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center shadow-xs shrink-0"
-                            style={{
-                              backgroundColor: isSelected ? '#ffffff' : '#a67c48',
-                              color: isSelected ? '#a67c48' : '#ffffff',
-                            }}
-                          >
-                            {branch.name.replace(/점|역/g, '').slice(0, 2)}
-                          </span>
-                          <p 
-                            className="text-[11px] font-semibold"
-                            style={{ color: isSelected ? '#faecd8' : '#8b95a1' }}
-                          >
-                            르하임 스터디카페
-                          </p>
-                        </div>
-                        {isSelected ? (
-                          <span 
-                            className="px-2 py-0.5 rounded-md text-[10px] font-extrabold flex items-center gap-1 shadow-sm"
-                            style={{ backgroundColor: '#ffffff', color: '#8a6230' }}
-                          >
-                            <Check size={11} strokeWidth={3.5} /> 선택됨
-                          </span>
-                        ) : (
-                          <span className="w-4 h-4 rounded-full border border-[#d1d6db] bg-white group-hover:border-[#a67c48]/50" />
-                        )}
-                      </div>
+                      <p
+                        className="text-[11px] font-semibold"
+                        style={{ color: isSelected ? '#faecd8' : '#8b95a1' }}
+                      >
+                        르하임 스터디카페
+                      </p>
                       <h4 
                         className={`text-base tracking-tight transition-colors mt-1 ${
                           isSelected ? 'font-black' : 'font-bold group-hover:text-[#a67c48]'
