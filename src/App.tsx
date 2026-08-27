@@ -39,6 +39,8 @@ import {
   deleteDbAdminBarcode,
   fetchDbBankInfo,
   saveDbBankInfo,
+  fetchDbBranches,
+  saveDbBranches,
   fetchDbPointTransactions,
   saveDbPointTransaction,
 } from './lib/supabase';
@@ -53,28 +55,12 @@ export const BRANCHES: Branch[] = [
     name: '여의도점',
     fullName: '르하임 스터디카페 여의도점',
     address: '서울특별시 영등포구 여의도동 24번지',
-    description: '화이트보드 완비 4인실 & 그룹 스터디 6인실 집중존',
   },
   {
-    id: 'mapo',
-    name: '마포점',
-    fullName: '르하임 스터디카페 마포점',
-    address: '서울특별시 마포구 도화동 18번지',
-    description: '대형 빔프로젝터 세미나룸 & 몰입형 프리미엄 스터디존',
-  },
-  {
-    id: 'gangnam',
-    name: '강남점',
-    fullName: '르하임 스터디카페 강남점',
-    address: '서울특별시 강남구 역삼동 825번지',
-    description: '개별 방음 부스 & 1인 몰입 스터디룸',
-  },
-  {
-    id: 'pangyo',
-    name: '판교점',
-    fullName: '르하임 스터디카페 판교점',
-    address: '경기도 성남시 분당구 판교역로 146',
-    description: '초고속 기가 Wi-Fi & IT 개발자 전용 스터디존',
+    id: 'daebang',
+    name: '대방역',
+    fullName: '르하임 스터디카페 대방역',
+    address: '서울 동작구 여의대방로 286 5층',
   },
 ];
 
@@ -111,6 +97,7 @@ function App() {
   const updateBranches = (newBranches: Branch[]) => {
     setBranches(newBranches);
     localStorage.setItem('lheureux_branches', JSON.stringify(newBranches));
+    persist('지점 목록 동기화', () => saveDbBranches(newBranches));
   };
 
   // 새 지점 등록
@@ -348,6 +335,13 @@ function App() {
       if (dbBank) {
         setBankInfo(dbBank);
         localStorage.setItem('lheureux_bank_info', JSON.stringify(dbBank));
+      }
+
+      // 8. Branches (지점 목록) DB 실시간 로드
+      const dbBranches = await fetchDbBranches();
+      if (dbBranches && dbBranches.length > 0) {
+        setBranches(dbBranches);
+        localStorage.setItem('lheureux_branches', JSON.stringify(dbBranches));
       }
 
       // 8. 전체 계정의 활성 권한 로드 (관리자 회원 목록 표시용)

@@ -7,6 +7,7 @@ import type {
   Room,
   AdminBarcodeItem,
   BankInfo,
+  Branch,
 } from '../types';
 
 const DEFAULT_SUPABASE_URL = 'https://aonpiwzphpngucrtrnmq.supabase.co';
@@ -444,5 +445,38 @@ export const saveDbPointTransaction = async (tx: PointTransaction): Promise<DbRe
     return error ? fail('포인트 이력 저장', error) : ok();
   } catch (err) {
     return fail('포인트 이력 저장', err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// 8. branches — 지점 목록 설정
+// ─────────────────────────────────────────────────────────────
+
+const BRANCHES_KEY = 'lheureux_branches';
+
+export const fetchDbBranches = async (): Promise<Branch[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', BRANCHES_KEY)
+      .single();
+    if (error || !data?.value) return [];
+    return data.value as Branch[];
+  } catch (err) {
+    return [];
+  }
+};
+
+export const saveDbBranches = async (branches: Branch[]): Promise<DbResult> => {
+  try {
+    const { error } = await supabase.from('app_settings').upsert({
+      key: BRANCHES_KEY,
+      value: branches,
+      updated_at: new Date().toISOString(),
+    });
+    return error ? fail('지점 목록 저장', error) : ok();
+  } catch (err) {
+    return fail('지점 목록 저장', err);
   }
 };
