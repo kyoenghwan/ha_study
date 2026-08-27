@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction, Branch, PointTransferRequest } from '../types';
 import { 
   Plus, Trash2, Calendar, Edit2, CheckCircle2, AlertCircle, 
-  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight, ReceiptText, RotateCcw 
+  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight, ReceiptText, RotateCcw, Bell, Send, Volume2, MessageSquare, CheckCheck 
 } from 'lucide-react';
+import type { NotificationSettings } from '../lib/notificationService';
+import { DEFAULT_NOTIFICATION_SETTINGS, playNotificationSound, sendTelegramMessage, requestNotificationPermission } from '../lib/notificationService';
 import { BarcodeView } from './BarcodeView';
 
 interface AdminDashboardProps {
@@ -12,6 +14,8 @@ interface AdminDashboardProps {
   rooms: Room[];
   reservations: Reservation[];
   bankInfo: BankInfo;
+  notificationSettings?: NotificationSettings;
+  onUpdateNotificationSettings?: (settings: NotificationSettings) => void;
   users?: UserAccount[];
   pointTransactions?: PointTransaction[];
   adminBarcodes?: AdminBarcodeItem[];
@@ -85,6 +89,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   rooms,
   reservations,
   bankInfo,
+  notificationSettings = DEFAULT_NOTIFICATION_SETTINGS,
+  onUpdateNotificationSettings,
   users = [],
   pointTransactions = [],
   adminBarcodes = [],
@@ -305,6 +311,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [accountNumber, setAccountNumber] = useState(bankInfo.accountNumber);
   const [accountHolder, setAccountHolder] = useState(bankInfo.accountHolder);
   const [bankSaveMsg, setBankSaveMsg] = useState(false);
+  // 🔔 알림 설정 로컬 상태
+  const [notifSoundEnabled, setNotifSoundEnabled] = useState(notificationSettings.soundEnabled);
+  const [notifTelegramEnabled, setNotifTelegramEnabled] = useState(notificationSettings.telegramEnabled);
+  const [notifBotToken, setNotifBotToken] = useState(notificationSettings.telegramBotToken);
+  const [notifChatId, setNotifChatId] = useState(notificationSettings.telegramChatId);
+  const [notifSaveMsg, setNotifSaveMsg] = useState(false);
+  const [notifTesting, setNotifTesting] = useState(false);
+  const [notifTestResult, setNotifTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // 룸 추가 처리
   const handleAddRoomSubmit = (e: React.FormEvent) => {
@@ -638,7 +652,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
             }`}
           >
-            <Settings size={15} /> 통장 계좌 설정
+            <Settings size={15} /> ⚙️ 통장 계좌 & 🔔 알림 설정
           </button>
         )}
       </div>
@@ -2250,63 +2264,241 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* TAB 5: 계좌 및 환경 설정 */}
         {activeTab === 'bank_settings' && (
-          <div className="bg-white border border-[#e5e5ea] rounded-xl p-5 space-y-4 shadow-sm max-w-lg">
-            <div>
-              <h3 className="text-base font-bold text-[#1c1c1e] flex items-center gap-1.5">
-                <Landmark className="text-[#b09168]" size={18} /> 무통장 입금 계좌 정보 설정
-              </h3>
-              <p className="text-xs text-[#8e8e93] mt-1">
-                사용자가 예약 시 '무통장 입금' 선택 화면에 노출될 수납 계좌 정보를 입력하고 저장합니다.
-              </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            {/* 1. 무통장 입금 계좌 설정 */}
+            <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
+              <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
+                <Settings className="text-[#a67c48]" size={20} />
+                <div>
+                  <h2 className="text-base font-bold text-[#191f28]">무통장 입금 계좌 설정</h2>
+                  <p className="text-[11px] text-[#8b95a1] pt-0.5">
+                    회원들이 포인트 충전 시 안내받을 대표 입금 계좌 정보입니다.
+                  </p>
+                </div>
+              </div>
+
+              {bankSaveMsg && (
+                <div className="p-3 text-xs font-semibold text-[#28a745] bg-[#28a745]/10 border border-[#28a745]/30 rounded-xl flex items-center gap-2">
+                  <CheckCircle2 size={16} /> 계좌 정보가 안전하게 저장되었습니다.
+                </div>
+              )}
+
+              <form onSubmit={handleBankSave} className="space-y-4">
+                <div className="form-group space-y-1">
+                  <label className="text-xs font-bold text-[#191f28]">은행명</label>
+                  <input
+                    type="text"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    placeholder="예: 신한은행, 카카오뱅크"
+                    className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb]"
+                    required
+                  />
+                </div>
+
+                <div className="form-group space-y-1">
+                  <label className="text-xs font-bold text-[#191f28]">계좌 번호</label>
+                  <input
+                    type="text"
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.target.value)}
+                    placeholder="예: 110-384-918234"
+                    className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb]"
+                    required
+                  />
+                </div>
+
+                <div className="form-group space-y-1">
+                  <label className="text-xs font-bold text-[#191f28]">예금주명</label>
+                  <input
+                    type="text"
+                    value={accountHolder}
+                    onChange={(e) => setAccountHolder(e.target.value)}
+                    placeholder="예: (주)르하임 여의도점"
+                    className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb]"
+                    required
+                  />
+                </div>
+
+                <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow">
+                  계좌 정보 저장하기
+                </button>
+              </form>
             </div>
 
-            {bankSaveMsg && (
-              <div className="p-3 bg-[#34c759]/10 border border-[#34c759]/30 rounded-xl text-xs text-[#34c759] font-bold flex items-center gap-2">
-                <Check size={14} /> 입금 계좌 정보가 성공적으로 변경되었습니다.
-              </div>
-            )}
-
-            <form onSubmit={handleBankSave} className="space-y-4">
-              <div className="form-group">
-                <label className="text-xs font-bold text-[#1c1c1e]">은행명</label>
-                <input
-                  type="text"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  placeholder="예: 신한은행"
-                  className="form-input text-xs"
-                  required
-                />
+            {/* 2. 🔔 실시간 알림 설정 (텔레그램 & 딩동 사운드) */}
+            <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
+              <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
+                <Bell className="text-[#a67c48]" size={20} />
+                <div>
+                  <h2 className="text-base font-bold text-[#191f28]">실시간 충전 알림 설정 (스마트폰 & 소리)</h2>
+                  <p className="text-[11px] text-[#8b95a1] pt-0.5">
+                    회원이 포인트 충전/이전 신청 시 관리자 폰(텔레그램) 및 브라우저로 실시간 알림을 보냅니다.
+                  </p>
+                </div>
               </div>
 
-              <div className="form-group">
-                <label className="text-xs font-bold text-[#1c1c1e]">계좌 번호</label>
-                <input
-                  type="text"
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
-                  placeholder="예: 110-384-918234"
-                  className="form-input text-xs"
-                  required
-                />
-              </div>
+              {notifSaveMsg && (
+                <div className="p-3 text-xs font-semibold text-[#28a745] bg-[#28a745]/10 border border-[#28a745]/30 rounded-xl flex items-center gap-2">
+                  <CheckCircle2 size={16} /> 알림 설정이 성공적으로 저장되었습니다.
+                </div>
+              )}
 
-              <div className="form-group">
-                <label className="text-xs font-bold text-[#1c1c1e]">예금주명</label>
-                <input
-                  type="text"
-                  value={accountHolder}
-                  onChange={(e) => setAccountHolder(e.target.value)}
-                  placeholder="예: (주)르하임 여의도점"
-                  className="form-input text-xs"
-                  required
-                />
-              </div>
+              {notifTestResult && (
+                <div className={`p-3 text-xs font-semibold rounded-xl flex items-center gap-2 border ${
+                  notifTestResult.success
+                    ? 'text-[#28a745] bg-[#28a745]/10 border-[#28a745]/30'
+                    : 'text-[#e93d3d] bg-[#e93d3d]/10 border-[#e93d3d]/30'
+                }`}>
+                  {notifTestResult.success ? <CheckCheck size={16} /> : <AlertCircle size={16} />}
+                  <span>{notifTestResult.message}</span>
+                </div>
+              )}
 
-              <button type="submit" className="gold-btn w-full py-3 text-xs font-bold rounded-xl">
-                계좌 정보 저장하기
-              </button>
-            </form>
+              <div className="space-y-4">
+                {/* 🔊 사운드 알림 토글 & 테스트 */}
+                <div className="p-4 bg-[#f8f9fc] rounded-2xl border border-[#e5e8eb] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Volume2 size={16} className="text-[#a67c48]" />
+                      <span className="text-xs font-bold text-[#191f28]">브라우저 딩동(Ding-Dong) 소리 알림</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notifSoundEnabled}
+                        onChange={(e) => setNotifSoundEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#a67c48]"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => playNotificationSound()}
+                      className="text-[11px] font-bold text-[#a67c48] bg-white hover:bg-[#a67c48]/10 border border-[#a67c48]/30 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 shadow-xs"
+                    >
+                      <Volume2 size={13} /> 🔊 알림음 미리듣기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const granted = await requestNotificationPermission();
+                        alert(granted ? '브라우저 시스템 푸시 알림 권한이 허용되었습니다.' : '브라우저 알림 권한이 거부되었거나 지원되지 않습니다.');
+                      }}
+                      className="text-[11px] font-bold text-[#4e5968] bg-white hover:bg-[#f1f3f5] border border-[#e5e8eb] px-3 py-1.5 rounded-xl transition-all"
+                    >
+                      📱 브라우저 푸시 권한 요청
+                    </button>
+                  </div>
+                </div>
+
+                {/* 📲 텔레그램 스마트폰 봇 알림 연동 */}
+                <div className="p-4 bg-[#f8f9fc] rounded-2xl border border-[#e5e8eb] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare size={16} className="text-[#0088cc]" />
+                      <span className="text-xs font-bold text-[#191f28]">텔레그램(Telegram) 스마트폰 알림</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notifTelegramEnabled}
+                        onChange={(e) => setNotifTelegramEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0088cc]"></div>
+                    </label>
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-[#4e5968]">텔레그램 봇 토큰 (Bot Token)</label>
+                      <input
+                        type="text"
+                        value={notifBotToken}
+                        onChange={(e) => setNotifBotToken(e.target.value)}
+                        placeholder="예: 7123456789:AAHk3_AbCdEfGhIjKlMnOpQr"
+                        className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-[#4e5968]">내 텔레그램 채팅 ID (Chat ID)</label>
+                      <input
+                        type="text"
+                        value={notifChatId}
+                        onChange={(e) => setNotifChatId(e.target.value)}
+                        placeholder="예: 123456789"
+                        className="form-input text-xs py-2 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-between items-center">
+                      <button
+                        type="button"
+                        disabled={notifTesting || !notifBotToken || !notifChatId}
+                        onClick={async () => {
+                          setNotifTesting(true);
+                          setNotifTestResult(null);
+                          const res = await sendTelegramMessage(
+                            notifBotToken,
+                            notifChatId,
+                            `🔔 <b>[르하임 스터디카페] 텔레그램 알림 연동 성공!</b>\n\n관리자님의 스마트폰으로 포인트 충전 및 이전 신청 알림이 정상적으로 수신됩니다. 🚀`
+                          );
+                          setNotifTesting(false);
+                          if (res.success) {
+                            setNotifTestResult({ success: true, message: '스마트폰 텔레그램으로 테스트 알림이 성공적으로 전송되었습니다!' });
+                          } else {
+                            setNotifTestResult({ success: false, message: res.error || '텔레그램 전송 실패 (토큰/Chat ID를 확인해 주세요)' });
+                          }
+                        }}
+                        className="text-[11px] font-bold text-[#0088cc] bg-white hover:bg-[#0088cc]/10 border border-[#0088cc]/30 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 shadow-xs disabled:opacity-50"
+                      >
+                        <Send size={12} /> {notifTesting ? '발송 중...' : '🔔 텔레그램 테스트 메시지 발송'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 텔레그램 봇 만들기 1분 안내 */}
+                  <div className="bg-[#eef8ff] p-3 rounded-xl border border-[#bce3ff] text-[10px] text-[#005580] space-y-1">
+                    <p className="font-bold text-[11px] flex items-center gap-1">
+                      💡 텔레그램 봇 토큰 & Chat ID 무료 발급 방법 (1분):
+                    </p>
+                    <ol className="list-decimal pl-3.5 space-y-0.5 text-[10px]">
+                      <li>텔레그램 검색창에 <b>@BotFather</b> 검색 ➔ <code>/newbot</code> 입력하여 새 봇 생성 후 <b>Bot Token</b> 복사</li>
+                      <li>생성된 내 봇에 들어가서 <b>[시작(Start)]</b> 버튼 누르기</li>
+                      <li>검색창에 <b>@userinfobot</b> 검색 ➔ 내 <b>Id (Chat ID 숫자)</b> 확인 후 위 입력창에 붙여넣기</li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* 알림 설정 최종 저장 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newSettings: NotificationSettings = {
+                      soundEnabled: notifSoundEnabled,
+                      telegramEnabled: notifTelegramEnabled,
+                      telegramBotToken: notifBotToken.trim(),
+                      telegramChatId: notifChatId.trim(),
+                      notifyOnChargeRequest: true,
+                      notifyOnTransferRequest: true,
+                    };
+                    if (onUpdateNotificationSettings) {
+                      onUpdateNotificationSettings(newSettings);
+                      setNotifSaveMsg(true);
+                      setTimeout(() => setNotifSaveMsg(false), 3000);
+                    }
+                  }}
+                  className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5"
+                >
+                  <Bell size={14} /> 알림 설정 저장하기
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

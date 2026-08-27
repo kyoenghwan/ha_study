@@ -462,6 +462,37 @@ export const saveDbBankInfo = async (info: BankInfo): Promise<DbResult> => {
   }
 };
 
+const NOTIFICATION_SETTINGS_KEY = 'notification_settings';
+
+export const fetchDbNotificationSettings = async (): Promise<any | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', NOTIFICATION_SETTINGS_KEY)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data.value;
+  } catch (err) {
+    console.warn('[DB] app_settings(notification_settings) 조회 실패:', err);
+    return null;
+  }
+};
+
+export const saveDbNotificationSettings = async (settings: any): Promise<DbResult> => {
+  try {
+    const { error } = await supabase.from('app_settings').upsert({
+      key: NOTIFICATION_SETTINGS_KEY,
+      value: settings,
+      updated_at: new Date().toISOString(),
+    });
+    return error ? fail('알림 설정 저장', error) : ok();
+  } catch (err) {
+    return fail('알림 설정 저장', err);
+  }
+};
+
+
 // ─────────────────────────────────────────────────────────────
 // 7. point_transactions — 포인트 입출금·환불 이력
 // ─────────────────────────────────────────────────────────────

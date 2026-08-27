@@ -40,6 +40,8 @@ import {
   deleteDbAdminBarcode,
   fetchDbBankInfo,
   saveDbBankInfo,
+  fetchDbNotificationSettings,
+  saveDbNotificationSettings,
   fetchDbBranches,
   saveDbBranches,
   fetchDbPointTransfers,
@@ -50,6 +52,12 @@ import {
 import type { DbResult } from './lib/supabase';
 
 import { BranchSelectModal } from './components/BranchSelectModal';
+import type { NotificationSettings } from './lib/notificationService';
+import { 
+  DEFAULT_NOTIFICATION_SETTINGS, 
+  triggerChargeRequestNotification, 
+  triggerTransferRequestNotification 
+} from './lib/notificationService';
 
 // 르하임 멀티테넌트 지점 목록 정의
 export const BRANCHES: Branch[] = [
@@ -78,6 +86,10 @@ function App() {
   const [masterBarcode, setMasterBarcode] = useState<MasterBarcode>(INITIAL_MASTER_BARCODE);
   const [pointTransactions, setPointTransactions] = useState<PointTransaction[]>([]);
   const [bankInfo, setBankInfo] = useState<BankInfo>(INITIAL_BANK_INFO);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() => {
+    const saved = localStorage.getItem('lheureux_notification_settings');
+    return saved ? JSON.parse(saved) : DEFAULT_NOTIFICATION_SETTINGS;
+  });
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   
 
@@ -181,6 +193,16 @@ function App() {
 
     const nextList = [newReq, ...pointTransferRequests];
     updatePointTransferRequests(nextList);
+
+    // 🔔 관리자 스마트폰 텔레그램 / 사운드 / 푸시 알림 즉시 발송!
+    triggerTransferRequestNotification(notificationSettings, {
+      userName: currentUser.name,
+      userId: currentUser.userId,
+      fromBranchName,
+      toBranchName,
+      amount: data.amount,
+      reason: data.reason,
+    });
 
     alert(`[${fromBranchName} ➔ ${toBranchName}] ${data.amount.toLocaleString()} P 이전 신청이 접수되었습니다!\n담당 지점 관리자의 승인 완료 후 최종 이전됩니다.`);
     return true;
@@ -480,11 +502,18 @@ function App() {
         localStorage.setItem('lheureux_admin_barcodes', JSON.stringify(dbBarcodes));
       }
 
-      // 7. Bank Info 로드
-      const dbBank = await fetchDbBankInfo();
+      // 7. Bank Info & 알림 설정 로드
+      const [dbBank, dbNotif] = await Promise.all([
+        fetchDbBankInfo(),
+        fetchDbNotificationSettings(),
+      ]);
       if (dbBank) {
         setBankInfo(dbBank);
         localStorage.setItem('lheureux_bank_info', JSON.stringify(dbBank));
+      }
+      if (dbNotif) {
+        setNotificationSettings(dbNotif);
+        localStorage.setItem('lheureux_notification_settings', JSON.stringify(dbNotif));
       }
 
       // 8. Branches (지점 목록) DB 실시간 로드
@@ -607,6 +636,12 @@ function App() {
     persist('입금 계좌 정보', () => saveDbBankInfo(newInfo));
   };
 
+  const handleUpdateNotificationSettings = (newSettings: NotificationSettings) => {
+    setNotificationSettings(newSettings);
+    localStorage.setItem('lheureux_notification_settings', JSON.stringify(newSettings));
+    persist('알림 설정', () => saveDbNotificationSettings(newSettings));
+  };
+
   const handleSelectBranch = (branchId: string) => {
     setSelectedBranch(branchId);
     localStorage.setItem('lheureux_selected_branch', branchId);
@@ -614,16 +649,18 @@ function App() {
 
 
 
-  // 무통장 입금 포인트 충전 신청 처리 (이용자용)
+  // 무통장 입금 포인트 충전 신청 처리 (이용자용 & 관리자 실시간 알림 트리거)
   const handleApplyPointCharge = (amount: number) => {
     if (!currentUser) return;
+    const branchObj = branches.find(b => b.id === selectedBranch);
     const newTx: PointTransaction = {
       id: `tx-${Date.now()}`,
       userId: currentUser.userId,
       userName: currentUser.name,
+      branchId: selectedBranch,
       type: 'charge_request',
       amount,
-      description: `무통장 입금 포인트 충전 신청 (${amount.toLocaleString()}원)`,
+      description: `[${branchObj?.name || '지점'}] 무통장 입금 충전 신청 (${amount.toLocaleString()}원)`,
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
@@ -632,6 +669,16 @@ function App() {
     updatePointTransactions(updatedTx);
     persist('포인트 충전 신청', () => saveDbPointTransaction(newTx));
     setShowPointModal(false);
+
+    // 🔔 관리자 스마트폰 텔레그램 / 사운드 / 푸시 알림 즉시 발송!
+    triggerChargeRequestNotification(notificationSettings, {
+      userName: currentUser.name,
+      userId: currentUser.userId,
+      userPhone: currentUser.phone,
+      amount,
+      branchName: branchObj?.fullName || branchObj?.name,
+    });
+
     alert(`무통장 입금 충전 신청이 완료되었습니다.\n입금계좌: ${bankInfo.bankName} ${bankInfo.accountNumber} (${bankInfo.accountHolder})\n관리자 입금 확인 후 포인트가 즉시 지급됩니다.`);
   };
 
@@ -1425,6 +1472,8 @@ function App() {
             isSuperAdmin={isSuperAdmin}
             onCreateBranchAdmin={handleCreateBranchAdmin}
             bankInfo={bankInfo}
+            notificationSettings={notificationSettings}
+            onUpdateNotificationSettings={handleUpdateNotificationSettings}
             users={users}
             pointTransactions={pointTransactions}
             adminBarcodes={adminBarcodes}
