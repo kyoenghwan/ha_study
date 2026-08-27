@@ -1054,7 +1054,7 @@ function App() {
     );
   }
 
-  // 🏢 최고 관리자 전용: 지점별 관리자 신규 계정 생성 및 다중 지점 권한 부여 (N:M 매칭)
+  // 🏢 최고 관리자 전용: 지점별 관리자 권한 부여 (기존 회원 승격 및 신규 생성 완벽 지원)
   const handleCreateBranchAdmin = (data: {
     branchIds: string[];
     roleCode: RoleCode;
@@ -1063,18 +1063,39 @@ function App() {
     phone: string;
     password?: string;
   }) => {
-    // 중복 아이디 검사
-    if (users.some((u) => u.userId.toLowerCase() === data.userId.toLowerCase())) {
-      alert(`'${data.userId}' 아이디는 이미 사용 중입니다. 다른 아이디를 입력해 주세요.`);
-      return false;
+    const branchNames = data.branchIds
+      .map((id) => BRANCHES.find((b) => b.id === id)?.name || id)
+      .join(', ');
+
+    // 1. 기존 회원인지 확인
+    const existingUser = users.find((u) => u.userId.toLowerCase() === data.userId.trim().toLowerCase());
+    
+    if (existingUser) {
+      // 🌟 기존 회원에게 지점 관리자 권한 승격 및 담당 지점 할당
+      const updatedUser: UserAccount = {
+        ...existingUser,
+        role: 'admin',
+        branchIds: data.branchIds,
+        ...(data.password ? { password: data.password.trim() } : {}),
+      };
+
+      const nextUsers = users.map((u) => (u.id === existingUser.id ? updatedUser : u));
+      updateUsers(nextUsers);
+      persist('지점 관리자 권한 승격', () => updateDbUser(updatedUser));
+
+      void handleGrantRole(existingUser.id, data.roleCode);
+
+      alert(`'${existingUser.name}'(${existingUser.userId}) 기존 회원님에게 [${branchNames}] 지점 관리자 권한이 성공적으로 부여되었습니다!`);
+      return true;
     }
 
+    // 2. 신규 관리자 계정 생성
     const newAdminUser: UserAccount = {
       id: `user-${Date.now()}`,
-      userId: data.userId,
+      userId: data.userId.trim(),
       password: data.password || '1234',
-      name: data.name,
-      phone: data.phone,
+      name: data.name.trim(),
+      phone: data.phone.trim(),
       role: 'admin',
       points: 0,
       branchIds: data.branchIds,
@@ -1084,13 +1105,9 @@ function App() {
     updateUsers(nextUsers);
     persist('지점 관리자 등록', () => insertDbUser(newAdminUser));
 
-    // 권한(Grant) 부여
     void handleGrantRole(newAdminUser.id, data.roleCode);
 
-    const branchNames = data.branchIds
-      .map((id) => BRANCHES.find((b) => b.id === id)?.name || id)
-      .join(', ');
-    alert(`[${branchNames}] 담당 관리자 계정('${data.userId}')이 성공적으로 등록 및 권한 발급되었습니다!`);
+    alert(`[${branchNames}] 담당 관리자 계정('${data.userId}')이 신규 생성 및 권한 발급되었습니다!`);
     return true;
   };
 

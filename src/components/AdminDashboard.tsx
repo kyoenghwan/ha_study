@@ -99,14 +99,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRevokeRole,
   onCreateBranchAdmin,
 }) => {
-  // 🏢 지점 관리자 등록 모달 상태 (다중 지점 선택 지원)
+  // 🏢 지점 관리자 등록 모달 상태 (기존 회원 선택 / 신규 생성 듀얼 모드)
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+  const [adminRegMode, setAdminRegMode] = useState<'existing' | 'new'>('existing');
+  const [selectedExistingUserId, setSelectedExistingUserId] = useState('');
   const [newAdminBranchIds, setNewAdminBranchIds] = useState<string[]>(['mapo']);
   const [newAdminRoleCode, setNewAdminRoleCode] = useState<RoleCode>('BRANCH_ADMIN');
   const [newAdminUserId, setNewAdminUserId] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('1234');
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminPhone, setNewAdminPhone] = useState('');
+
+  // 특정 회원을 지점 관리자로 지정하는 헬퍼
+  const handleOpenAssignAdminModal = (user?: UserAccount) => {
+    if (user) {
+      setAdminRegMode('existing');
+      setSelectedExistingUserId(user.id);
+      setNewAdminUserId(user.userId);
+      setNewAdminName(user.name);
+      setNewAdminPhone(user.phone);
+      setNewAdminPassword(user.password || '1234');
+      setNewAdminBranchIds(user.branchIds && user.branchIds.length > 0 ? user.branchIds : ['mapo']);
+    } else {
+      setAdminRegMode('existing');
+      if (users.length > 0) {
+        const firstUser = users[0];
+        setSelectedExistingUserId(firstUser.id);
+        setNewAdminUserId(firstUser.userId);
+        setNewAdminName(firstUser.name);
+        setNewAdminPhone(firstUser.phone);
+        setNewAdminPassword(firstUser.password || '1234');
+        setNewAdminBranchIds(firstUser.branchIds && firstUser.branchIds.length > 0 ? firstUser.branchIds : ['mapo']);
+      }
+    }
+    setShowCreateAdminModal(true);
+  };
   const [activeTab, setActiveTab] = useState<TabType>('rooms_reservations');
 
   // 룸 수정 모달 상태
@@ -1052,7 +1079,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => setShowCreateAdminModal(true)}
+                    onClick={() => handleOpenAssignAdminModal()}
                     className="gold-btn text-xs font-bold py-2.5 px-3.5 rounded-xl shadow flex items-center gap-1.5 whitespace-nowrap"
                   >
                     <Plus size={15} /> 지점 관리자 등록
@@ -1854,19 +1881,62 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       )}
-      {/* 🏢 지점 관리자 신규 등록 및 권한 발급 모달 */}
+      {/* 🏢 지점 관리자 등록 & 기존 회원 권한 부여 모달 (2-in-1 듀얼 모드) */}
       {showCreateAdminModal && (
         <div className="modal-overlay" onClick={() => setShowCreateAdminModal(false)}>
           <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center pb-3 border-b border-[#e5e8eb]">
               <h3 className="text-base font-bold text-[#191f28] flex items-center gap-2">
-                <Users className="text-[#a67c48]" size={18} /> 지점 관리자(담당자) 등록
+                <Users className="text-[#a67c48]" size={18} /> 지점 관리자(담당자) 등록 및 권한 부여
               </h3>
               <button
                 onClick={() => setShowCreateAdminModal(false)}
                 className="text-[#8b95a1] hover:text-[#191f28] text-2xl leading-none"
               >
                 &times;
+              </button>
+            </div>
+
+            {/* 탭 전환: 기존 회원 선택 vs 신규 계정 발급 */}
+            <div className="flex border-b border-[#e5e8eb] mt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminRegMode('existing');
+                  if (users.length > 0) {
+                    const u = users.find(x => x.id === selectedExistingUserId) || users[0];
+                    setSelectedExistingUserId(u.id);
+                    setNewAdminUserId(u.userId);
+                    setNewAdminName(u.name);
+                    setNewAdminPhone(u.phone);
+                    setNewAdminBranchIds(u.branchIds && u.branchIds.length > 0 ? u.branchIds : ['mapo']);
+                  }
+                }}
+                className={`flex-1 py-2 text-xs font-bold border-b-2 transition-all ${
+                  adminRegMode === 'existing'
+                    ? 'border-[#a67c48] text-[#a67c48]'
+                    : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+                }`}
+              >
+                👤 기존 회원에게 지점 권한 부여
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminRegMode('new');
+                  setNewAdminUserId('');
+                  setNewAdminName('');
+                  setNewAdminPhone('');
+                  setNewAdminPassword('1234');
+                  setNewAdminBranchIds(['mapo']);
+                }}
+                className={`flex-1 py-2 text-xs font-bold border-b-2 transition-all ${
+                  adminRegMode === 'new'
+                    ? 'border-[#a67c48] text-[#a67c48]'
+                    : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+                }`}
+              >
+                ✨ 신규 관리자 계정 생성
               </button>
             </div>
 
@@ -1901,14 +1971,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }}
               className="space-y-4 pt-3 text-xs"
             >
-              <div className="bg-[#f8f9fc] p-3.5 rounded-2xl border border-[#e5e8eb] space-y-1">
-                <p className="text-[11px] font-bold text-[#a67c48] flex items-center gap-1">
-                  <span>👑 다중 점포 관리자 등록 안내</span>
-                </p>
-                <p className="text-[11px] text-[#8b95a1] leading-relaxed">
-                  한 명의 관리자가 <strong>여러 지점(예: 여의도점 + 마포점 등)</strong>을 복수로 담당할 수 있습니다. 해당 관리자로 로그인 시 체크된 지점들만 전환하며 관리하게 됩니다.
-                </p>
-              </div>
+              {/* 기존 회원 선택 드롭다운 */}
+              {adminRegMode === 'existing' && (
+                <div className="form-group space-y-1 bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb]">
+                  <label className="font-bold text-[#191f28]">권한을 부여할 기존 회원 선택</label>
+                  <select
+                    value={selectedExistingUserId}
+                    onChange={(e) => {
+                      const uId = e.target.value;
+                      setSelectedExistingUserId(uId);
+                      const targetU = users.find((u) => u.id === uId);
+                      if (targetU) {
+                        setNewAdminUserId(targetU.userId);
+                        setNewAdminName(targetU.name);
+                        setNewAdminPhone(targetU.phone);
+                        setNewAdminBranchIds(targetU.branchIds && targetU.branchIds.length > 0 ? targetU.branchIds : ['mapo']);
+                      }
+                    }}
+                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white font-medium"
+                  >
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.userId}) - {u.phone} {u.branchIds && u.branchIds.length > 0 ? `[${u.branchIds.length}개 지점 담당중]` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-[#8b95a1] pt-0.5">
+                    💡 선택한 회원의 기존 계정에 지점 관리 권한과 담당 점포가 즉시 할당됩니다.
+                  </p>
+                </div>
+              )}
 
               {/* 🏢 담당 지점 다중 선택 (복수 체크박스) */}
               <div className="form-group space-y-2">
@@ -1936,7 +2028,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#f8f9fc] p-3 rounded-2xl border border-[#e5e8eb] max-h-48 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#f8f9fc] p-3 rounded-2xl border border-[#e5e8eb] max-h-40 overflow-y-auto">
                   {[
                     { id: 'yeouido', name: '르하임 여의도점', address: '영등포구 여의도동' },
                     { id: 'mapo', name: '르하임 마포점', address: '마포구 도화동' },
@@ -1997,19 +2089,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* 아이디 & 비밀번호 */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="form-group space-y-1">
-                  <label className="font-bold text-[#191f28]">관리자 아이디</label>
+                  <label className="font-bold text-[#191f28]">아이디</label>
                   <input
                     type="text"
                     required
+                    readOnly={adminRegMode === 'existing'}
                     value={newAdminUserId}
                     onChange={(e) => setNewAdminUserId(e.target.value)}
-                    placeholder="예: admin_mapo"
-                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                    placeholder="예: kyoenghwan"
+                    className={`form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] ${adminRegMode === 'existing' ? 'bg-[#f0f0f2] text-[#4e5968]' : 'focus:border-[#a67c48]'}`}
                   />
                 </div>
 
                 <div className="form-group space-y-1">
-                  <label className="font-bold text-[#191f28]">초기 비밀번호</label>
+                  <label className="font-bold text-[#191f28]">비밀번호</label>
                   <input
                     type="text"
                     required
@@ -2024,13 +2117,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* 성함 & 연락처 */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="form-group space-y-1">
-                  <label className="font-bold text-[#191f28]">담당자 성함</label>
+                  <label className="font-bold text-[#191f28]">성함</label>
                   <input
                     type="text"
                     required
                     value={newAdminName}
                     onChange={(e) => setNewAdminName(e.target.value)}
-                    placeholder="예: 마포점장"
+                    placeholder="예: 김하윤"
                     className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
                   />
                 </div>
@@ -2042,7 +2135,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     required
                     value={newAdminPhone}
                     onChange={(e) => setNewAdminPhone(e.target.value)}
-                    placeholder="예: 010-9999-8888"
+                    placeholder="예: 010-1234-1234"
                     className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
                   />
                 </div>
@@ -2060,7 +2153,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   type="submit"
                   className="gold-btn flex-1 py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1"
                 >
-                  <Check size={14} /> 관리자 등록 및 계정 발급
+                  <Check size={14} /> {adminRegMode === 'existing' ? '지점 관리 권한 부여' : '신규 관리자 발급'}
                 </button>
               </div>
             </form>
