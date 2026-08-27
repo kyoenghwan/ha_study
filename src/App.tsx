@@ -870,7 +870,26 @@ function App() {
   
   // 🏢 현재 선택된 지점(selectedBranch)의 룸 및 예약 필터링
   // branchId가 없는 레거시 룸은 기본 'yeouido'로 취급
-  const currentBranchRooms = rooms.filter((r) => (r.branchId || 'yeouido') === selectedBranch);
+  // 현재 지점에 룸이 없으면 INITIAL_ROOMS에서 복구
+  let currentBranchRooms = rooms.filter((r) => (r.branchId || 'yeouido') === selectedBranch);
+  if (currentBranchRooms.length === 0) {
+    const defaultBranchRooms = INITIAL_ROOMS.filter((r) => (r.branchId || 'yeouido') === selectedBranch);
+    if (defaultBranchRooms.length > 0) {
+      currentBranchRooms = defaultBranchRooms;
+      // 비동기로 전체 룸 업데이트
+      setTimeout(() => {
+        setRooms((prev) => {
+          const exists = prev.some((r) => (r.branchId || 'yeouido') === selectedBranch);
+          if (!exists) {
+            const merged = [...prev, ...defaultBranchRooms];
+            localStorage.setItem('lheureux_rooms', JSON.stringify(merged));
+            return merged;
+          }
+          return prev;
+        });
+      }, 0);
+    }
+  }
   const currentBranchReservations = reservations.filter((res) => 
     currentBranchRooms.some((r) => r.id === res.roomId)
   );
@@ -1031,6 +1050,43 @@ function App() {
     );
   }
 
+  // 🏢 최고 관리자 전용: 지점별 관리자 신규 계정 생성 및 권한 부여
+  const handleCreateBranchAdmin = (data: {
+    branchId: string;
+    roleCode: RoleCode;
+    userId: string;
+    name: string;
+    phone: string;
+    password?: string;
+  }) => {
+    // 중복 아이디 검사
+    if (users.some((u) => u.userId.toLowerCase() === data.userId.toLowerCase())) {
+      alert(`'${data.userId}' 아이디는 이미 사용 중입니다. 다른 아이디를 입력해 주세요.`);
+      return false;
+    }
+
+    const newAdminUser: UserAccount = {
+      id: `user-${Date.now()}`,
+      userId: data.userId,
+      password: data.password || '1234',
+      name: data.name,
+      phone: data.phone,
+      role: 'admin',
+      points: 0,
+    };
+
+    const nextUsers = [...users, newAdminUser];
+    updateUsers(nextUsers);
+    persist('지점 관리자 등록', () => insertDbUser(newAdminUser));
+
+    // 권한(Grant) 부여
+    void handleGrantRole(newAdminUser.id, data.roleCode);
+
+    const branchName = BRANCHES.find((b) => b.id === data.branchId)?.name || data.branchId;
+    alert(`[${branchName}] 지점 관리자 계정('${data.userId}')이 성공적으로 생성되었습니다!`);
+    return true;
+  };
+
   // 3. 메인 애플리케이션 대시보드 화면
   return (
     <>
@@ -1077,6 +1133,7 @@ function App() {
           <AdminDashboard
             rooms={currentBranchRooms}
             reservations={currentBranchReservations}
+            onCreateBranchAdmin={handleCreateBranchAdmin}
             bankInfo={bankInfo}
             users={users}
             pointTransactions={pointTransactions}

@@ -44,6 +44,14 @@ interface AdminDashboardProps {
     targetUserId: string,
     roleCode: RoleCode,
   ) => Promise<{ success: boolean; message?: string }>;
+  onCreateBranchAdmin?: (data: {
+    branchId: string;
+    roleCode: RoleCode;
+    userId: string;
+    name: string;
+    phone: string;
+    password?: string;
+  }) => boolean;
 }
 
 type TabType = 'rooms_reservations' | 'long_term_bulk' | 'point_management' | 'user_management' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
@@ -89,7 +97,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   canManageRole,
   onGrantRole,
   onRevokeRole,
+  onCreateBranchAdmin,
 }) => {
+  // 🏢 지점 관리자 등록 모달 상태
+  const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+  const [newAdminBranchId, setNewAdminBranchId] = useState('mapo');
+  const [newAdminRoleCode, setNewAdminRoleCode] = useState<RoleCode>('BRANCH_ADMIN');
+  const [newAdminUserId, setNewAdminUserId] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('1234');
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminPhone, setNewAdminPhone] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('rooms_reservations');
 
   // 룸 수정 모달 상태
@@ -1023,18 +1040,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'user_management' && (
           <div className="space-y-6">
             <div className="bg-white border border-[#e5e5ea] p-5 rounded-2xl shadow-sm space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                  <h3 className="text-base font-bold text-[#1c1c1e] flex items-center gap-2">
-                    <Users className="text-[#b09168]" size={20} /> 회원 통합 관제 & 포인트 수동 조율
+                  <h3 className="text-base font-bold text-[#191f28] flex items-center gap-2">
+                    <Users className="text-[#a67c48]" size={20} /> 회원 통합 관제 & 지점 관리자 발급
                   </h3>
-                  <p className="text-xs text-[#8e8e93] mt-1">
-                    등록된 모든 회원 목록 및 포인트 잔액을 확인하고, 필요 시 수동으로 포인트를 지급하거나 차감할 수 있습니다.
+                  <p className="text-xs text-[#8b95a1] mt-1 leading-relaxed">
+                    회원 목록 및 포인트 잔액 관리와 함께, 지점별 담당자(관리자) 아이디를 생성하고 권한을 발급할 수 있습니다.
                   </p>
                 </div>
-                <span className="text-xs font-bold bg-[#b09168]/10 text-[#b09168] px-3 py-1.5 rounded-full border border-[#b09168]/30">
-                  총 회원: {users.length}명
-                </span>
+                
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setShowCreateAdminModal(true)}
+                    className="gold-btn text-xs font-bold py-2.5 px-3.5 rounded-xl shadow flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    <Plus size={15} /> 지점 관리자 등록
+                  </button>
+                  <span className="text-xs font-bold bg-[#a67c48]/10 text-[#a67c48] px-3 py-2 rounded-xl border border-[#a67c48]/30 shrink-0">
+                    총 {users.length}명
+                  </span>
+                </div>
               </div>
 
               {/* 회원 목록 데이터 테이블 */}
@@ -1828,6 +1854,156 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       )}
+      {/* 🏢 지점 관리자 신규 등록 및 권한 발급 모달 */}
+      {showCreateAdminModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateAdminModal(false)}>
+          <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-3 border-b border-[#e5e8eb]">
+              <h3 className="text-base font-bold text-[#191f28] flex items-center gap-2">
+                <Users className="text-[#a67c48]" size={18} /> 지점 관리자(담당자) 등록
+              </h3>
+              <button
+                onClick={() => setShowCreateAdminModal(false)}
+                className="text-[#8b95a1] hover:text-[#191f28] text-2xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newAdminUserId.trim() || !newAdminName.trim() || !newAdminPhone.trim()) {
+                  alert('모든 필수 항목을 입력해 주세요.');
+                  return;
+                }
+                if (onCreateBranchAdmin) {
+                  const success = onCreateBranchAdmin({
+                    branchId: newAdminBranchId,
+                    roleCode: newAdminRoleCode,
+                    userId: newAdminUserId.trim(),
+                    password: newAdminPassword.trim() || '1234',
+                    name: newAdminName.trim(),
+                    phone: newAdminPhone.trim(),
+                  });
+                  if (success) {
+                    setShowCreateAdminModal(false);
+                    setNewAdminUserId('');
+                    setNewAdminName('');
+                    setNewAdminPhone('');
+                  }
+                }
+              }}
+              className="space-y-4 pt-3 text-xs"
+            >
+              <div className="bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] space-y-1">
+                <p className="text-[11px] font-bold text-[#a67c48]">👑 최고 관리자 권한 안내</p>
+                <p className="text-[11px] text-[#8b95a1] leading-relaxed">
+                  지점별 관리자를 등록하면 해당 계정은 지정된 지점의 룸/예약/출입 바코드/포인트만 독립적으로 관리하게 됩니다.
+                </p>
+              </div>
+
+              {/* 담당 지점 선택 */}
+              <div className="form-group space-y-1">
+                <label className="font-bold text-[#191f28]">담당 지점 선택</label>
+                <select
+                  value={newAdminBranchId}
+                  onChange={(e) => setNewAdminBranchId(e.target.value)}
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                >
+                  <option value="yeouido">르하임 스터디카페 여의도점</option>
+                  <option value="mapo">르하임 스터디카페 마포점</option>
+                </select>
+              </div>
+
+              {/* 직급 및 권한 */}
+              <div className="form-group space-y-1">
+                <label className="font-bold text-[#191f28]">직급 / 관리 권한</label>
+                <select
+                  value={newAdminRoleCode}
+                  onChange={(e) => setNewAdminRoleCode(e.target.value as RoleCode)}
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                >
+                  <option value="BRANCH_ADMIN">지점 총괄 관리자 (BRANCH_ADMIN)</option>
+                  <option value="BRANCH_OWNER">지점 오너 / 점주 (BRANCH_OWNER)</option>
+                  <option value="STAFF">지점 근무 직원 / 매니저 (STAFF)</option>
+                </select>
+              </div>
+
+              {/* 아이디 & 비밀번호 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="form-group space-y-1">
+                  <label className="font-bold text-[#191f28]">관리자 아이디</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminUserId}
+                    onChange={(e) => setNewAdminUserId(e.target.value)}
+                    placeholder="예: admin_mapo"
+                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                  />
+                </div>
+
+                <div className="form-group space-y-1">
+                  <label className="font-bold text-[#191f28]">초기 비밀번호</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    placeholder="예: 1234"
+                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                  />
+                </div>
+              </div>
+
+              {/* 성함 & 연락처 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="form-group space-y-1">
+                  <label className="font-bold text-[#191f28]">담당자 성함</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminName}
+                    onChange={(e) => setNewAdminName(e.target.value)}
+                    placeholder="예: 마포점장"
+                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                  />
+                </div>
+
+                <div className="form-group space-y-1">
+                  <label className="font-bold text-[#191f28]">휴대폰 번호</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminPhone}
+                    onChange={(e) => setNewAdminPhone(e.target.value)}
+                    placeholder="예: 010-9999-8888"
+                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateAdminModal(false)}
+                  className="gold-btn-outline flex-1 py-3 text-xs font-bold rounded-xl"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="gold-btn flex-1 py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1"
+                >
+                  <Check size={14} /> 관리자 등록 및 계정 발급
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 🏢 스터디룸 정보 수정 모달 */}
       {editingRoom && (
         <div className="modal-overlay" onClick={() => setEditingRoom(null)}>
