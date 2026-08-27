@@ -2284,7 +2284,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 1. 👤 담당 관리자 정보 설정 (수평 텍스트 / 인풋 필드 레이아웃) */}
+              {/* 1. 👤 담당 관리자 정보 설정 (강제 수평 라벨/인풋 그리드) */}
               <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
                 <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
                   <Users className="text-[#a67c48]" size={20} />
@@ -2334,11 +2334,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="space-y-3"
                 >
                   {/* 관리자 아이디 / 인풋필드 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
-                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                  <div 
+                    className="py-2.5 border-b border-[#f1f3f5]"
+                    style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
+                  >
+                    <label className="text-xs font-bold text-[#191f28]">
                       관리자 아이디
                     </label>
-                    <div className="flex-1">
+                    <div>
                       <input
                         type="text"
                         disabled
@@ -2349,12 +2352,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* 담당자 성함 (이름) / 인풋필드 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
-                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                  {/* 담당자 성함 / 인풋필드 */}
+                  <div 
+                    className="py-2.5 border-b border-[#f1f3f5]"
+                    style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
+                  >
+                    <label className="text-xs font-bold text-[#191f28]">
                       담당자 성함 (이름)
                     </label>
-                    <div className="flex-1">
+                    <div>
                       <input
                         type="text"
                         required
@@ -2367,14 +2373,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   {/* 지점 문의 연락처 / 인풋필드 */}
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:pt-2 gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
-                    <div className="w-36 shrink-0">
+                  <div 
+                    className="py-2.5 border-b border-[#f1f3f5]"
+                    style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'flex-start', gap: '12px' }}
+                  >
+                    <div className="pt-2">
                       <label className="text-xs font-bold text-[#191f28] block">
                         지점 문의 연락처
                       </label>
-                      <span className="text-[10px] text-[#a67c48] font-bold block mt-0.5">★ 메인 화면 노출</span>
+                      <span className="text-[10px] text-[#a67c48] font-bold block mt-0.5">★ 메인 노출</span>
                     </div>
-                    <div className="flex-1">
+                    <div>
                       <input
                         type="text"
                         required
@@ -2390,11 +2399,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   {/* 새 로그인 비밀번호 / 인풋필드 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
-                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                  <div 
+                    className="py-2.5 border-b border-[#f1f3f5]"
+                    style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
+                  >
+                    <label className="text-xs font-bold text-[#191f28]">
                       새 로그인 비밀번호
                     </label>
-                    <div className="flex-1">
+                    <div>
                       <input
                         type="password"
                         value={adminProfilePassword}
@@ -2413,7 +2425,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </form>
               </div>
 
-              {/* 2. 💳 지점 무통장 입금 계좌 설정 (수평 텍스트 / 인풋 필드 레이아웃) */}
+              {/* 2. 💳 지점 무통장 입금 계좌 설정 (강제 수평 라벨/인풋 그리드) */}
               <div className="bg-white border border-[#e5e8eb] p-6 rounded-2xl shadow-sm space-y-5">
                 <div className="flex items-center gap-2 border-b border-[#e5e8eb] pb-3">
                   <CreditCard className="text-[#a67c48]" size={20} />
@@ -2433,11 +2445,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <form onSubmit={handleBankSave} className="space-y-3">
                   {/* 은행명 / 인풋필드 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
-                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                  <div 
+                    className="py-2.5 border-b border-[#f1f3f5]"
+                    style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
+                  >
+                    <label className="text-xs font-bold text-[#191f28]">
                       은행명
                     </label>
-                    <div className="flex-1">
+                    <div>
                       <input
                         type="text"
                         value={bankName}
@@ -2450,11 +2465,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   {/* 계좌 번호 / 인풋필드 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
-                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                  <div 
+                    className="py-2.5 border-b border-[#f1f3f5]"
+                    style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
+                  >
+                    <label className="text-xs font-bold text-[#191f28]">
                       계좌 번호
                     </label>
-                    <div className="flex-1">
+                    <div>
                       <input
                         type="text"
                         value={accountNumber}
@@ -2467,11 +2485,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   {/* 예금주명 / 인풋필드 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2 border-b border-[#f1f3f5]">
-                    <label className="w-36 shrink-0 text-xs font-bold text-[#191f28]">
+                  <div 
+                    className="py-2.5 border-b border-[#f1f3f5]"
+                    style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
+                  >
+                    <label className="text-xs font-bold text-[#191f28]">
                       예금주명
                     </label>
-                    <div className="flex-1">
+                    <div>
                       <input
                         type="text"
                         value={accountHolder}
@@ -2561,7 +2582,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
 
-                {/* 📲 텔레그램 스마트폰 봇 알림 연동 (수평 텍스트 / 인풋 레이아웃) */}
+                {/* 📲 텔레그램 스마트폰 봇 알림 연동 (강제 수평 라벨/인풋 그리드) */}
                 <div className="p-4 bg-[#f8f9fc] rounded-2xl border border-[#e5e8eb] space-y-3">
                   <div className="flex items-center justify-between pb-2 border-b border-[#e5e8eb]">
                     <div className="flex items-center gap-2">
@@ -2581,11 +2602,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div className="space-y-2">
                     {/* 봇 토큰 / 인풋필드 */}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-1">
-                      <label className="w-32 shrink-0 text-xs font-bold text-[#4e5968]">
+                    <div 
+                      className="py-1"
+                      style={{ display: 'grid', gridTemplateColumns: '120px 1fr', alignItems: 'center', gap: '8px' }}
+                    >
+                      <label className="text-xs font-bold text-[#4e5968]">
                         텔레그램 봇 토큰
                       </label>
-                      <div className="flex-1">
+                      <div>
                         <input
                           type="text"
                           value={notifBotToken}
@@ -2597,11 +2621,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
 
                     {/* 채팅 ID / 인풋필드 */}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-1">
-                      <label className="w-32 shrink-0 text-xs font-bold text-[#4e5968]">
+                    <div 
+                      className="py-1"
+                      style={{ display: 'grid', gridTemplateColumns: '120px 1fr', alignItems: 'center', gap: '8px' }}
+                    >
+                      <label className="text-xs font-bold text-[#4e5968]">
                         채팅 ID (Chat ID)
                       </label>
-                      <div className="flex-1">
+                      <div>
                         <input
                           type="text"
                           value={notifChatId}
