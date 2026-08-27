@@ -1352,19 +1352,22 @@ function App() {
 
         {/* 헤더 우측 컨트롤: 권한 뱃지 + 화면 전환 버튼(관리자 전용) + 로그아웃 */}
         <div className="flex items-center gap-2">
-          {/* 👑 관리자 권한 보유 계정(최고관리자 / 지점관리자) 전용 화면 전환 버튼 */}
+          {/* 👑 관리자 권한 보유 계정(최고관리자 / 지점관리자) 전용 화면 전환 버튼 (인라인 스타일 보장) */}
           {(canAccessAdminConsole || currentUser?.role === 'admin' || isSuperAdmin || (currentUser?.branchIds && currentUser.branchIds.length > 0)) && (
             <button
               onClick={() => setRole(role === 'admin' ? 'user' : 'admin')}
-              className={`flex items-center gap-1.5 text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-sm ${
-                role === 'admin'
-                  ? 'bg-[#a67c48] text-white hover:bg-[#8a6230]'
-                  : 'bg-[#191f28] text-white hover:bg-[#000000]'
-              }`}
+              className="flex items-center gap-1.5 text-xs font-extrabold py-2 px-3.5 rounded-xl transition-all shadow-sm cursor-pointer hover:opacity-90"
+              style={{
+                backgroundColor: role === 'admin' ? '#a67c48' : '#191f28',
+                color: '#ffffff',
+                border: role === 'admin' ? '1px solid #8a6230' : '1px solid #000000',
+              }}
               title={role === 'admin' ? '일반 이용자 예약 화면으로 전환' : '관리자 콘솔 화면으로 전환'}
             >
-              <ArrowLeftRight size={13} />
-              <span>{role === 'admin' ? '일반 예약 화면으로 이동' : '👑 관리자 콘솔로 이동'}</span>
+              <ArrowLeftRight size={14} strokeWidth={2.5} />
+              <span style={{ color: '#ffffff' }}>
+                {role === 'admin' ? '일반 예약 화면으로 이동' : '👑 관리자 콘솔로 이동'}
+              </span>
             </button>
           )}
 
