@@ -1490,35 +1490,37 @@ function App() {
             </button>
           )}
 
-          {/* 👤 현재 접속 계정 정보 (성함 + 아이디 & 권한 뱃지) */}
-          <div className="flex items-center gap-2 bg-[#f8f9fc] border border-[#e5e8eb] px-3 py-1.5 rounded-xl shadow-xs">
-            <span className="text-xs font-bold text-[#191f28] flex items-center gap-1">
-              <span>{currentUser.name}</span>
-              <span className="text-[11px] font-normal text-[#8b95a1]">({currentUser.userId})</span>
-            </span>
+          {/* 👤 관리자 모드 전용 계정 정보 (성함 + 아이디 & 권한 뱃지) - 일반 이용자 화면에서는 아래 본문 카드로 충분하므로 숨김 */}
+          {role === 'admin' && (
+            <div className="flex items-center gap-2 bg-[#f8f9fc] border border-[#e5e8eb] px-3 py-1.5 rounded-xl shadow-xs whitespace-nowrap">
+              <span className="text-xs font-bold text-[#191f28] flex items-center gap-1">
+                <span>{currentUser.name}</span>
+                <span className="text-[11px] font-normal text-[#8b95a1]">({currentUser.userId})</span>
+              </span>
 
-            <span className="text-[#d1d5db]">|</span>
+              <span className="text-[#d1d5db]">|</span>
 
-            {isSuperAdmin ? (
-              <span 
-                className="inline-flex items-center gap-1 font-extrabold text-[11px] px-2.5 py-0.5 rounded-lg shadow-xs"
-                style={{ backgroundColor: '#191f28', color: '#ffffff' }}
-              >
-                👑 최고 관리자
-              </span>
-            ) : (currentUser?.branchIds && currentUser.branchIds.length > 0) || currentUser?.adminRoleCode === 'BRANCH_ADMIN' || currentUser?.adminRoleCode === 'BRANCH_OWNER' || currentUser?.adminRoleCode === 'STAFF' ? (
-              <span 
-                className="inline-flex items-center gap-1 font-bold text-[11px] px-2.5 py-0.5 rounded-lg shadow-xs"
-                style={{ backgroundColor: '#faecd8', color: '#8a6230', border: '1px solid rgba(166,124,72,0.4)' }}
-              >
-                🏢 [{currentUser?.branchIds && currentUser.branchIds.length > 0 ? currentUser.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ') : currentBranchObj.name}] 지점 관리자
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#4e5968] bg-white px-2.5 py-0.5 rounded-lg border border-[#e5e8eb]">
-                👤 일반 회원
-              </span>
-            )}
-          </div>
+              {isSuperAdmin ? (
+                <span 
+                  className="inline-flex items-center gap-1 font-extrabold text-[11px] px-2.5 py-0.5 rounded-lg shadow-xs"
+                  style={{ backgroundColor: '#191f28', color: '#ffffff' }}
+                >
+                  👑 최고 관리자
+                </span>
+              ) : (currentUser?.branchIds && currentUser.branchIds.length > 0) || currentUser?.adminRoleCode === 'BRANCH_ADMIN' || currentUser?.adminRoleCode === 'BRANCH_OWNER' || currentUser?.adminRoleCode === 'STAFF' ? (
+                <span 
+                  className="inline-flex items-center gap-1 font-bold text-[11px] px-2.5 py-0.5 rounded-lg shadow-xs"
+                  style={{ backgroundColor: '#faecd8', color: '#8a6230', border: '1px solid rgba(166,124,72,0.4)' }}
+                >
+                  🏢 [{currentUser?.branchIds && currentUser.branchIds.length > 0 ? currentUser.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ') : currentBranchObj.name}] 지점 관리자
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#4e5968] bg-white px-2.5 py-0.5 rounded-lg border border-[#e5e8eb]">
+                  👤 일반 회원
+                </span>
+              )}
+            </div>
+          )}
 
           <button
             onClick={handleLogout}
