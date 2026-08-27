@@ -59,6 +59,7 @@ interface UserMetaRecord {
   branchIds?: string[];
   branchPoints?: Record<string, number>;
   isSuperAdmin?: boolean;
+  adminRoleCode?: UserAccount['adminRoleCode'];
   role?: UserAccount['role'];
 }
 
@@ -85,6 +86,7 @@ export const fetchDbUsers = async (): Promise<UserAccount[]> => {
         phone: u.phone,
         role: finalRole,
         isSuperAdmin: isSuper,
+        adminRoleCode: isSuper ? 'PLATFORM_ADMIN' : meta.adminRoleCode,
         points: u.points ?? 0,
         branchIds: meta.branchIds,
         branchPoints: meta.branchPoints,
@@ -104,6 +106,7 @@ export const saveDbUsersMeta = async (users: UserAccount[]): Promise<DbResult> =
         branchIds: u.branchIds,
         branchPoints: u.branchPoints,
         isSuperAdmin: u.userId === 'admin' ? true : u.isSuperAdmin,
+        adminRoleCode: u.userId === 'admin' ? 'PLATFORM_ADMIN' : u.adminRoleCode,
         role: u.role,
       };
     });
@@ -166,6 +169,7 @@ export const updateDbUser = async (user: UserAccount): Promise<DbResult> => {
         branchIds: user.branchIds,
         branchPoints: user.branchPoints,
         isSuperAdmin: user.userId === 'admin' ? true : user.isSuperAdmin,
+        adminRoleCode: user.userId === 'admin' ? 'PLATFORM_ADMIN' : user.adminRoleCode,
         role: user.role,
       };
       await supabase.from('app_settings').upsert({

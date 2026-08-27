@@ -8,6 +8,7 @@ import {
 import { BarcodeView } from './BarcodeView';
 
 interface AdminDashboardProps {
+  currentUser?: UserAccount | null;
   rooms: Room[];
   reservations: Reservation[];
   bankInfo: BankInfo;
@@ -80,6 +81,7 @@ const generateTimeOptions = () => {
 const TIME_OPTIONS = generateTimeOptions();
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
+  currentUser,
   rooms,
   reservations,
   bankInfo,
@@ -171,6 +173,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setShowCreateAdminModal(true);
   };
   const [activeTab, setActiveTab] = useState<TabType>('rooms_reservations');
+  // 👑 현재 로그인 관리자의 권한 등급 분석
+  const currentAdminRole: 'PLATFORM_ADMIN' | 'BRANCH_OWNER' | 'BRANCH_ADMIN' | 'STAFF' = React.useMemo(() => {
+    if (isSuperAdmin || currentUser?.userId === 'admin' || currentUser?.isSuperAdmin) {
+      return 'PLATFORM_ADMIN';
+    }
+    if (currentUser?.adminRoleCode) {
+      return currentUser.adminRoleCode as any;
+    }
+    return 'BRANCH_ADMIN';
+  }, [isSuperAdmin, currentUser]);
+
+  // 탭별 접근 권한 매트릭스 검사 함수
+  const canAccessTab = (tab: TabType): boolean => {
+    // 1. 최고 관리자 (PLATFORM_ADMIN): 모든 탭 접근 가능
+    if (currentAdminRole === 'PLATFORM_ADMIN') return true;
+
+    // 2. 지점 오너 / 점주 (BRANCH_OWNER): 지점(점포) 관리 탭만 제외
+    if (currentAdminRole === 'BRANCH_OWNER') {
+      return tab !== 'branches_management';
+    }
+
+    // 3. 지점 총괄 관리자 (BRANCH_ADMIN): 지점(점포) 관리, 통장 계좌 설정 제외
+    if (currentAdminRole === 'BRANCH_ADMIN') {
+      return tab !== 'branches_management' && tab !== 'bank_settings';
+    }
+
+    // 4. 지점 직원 / 매니저 (STAFF): 룸&예약 관리, 포인트/입금 승인, 바코드 검증/발급 3개만 접근 가능
+    if (currentAdminRole === 'STAFF') {
+      return tab === 'rooms_reservations' || tab === 'point_management' || tab === 'barcode_management';
+    }
+
+    return true;
+  };
+
+  // 현재 활성화된 탭이 권한이 없는 탭이면 자동으로 첫 번째 허용 탭으로 이동
+  React.useEffect(() => {
+    if (!canAccessTab(activeTab)) {
+      setActiveTab('rooms_reservations');
+    }
+  }, [activeTab, currentAdminRole]);
 
   // 룸 수정 모달 상태
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -471,58 +513,66 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#eef0f4]">
-      {/* 관리자 탭 서브 네비게이션 */}
+            {/* 관리자 탭 서브 네비게이션 (권한 등급별 접근 권한에 따라 동적 필터링) */}
       <div className="bg-[#ffffff] border-b border-[#e5e8eb] px-4 pt-2.5 flex gap-1 overflow-x-auto shrink-0 shadow-sm">
-        <button
-          onClick={() => setActiveTab('rooms_reservations')}
-          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
-            activeTab === 'rooms_reservations'
-              ? 'border-[#a67c48] text-[#a67c48]'
-              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
-          }`}
-        >
-          <Calendar size={15} /> 룸 & 예약 관리
-        </button>
+        {canAccessTab('rooms_reservations') && (
+          <button
+            onClick={() => setActiveTab('rooms_reservations')}
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'rooms_reservations'
+                ? 'border-[#a67c48] text-[#a67c48]'
+                : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+            }`}
+          >
+            <Calendar size={15} /> 룸 & 예약 관리
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('long_term_bulk')}
-          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
-            activeTab === 'long_term_bulk'
-              ? 'border-[#a67c48] text-[#a67c48]'
-              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
-          }`}
-        >
-          <CalendarRange size={15} /> 장기 일괄 예약
-        </button>
+        {canAccessTab('long_term_bulk') && (
+          <button
+            onClick={() => setActiveTab('long_term_bulk')}
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'long_term_bulk'
+                ? 'border-[#a67c48] text-[#a67c48]'
+                : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+            }`}
+          >
+            <CalendarRange size={15} /> 장기 일괄 예약
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('point_management')}
-          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
-            activeTab === 'point_management'
-              ? 'border-[#a67c48] text-[#a67c48]'
-              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
-          }`}
-        >
-          <Coins size={15} /> 포인트/입금 승인
-          {pointTransactions.filter(t => t.status === 'pending').length > 0 && (
-            <span className="bg-[#e93d3d] text-white text-xs font-bold px-1.5 py-0.2 rounded-full ml-1">
-              {pointTransactions.filter(t => t.status === 'pending').length}
-            </span>
-          )}
-        </button>
+        {canAccessTab('point_management') && (
+          <button
+            onClick={() => setActiveTab('point_management')}
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'point_management'
+                ? 'border-[#a67c48] text-[#a67c48]'
+                : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+            }`}
+          >
+            <Coins size={15} /> 포인트/입금 승인
+            {pointTransactions.filter(t => t.status === 'pending').length > 0 && (
+              <span className="bg-[#e93d3d] text-white text-xs font-bold px-1.5 py-0.2 rounded-full ml-1">
+                {pointTransactions.filter(t => t.status === 'pending').length}
+              </span>
+            )}
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('user_management')}
-          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
-            activeTab === 'user_management'
-              ? 'border-[#a67c48] text-[#a67c48]'
-              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
-          }`}
-        >
-          <Users size={15} /> 회원 통합 관제
-        </button>
+        {canAccessTab('user_management') && (
+          <button
+            onClick={() => setActiveTab('user_management')}
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'user_management'
+                ? 'border-[#a67c48] text-[#a67c48]'
+                : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+            }`}
+          >
+            <Users size={15} /> 회원 통합 관제
+          </button>
+        )}
 
-        {isSuperAdmin && (
+        {canAccessTab('branches_management') && (
           <button
             onClick={() => setActiveTab('branches_management')}
             className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
@@ -535,38 +585,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </button>
         )}
 
-        <button
-          onClick={() => setActiveTab('revenue_analytics')}
-          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
-            activeTab === 'revenue_analytics'
-              ? 'border-[#a67c48] text-[#a67c48]'
-              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
-          }`}
-        >
-          <BarChart3 size={15} /> 매출 & 시간대 통계
-        </button>
+        {canAccessTab('revenue_analytics') && (
+          <button
+            onClick={() => setActiveTab('revenue_analytics')}
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'revenue_analytics'
+                ? 'border-[#a67c48] text-[#a67c48]'
+                : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+            }`}
+          >
+            <BarChart3 size={15} /> 매출 & 시간대 통계
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('barcode_management')}
-          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
-            activeTab === 'barcode_management'
-              ? 'border-[#a67c48] text-[#a67c48]'
-              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
-          }`}
-        >
-          <QrCode size={15} /> 바코드 검증 / 발급
-        </button>
+        {canAccessTab('barcode_management') && (
+          <button
+            onClick={() => setActiveTab('barcode_management')}
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'barcode_management'
+                ? 'border-[#a67c48] text-[#a67c48]'
+                : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+            }`}
+          >
+            <QrCode size={15} /> 바코드 검증 / 발급
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab('bank_settings')}
-          className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
-            activeTab === 'bank_settings'
-              ? 'border-[#a67c48] text-[#a67c48]'
-              : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
-          }`}
-        >
-          <Settings size={15} /> 통장 계좌 설정
-        </button>
+        {canAccessTab('bank_settings') && (
+          <button
+            onClick={() => setActiveTab('bank_settings')}
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'bank_settings'
+                ? 'border-[#a67c48] text-[#a67c48]'
+                : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+            }`}
+          >
+            <Settings size={15} /> 통장 계좌 설정
+          </button>
+        )}
       </div>
 
       {/* 탭 콘텐츠 영역 */}

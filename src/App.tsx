@@ -1410,6 +1410,7 @@ function App() {
       <main className="flex-1 flex flex-col overflow-hidden bg-[#ffffff]">
         {role === 'admin' ? (
           <AdminDashboard
+            currentUser={currentUser}
             rooms={currentBranchRooms}
             reservations={currentBranchReservations}
             branches={branches}
