@@ -2632,54 +2632,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
                     )}
 
-                    {/* 채팅 ID / 인풋필드 (모든 관리자 공통) */}
+                    {/* 채팅 ID / 인풋필드 + 텔레그램 테스트 발송 버튼 (1줄 나란히 수평 배치) */}
                     <div 
                       className="py-1"
-                      style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
+                      style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'start', gap: '12px' }}
                     >
-                      <label className="text-xs font-bold text-[#191f28]">
+                      <label className="text-xs font-bold text-[#191f28] pt-2.5">
                         내 텔레그램 Chat ID
                       </label>
-                      <div>
-                        <input
-                          type="text"
-                          value={notifChatId}
-                          onChange={(e) => setNotifChatId(e.target.value)}
-                          placeholder="예: 123456789 (숫자 ID 입력)"
-                          className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono w-full focus:border-[#0088cc]"
-                        />
-                        <p className="text-[10px] text-[#8b95a1] mt-0.5">
+                      <div className="space-y-1">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <input
+                            type="text"
+                            value={notifChatId}
+                            onChange={(e) => setNotifChatId(e.target.value)}
+                            placeholder="예: 123456789 (숫자 ID 입력)"
+                            className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono flex-1 focus:border-[#0088cc]"
+                          />
+                          <button
+                            type="button"
+                            disabled={notifTesting || !notifChatId.trim()}
+                            onClick={async () => {
+                              setNotifTesting(true);
+                              setNotifTestResult(null);
+                              const tokenToUse = (isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin')
+                                ? (notifBotToken.trim() || OFFICIAL_TELEGRAM_BOT_TOKEN)
+                                : (notificationSettings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN);
+                              const res = await sendTelegramMessage(
+                                tokenToUse,
+                                notifChatId.trim(),
+                                `🔔 <b>[르하임 스터디카페] 텔레그램 알림 연동 성공!</b>\n\n관리자님의 스마트폰으로 포인트 충전 및 이전 신청 알림이 정상 수신됩니다. 🚀`
+                              );
+                              setNotifTesting(false);
+                              if (res.success) {
+                                setNotifTestResult({ success: true, message: '스마트폰 텔레그램으로 테스트 알림이 성공적으로 전송되었습니다!' });
+                              } else {
+                                setNotifTestResult({ success: false, message: res.error || '텔레그램 전송 실패 (Chat ID를 확인해 주세요)' });
+                              }
+                            }}
+                            className="text-xs font-bold text-[#0088cc] bg-white hover:bg-[#0088cc]/10 border border-[#0088cc]/30 px-3.5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 shrink-0 whitespace-nowrap cursor-pointer"
+                          >
+                            <Send size={13} /> {notifTesting ? '발송 중...' : '🔔 텔레그램 테스트 메시지 발송'}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-[#8b95a1]">
                           🔒 충전/이전 신청 알림을 수신할 관리자님의 개인 또는 지점 단톡방 Chat ID입니다.
                         </p>
                       </div>
-                    </div>
-
-                    <div className="pt-1 flex justify-end">
-                      <button
-                        type="button"
-                        disabled={notifTesting || !notifChatId.trim()}
-                        onClick={async () => {
-                          setNotifTesting(true);
-                          setNotifTestResult(null);
-                          const tokenToUse = (isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin')
-                            ? (notifBotToken.trim() || OFFICIAL_TELEGRAM_BOT_TOKEN)
-                            : (notificationSettings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN);
-                          const res = await sendTelegramMessage(
-                            tokenToUse,
-                            notifChatId.trim(),
-                            `🔔 <b>[르하임 스터디카페] 텔레그램 알림 연동 성공!</b>\n\n관리자님의 스마트폰으로 포인트 충전 및 이전 신청 알림이 정상 수신됩니다. 🚀`
-                          );
-                          setNotifTesting(false);
-                          if (res.success) {
-                            setNotifTestResult({ success: true, message: '스마트폰 텔레그램으로 테스트 알림이 성공적으로 전송되었습니다!' });
-                          } else {
-                            setNotifTestResult({ success: false, message: res.error || '텔레그램 전송 실패 (Chat ID를 확인해 주세요)' });
-                          }
-                        }}
-                        className="text-xs font-bold text-[#0088cc] bg-white hover:bg-[#0088cc]/10 border border-[#0088cc]/30 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-                      >
-                        <Send size={13} /> {notifTesting ? '발송 중...' : '🔔 텔레그램 테스트 메시지 발송'}
-                      </button>
                     </div>
                   </div>
 
