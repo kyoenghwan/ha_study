@@ -90,6 +90,14 @@ body {
   max-width: 1360px;
 }
 
+/* 설치형 앱에서는 시스템 상태 표시줄과 홈 인디케이터 영역을 침범하지 않는다. */
+@media (display-mode: standalone) {
+  #root {
+    padding-top: max(env(safe-area-inset-top), 24px);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 @media (min-width: 501px) {
   body {
     padding: 16px;
