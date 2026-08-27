@@ -1,3 +1,11 @@
+export interface Branch {
+  id: string;
+  name: string;
+  fullName: string;
+  address: string;
+  description: string;
+}
+
 export type PaymentMethod = 'points' | 'bank_transfer';
 export type PaymentStatus = 'paid' | 'deposit_pending';
 export type BarcodeStatus = 'valid' | 'used' | 'cancelled';

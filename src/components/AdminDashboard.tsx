@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction } from '../types';
+import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction, Branch } from '../types';
 import { 
   Plus, Trash2, Calendar, Edit2, CheckCircle2, AlertCircle, 
   CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users 
@@ -44,6 +44,11 @@ interface AdminDashboardProps {
     targetUserId: string,
     roleCode: RoleCode,
   ) => Promise<{ success: boolean; message?: string }>;
+  branches?: Branch[];
+  onCreateBranch?: (newBranch: Branch) => boolean;
+  onEditBranch?: (branchId: string, updated: Omit<Branch, 'id'>) => void;
+  onDeleteBranch?: (branchId: string) => void;
+  isSuperAdmin?: boolean;
   onCreateBranchAdmin?: (data: {
     branchIds: string[];
     roleCode: RoleCode;
@@ -54,7 +59,7 @@ interface AdminDashboardProps {
   }) => boolean;
 }
 
-type TabType = 'rooms_reservations' | 'long_term_bulk' | 'point_management' | 'user_management' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
+type TabType = 'rooms_reservations' | 'long_term_bulk' | 'point_management' | 'user_management' | 'branches_management' | 'revenue_analytics' | 'barcode_management' | 'bank_settings';
 
 const generateTimeOptions = () => {
   const options: string[] = [];
@@ -98,7 +103,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onGrantRole,
   onRevokeRole,
   onCreateBranchAdmin,
+  branches = [],
+  onCreateBranch,
+  onEditBranch,
+  onDeleteBranch,
+  isSuperAdmin = true,
 }) => {
+  // 🏢 지점 등록 / 수정 모달 상태
+  const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
+  const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+  const [branchInputId, setBranchInputId] = useState('');
+  const [branchInputName, setBranchInputName] = useState('');
+  const [branchInputFullName, setBranchInputFullName] = useState('');
+  const [branchInputAddress, setBranchInputAddress] = useState('');
+  const [branchInputDescription, setBranchInputDescription] = useState('');
   // 🏢 지점 관리자 등록 모달 상태 (기존 회원 선택 / 신규 생성 듀얼 모드)
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [adminRegMode, setAdminRegMode] = useState<'existing' | 'new'>('existing');
@@ -520,6 +538,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         >
           <Users size={15} /> 회원 통합 관제
         </button>
+
+        {isSuperAdmin && (
+          <button
+            onClick={() => setActiveTab('branches_management')}
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'branches_management'
+                ? 'border-[#a67c48] text-[#a67c48]'
+                : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
+            }`}
+          >
+            <Landmark size={15} /> 🏢 지점(점포) 관리
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab('revenue_analytics')}
@@ -1058,6 +1089,114 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: 슈퍼마스터 전용 지점(점포) 관리 */}
+        {activeTab === 'branches_management' && (
+          <div className="space-y-6">
+            <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-[#191f28] flex items-center gap-2">
+                    <Landmark className="text-[#a67c48]" size={20} /> 르하임 스터디카페 지점(점포) 통합 관리
+                  </h3>
+                  <p className="text-xs text-[#8b95a1] mt-1 leading-relaxed">
+                    최고 관리자 권한으로 전국의 스터디카페 지점을 신규 개점/추가하거나, 정보를 수정 및 삭제합니다.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setEditingBranch(null);
+                    setBranchInputId('');
+                    setBranchInputName('');
+                    setBranchInputFullName('');
+                    setBranchInputAddress('');
+                    setBranchInputDescription('');
+                    setShowCreateBranchModal(true);
+                  }}
+                  className="gold-btn text-xs font-bold py-2.5 px-4 rounded-xl shadow flex items-center gap-1.5 shrink-0"
+                >
+                  <Plus size={15} /> 새 지점 등록
+                </button>
+              </div>
+
+              {/* 지점 목록 카드 그리드 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {branches.map((branch) => {
+                  const branchRoomCount = rooms.filter((r) => r.branchId === branch.id).length;
+                  const branchAdminCount = users.filter((u) => u.branchIds?.includes(branch.id)).length;
+
+                  return (
+                    <div
+                      key={branch.id}
+                      className="border border-[#e5e8eb] hover:border-[#a67c48]/50 rounded-2xl p-5 bg-[#ffffff] shadow-sm space-y-3 transition-all"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base font-extrabold text-[#191f28]">{branch.fullName}</h4>
+                            <span className="text-[10px] font-mono font-bold bg-[#a67c48]/10 text-[#a67c48] px-2 py-0.5 rounded-full">
+                              ID: {branch.id}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#8b95a1] flex items-center gap-1">
+                            <span>📍 {branch.address}</span>
+                          </p>
+                        </div>
+
+                        {/* 수정 / 삭제 버튼 */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => {
+                              setEditingBranch(branch);
+                              setBranchInputId(branch.id);
+                              setBranchInputName(branch.name);
+                              setBranchInputFullName(branch.fullName);
+                              setBranchInputAddress(branch.address);
+                              setBranchInputDescription(branch.description);
+                              setShowCreateBranchModal(true);
+                            }}
+                            className="text-xs font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1"
+                            title="지점 정보 수정"
+                          >
+                            <Edit2 size={13} />
+                            <span>수정</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`'${branch.fullName}' 지점을 삭제하시겠습니까?`)) {
+                                if (onDeleteBranch) onDeleteBranch(branch.id);
+                              }
+                            }}
+                            className="text-xs font-bold text-[#e93d3d] bg-[#e93d3d]/10 hover:bg-[#e93d3d]/20 border border-[#e93d3d]/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1"
+                            title="지점 삭제"
+                          >
+                            <Trash2 size={13} />
+                            <span>삭제</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-[#4e5968] bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] leading-relaxed">
+                        💡 {branch.description}
+                      </p>
+
+                      <div className="flex items-center gap-3 pt-1 text-xs text-[#8b95a1]">
+                        <span className="font-semibold">
+                          🏢 등록 룸: <strong className="text-[#191f28]">{branchRoomCount}개</strong>
+                        </span>
+                        <span>•</span>
+                        <span className="font-semibold">
+                          👤 담당 관리자: <strong className="text-[#a67c48]">{branchAdminCount}명</strong>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -2154,6 +2293,158 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="gold-btn flex-1 py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1"
                 >
                   <Check size={14} /> {adminRegMode === 'existing' ? '지점 관리 권한 부여' : '신규 관리자 발급'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🏢 지점(점포) 신규 등록 및 정보 수정 모달 */}
+      {showCreateBranchModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateBranchModal(false)}>
+          <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-3 border-b border-[#e5e8eb]">
+              <h3 className="text-base font-bold text-[#191f28] flex items-center gap-2">
+                <Landmark className="text-[#a67c48]" size={18} />
+                <span>{editingBranch ? '지점 정보 수정' : '새 지점(점포) 신규 등록'}</span>
+              </h3>
+              <button
+                onClick={() => setShowCreateBranchModal(false)}
+                className="text-[#8b95a1] hover:text-[#191f28] text-2xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!branchInputId.trim() || !branchInputName.trim() || !branchInputFullName.trim() || !branchInputAddress.trim()) {
+                  alert('모든 필수 항목을 입력해 주세요.');
+                  return;
+                }
+
+                if (editingBranch) {
+                  if (onEditBranch) {
+                    onEditBranch(editingBranch.id, {
+                      name: branchInputName.trim(),
+                      fullName: branchInputFullName.trim(),
+                      address: branchInputAddress.trim(),
+                      description: branchInputDescription.trim(),
+                    });
+                  }
+                  setShowCreateBranchModal(false);
+                } else {
+                  if (onCreateBranch) {
+                    const ok = onCreateBranch({
+                      id: branchInputId.trim().toLowerCase(),
+                      name: branchInputName.trim(),
+                      fullName: branchInputFullName.trim(),
+                      address: branchInputAddress.trim(),
+                      description: branchInputDescription.trim(),
+                    });
+                    if (ok) {
+                      setShowCreateBranchModal(false);
+                    }
+                  }
+                }
+              }}
+              className="space-y-4 pt-3 text-xs"
+            >
+              <div className="bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] space-y-1">
+                <p className="text-[11px] font-bold text-[#a67c48]">👑 최고 관리자 지점 등록</p>
+                <p className="text-[11px] text-[#8b95a1] leading-relaxed">
+                  새로운 지점을 추가하면 전체 앱의 지점 선택 목록 및 지점 관리자 배정 메뉴에 즉시 반영됩니다.
+                </p>
+              </div>
+
+              {/* 지점 코드 ID */}
+              <div className="form-group space-y-1">
+                <label className="font-bold text-[#191f28]">지점 식별 코드 (영문 소문자 ID)</label>
+                <input
+                  type="text"
+                  required
+                  readOnly={!!editingBranch}
+                  value={branchInputId}
+                  onChange={(e) => setBranchInputId(e.target.value)}
+                  placeholder="예: songpa, suwon, incheon"
+                  className={`form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] ${editingBranch ? 'bg-[#f0f0f2] text-[#8b95a1]' : 'focus:border-[#a67c48]'}`}
+                />
+              </div>
+
+              {/* 지점명 & 풀네임 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="form-group space-y-1">
+                  <label className="font-bold text-[#191f28]">지점명 (약칭)</label>
+                  <input
+                    type="text"
+                    required
+                    value={branchInputName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setBranchInputName(val);
+                      if (!branchInputFullName || branchInputFullName.startsWith('르하임 스터디카페')) {
+                        setBranchInputFullName(`르하임 스터디카페 ${val}`);
+                      }
+                    }}
+                    placeholder="예: 송파점"
+                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                  />
+                </div>
+
+                <div className="form-group space-y-1">
+                  <label className="font-bold text-[#191f28]">지점 전체 명칭</label>
+                  <input
+                    type="text"
+                    required
+                    value={branchInputFullName}
+                    onChange={(e) => setBranchInputFullName(e.target.value)}
+                    placeholder="예: 르하임 스터디카페 송파점"
+                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                  />
+                </div>
+              </div>
+
+              {/* 매장 주소 */}
+              <div className="form-group space-y-1">
+                <label className="font-bold text-[#191f28]">매장 주소</label>
+                <input
+                  type="text"
+                  required
+                  value={branchInputAddress}
+                  onChange={(e) => setBranchInputAddress(e.target.value)}
+                  placeholder="예: 서울특별시 송파구 송파대로 123"
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                />
+              </div>
+
+              {/* 매장 설명 / 특징 */}
+              <div className="form-group space-y-1">
+                <label className="font-bold text-[#191f28]">매장 소개 / 특징</label>
+                <textarea
+                  rows={2}
+                  value={branchInputDescription}
+                  onChange={(e) => setBranchInputDescription(e.target.value)}
+                  placeholder="예: 24시간 프리미엄 방음 스터디존 & 대형 세미나실 완비"
+                  className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateBranchModal(false)}
+                  className="gold-btn-outline flex-1 py-3 text-xs font-bold rounded-xl"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="gold-btn flex-1 py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1"
+                >
+                  <Check size={14} />
+                  <span>{editingBranch ? '수정 저장' : '지점 등록 완료'}</span>
                 </button>
               </div>
             </form>

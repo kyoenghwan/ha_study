@@ -103,6 +103,60 @@ function App() {
 
   // 지점 선택 상태 (기본: 여의도점)
   const [selectedBranch, setSelectedBranch] = useState<string>('yeouido');
+
+  // 🏢 지점(점포) 목록 상태 (로컬 스토리지 및 Supabase 동기화)
+  const [branches, setBranches] = useState<Branch[]>(() => {
+    const saved = localStorage.getItem('lheureux_branches');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return BRANCHES;
+  });
+
+  const updateBranches = (newBranches: Branch[]) => {
+    setBranches(newBranches);
+    localStorage.setItem('lheureux_branches', JSON.stringify(newBranches));
+  };
+
+  // 새 지점 등록
+  const handleCreateBranch = (newBranch: Branch): boolean => {
+    if (branches.some((b) => b.id.toLowerCase() === newBranch.id.trim().toLowerCase())) {
+      alert(`'${newBranch.id}' 지점 코드는 이미 등록되어 있습니다. 다른 코드를 사용해 주세요.`);
+      return false;
+    }
+    const nextBranches = [...branches, { ...newBranch, id: newBranch.id.trim() }];
+    updateBranches(nextBranches);
+    alert(`'${newBranch.fullName}' 지점이 성공적으로 등록되었습니다!`);
+    return true;
+  };
+
+  // 지점 정보 수정
+  const handleEditBranch = (branchId: string, updated: Omit<Branch, 'id'>) => {
+    const nextBranches = branches.map((b) => (b.id === branchId ? { ...b, ...updated } : b));
+    updateBranches(nextBranches);
+    alert('지점 정보가 성공적으로 수정되었습니다.');
+  };
+
+  // 지점 삭제
+  const handleDeleteBranch = (branchId: string) => {
+    if (branches.length <= 1) {
+      alert('최소 1개 이상의 지점이 유지되어야 하므로 삭제할 수 없습니다.');
+      return;
+    }
+    const targetBranch = branches.find((b) => b.id === branchId);
+    const nextBranches = branches.filter((b) => b.id !== branchId);
+    updateBranches(nextBranches);
+
+    // 현재 선택된 지점이 삭제된 지점이면 첫 번째 지점으로 이동
+    if (selectedBranch === branchId) {
+      setSelectedBranch(nextBranches[0].id);
+      localStorage.setItem('lheureux_selected_branch', nextBranches[0].id);
+    }
+    alert(`'${targetBranch?.fullName || branchId}' 지점이 삭제되었습니다.`);
+  };
   const [showBranchSelectModal, setShowBranchSelectModal] = useState<boolean>(false);
 
   // 포인트 충전 모달 상태
@@ -872,10 +926,10 @@ function App() {
   // 🏢 접근 가능한 지점 목록 (지점 권한이 있는 경우 부여된 지점만 노출)
   const accessibleBranches = useMemo(() => {
     if (role === 'admin' && !isSuperAdmin && currentUser?.branchIds && currentUser.branchIds.length > 0) {
-      return BRANCHES.filter((b) => currentUser.branchIds?.includes(b.id));
+      return branches.filter((b) => currentUser.branchIds?.includes(b.id));
     }
-    return BRANCHES;
-  }, [currentUser, role, isSuperAdmin]);
+    return branches;
+  }, [currentUser, role, isSuperAdmin, branches]);
 
   // 지점 관리자의 경우 현재 선택된 지점이 접근 가능 지점에 없으면 첫 번째 담당 지점으로 자동 보정
   useEffect(() => {
@@ -888,7 +942,7 @@ function App() {
     }
   }, [role, isSuperAdmin, currentUser, selectedBranch]);
 
-  const currentBranchObj = BRANCHES.find((b) => b.id === selectedBranch) || BRANCHES[0];
+  const currentBranchObj = branches.find((b) => b.id === selectedBranch) || branches[0] || BRANCHES[0];
   
   // 🏢 현재 선택된 지점(selectedBranch)의 룸 및 예약 필터링
   // branchId가 없는 레거시 룸은 기본 'yeouido'로 취급
@@ -1129,6 +1183,8 @@ function App() {
     return true;
   };
 
+
+
   // 3. 메인 애플리케이션 대시보드 화면
   return (
     <>
@@ -1175,6 +1231,11 @@ function App() {
           <AdminDashboard
             rooms={currentBranchRooms}
             reservations={currentBranchReservations}
+            branches={branches}
+            onCreateBranch={handleCreateBranch}
+            onEditBranch={handleEditBranch}
+            onDeleteBranch={handleDeleteBranch}
+            isSuperAdmin={isSuperAdmin}
             onCreateBranchAdmin={handleCreateBranchAdmin}
             bankInfo={bankInfo}
             users={users}
