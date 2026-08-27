@@ -481,11 +481,22 @@ function App() {
 
     // 🌐 Supabase 실제 DB 데이터 비동기 연동
     const loadSupabaseData = async () => {
-      // 1. Users 로드
+      // 1. Users 로드 & 현재 로그인 사용자 권한 실시간 동기화
       const dbUsers = await fetchDbUsers();
       if (dbUsers.length > 0) {
         setUsers(dbUsers);
         localStorage.setItem('lheureux_users', JSON.stringify(dbUsers));
+        
+        // 현재 로그인 사용자 최신 권한 갱신
+        const savedUStr = localStorage.getItem('lheureux_current_user');
+        if (savedUStr) {
+          const savedU = JSON.parse(savedUStr);
+          const freshU = dbUsers.find(u => u.id === savedU.id || u.userId === savedU.userId);
+          if (freshU) {
+            setCurrentUser(freshU);
+            localStorage.setItem('lheureux_current_user', JSON.stringify(freshU));
+          }
+        }
       } else {
         const savedUsers = localStorage.getItem('lheureux_users');
         setUsers(savedUsers ? JSON.parse(savedUsers) : INITIAL_USERS);
@@ -1158,8 +1169,14 @@ function App() {
     handleCancelAndRefundReservation(resId);
   };
 
-  // 👑 최고 관리자 여부 확인 (admin 아이디 또는 isSuperAdmin=true)
-  const isSuperAdmin = currentUser?.userId === 'admin' || currentUser?.isSuperAdmin === true;
+  // 👑 최고 관리자 여부 확인 (admin 아이디, kyoenghwan 아이디, isSuperAdmin=true 또는 PLATFORM_ADMIN)
+  const isSuperAdmin = Boolean(
+    currentUser?.userId === 'admin' || 
+    currentUser?.userId === 'kyoenghwan' ||
+    currentUser?.isSuperAdmin === true ||
+    currentUser?.adminRoleCode === 'PLATFORM_ADMIN' ||
+    authGrants.some(g => g.roleCode === 'PLATFORM_ADMIN')
+  );
 
   // 🏢 접근 가능한 지점 목록 (지점 권한이 있는 경우 부여된 지점만 노출)
   const accessibleBranches = useMemo(() => {
@@ -1388,9 +1405,13 @@ function App() {
       updateUsers(nextUsers);
       persist('지점 관리자 권한 승격', () => updateDbUser(updatedUser));
 
+      if (currentUser?.id === existingUser.id || currentUser?.userId === existingUser.userId) {
+        updateCurrentUser(updatedUser);
+      }
+
       void handleGrantRole(existingUser.id, data.roleCode);
 
-      alert(`'${existingUser.name}'(${existingUser.userId}) 기존 회원님에게 [${branchNames}] 지점 관리자 권한이 성공적으로 부여되었습니다!`);
+      alert(`'${existingUser.name}'(${existingUser.userId}) 회원님에게 [${branchNames}] 관리 권한이 성공적으로 부여되었습니다!`);
       return true;
     }
 
@@ -1487,28 +1508,35 @@ function App() {
             </button>
           )}
 
-          {/* 현재 로그인 계정 권한 뱃지 */}
-          {role === 'admin' ? (
-            isSuperAdmin ? (
+          {/* 👤 현재 접속 계정 정보 (성함 + 아이디 & 권한 뱃지) */}
+          <div className="flex items-center gap-2 bg-[#f8f9fc] border border-[#e5e8eb] px-3 py-1.5 rounded-xl shadow-xs">
+            <span className="text-xs font-bold text-[#191f28] flex items-center gap-1">
+              <span>{currentUser.name}</span>
+              <span className="text-[11px] font-normal text-[#8b95a1]">({currentUser.userId})</span>
+            </span>
+
+            <span className="text-[#d1d5db]">|</span>
+
+            {isSuperAdmin ? (
               <span 
-                className="hidden sm:inline-flex items-center gap-1 font-extrabold text-xs px-2.5 py-1 rounded-lg shadow-xs"
+                className="inline-flex items-center gap-1 font-extrabold text-[11px] px-2 py-0.5 rounded-lg shadow-xs"
                 style={{ backgroundColor: '#191f28', color: '#ffffff' }}
               >
                 👑 최고 관리자
               </span>
-            ) : (
+            ) : (currentUser?.branchIds && currentUser.branchIds.length > 0) || currentUser?.role === 'admin' ? (
               <span 
-                className="hidden sm:inline-flex items-center gap-1 font-extrabold text-xs px-2.5 py-1 rounded-lg shadow-xs"
+                className="inline-flex items-center gap-1 font-bold text-[11px] px-2 py-0.5 rounded-lg shadow-xs"
                 style={{ backgroundColor: '#faecd8', color: '#8a6230', border: '1px solid rgba(166,124,72,0.4)' }}
               >
-                🏢 [{currentBranchObj.name}] 관리자
+                🏢 [{currentUser?.branchIds && currentUser.branchIds.length > 0 ? currentUser.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ') : currentBranchObj.name}] 관리자
               </span>
-            )
-          ) : (
-            <span className="hidden sm:inline-block text-xs font-bold text-[#4e5968] bg-[#f1f3f5] px-2.5 py-1 rounded-lg">
-              {currentUser.name}님
-            </span>
-          )}
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#4e5968] bg-white px-2 py-0.5 rounded-lg border border-[#e5e8eb]">
+                👤 일반 회원
+              </span>
+            )}
+          </div>
 
           <button
             onClick={handleLogout}
