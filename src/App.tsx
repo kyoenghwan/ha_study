@@ -970,19 +970,23 @@ function App() {
     updateReservations(updated);
   };
 
-  // 공부방 생성 (현재 선택된 지점 branchId 자동 부여)
+  // 공부방 생성 (roomData.branchId를 우선 사용, 없으면 selectedBranch fallback)
   const handleAddRoom = (roomData: Omit<Room, 'id'>) => {
+    const targetBranch = roomData.branchId || selectedBranch || 'yeouido';
     const newRoom: Room = {
       ...roomData,
-      branchId: selectedBranch,
-      id: `room-${selectedBranch}-${Date.now()}`,
+      branchId: targetBranch,
+      id: `room-${targetBranch}-${Date.now()}`,
     };
     updateRooms([...rooms, newRoom]);
   };
 
-  // 공부방 정보 수정
+  // 공부방 정보 수정 (기존 branchId를 절대 건드리지 않음)
   const handleEditRoom = (roomId: string, updated: Omit<Room, 'id'>) => {
-    const newRooms = rooms.map((r) => (r.id === roomId ? { ...r, ...updated } : r));
+    const newRooms = rooms.map((r) => {
+      if (r.id !== roomId) return r;
+      return { ...r, ...updated, branchId: updated.branchId || r.branchId };
+    });
     updateRooms(newRooms);
   };
 
