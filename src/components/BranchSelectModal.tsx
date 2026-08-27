@@ -129,20 +129,22 @@ export const BranchSelectModal: React.FC<BranchSelectModalProps> = ({
                   >
                     {/* 지점명 */}
                     <div className="text-left">
-                      <p
-                        className="text-[11px] font-semibold"
-                        style={{ color: isSelected ? '#faecd8' : '#8b95a1' }}
-                      >
-                        르하임 스터디카페
-                      </p>
-                      <h4 
-                        className={`text-base tracking-tight transition-colors mt-1 ${
-                          isSelected ? 'font-black' : 'font-bold group-hover:text-[#a67c48]'
-                        }`}
-                        style={{ color: isSelected ? '#ffffff' : '#191f28' }}
-                      >
-                        {branch.name}
-                      </h4>
+                      <div className="flex justify-between items-center gap-2">
+                        <p
+                          className="text-[11px] font-semibold"
+                          style={{ color: isSelected ? '#faecd8' : '#8b95a1' }}
+                        >
+                          르하임 스터디카페
+                        </p>
+                        <h4
+                          className={`text-sm tracking-tight transition-colors ${
+                            isSelected ? 'font-black' : 'font-bold group-hover:text-[#a67c48]'
+                          }`}
+                          style={{ color: isSelected ? '#ffffff' : '#191f28' }}
+                        >
+                          {branch.name}
+                        </h4>
+                      </div>
                     </div>
 
                     {/* 하단: 주소 정보 */}
