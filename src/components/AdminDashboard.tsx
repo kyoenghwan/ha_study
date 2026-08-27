@@ -587,7 +587,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
             }`}
           >
-            <ReceiptText size={15} /> 📋 포인트 사용/차감 내역
+            <ReceiptText size={15} /> 포인트 사용/차감 내역
           </button>
         )}
 
@@ -613,7 +613,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
             }`}
           >
-            <Landmark size={15} /> 🏢 지점(점포) 관리
+            <Landmark size={15} /> 지점(점포) 관리
           </button>
         )}
 
@@ -652,7 +652,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 : 'border-transparent text-[#8b95a1] hover:text-[#191f28]'
             }`}
           >
-            <Settings size={15} /> ⚙️ 통장 계좌 & 🔔 알림 설정
+            <Settings size={15} /> 통장 계좌 및 알림 설정
           </button>
         )}
       </div>
