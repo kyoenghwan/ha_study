@@ -1169,13 +1169,14 @@ function App() {
     handleCancelAndRefundReservation(resId);
   };
 
-  // 👑 최고 관리자 여부 확인 (admin 아이디, kyoenghwan 아이디, isSuperAdmin=true 또는 PLATFORM_ADMIN)
+  // 👑 최고 관리자 여부 확인 (admin, kyoenghwan 계정 또는 isSuperAdmin=true 명시 계정만 허용)
   const isSuperAdmin = Boolean(
-    currentUser?.userId === 'admin' || 
-    currentUser?.userId === 'kyoenghwan' ||
-    currentUser?.isSuperAdmin === true ||
-    currentUser?.adminRoleCode === 'PLATFORM_ADMIN' ||
-    authGrants.some(g => g.roleCode === 'PLATFORM_ADMIN')
+    currentUser && (
+      currentUser.userId === 'admin' || 
+      currentUser.userId === 'kyoenghwan' ||
+      currentUser.isSuperAdmin === true ||
+      currentUser.adminRoleCode === 'PLATFORM_ADMIN'
+    )
   );
 
   // 🏢 접근 가능한 지점 목록 (지점 권한이 있는 경우 부여된 지점만 노출)
@@ -1500,20 +1501,20 @@ function App() {
 
             {isSuperAdmin ? (
               <span 
-                className="inline-flex items-center gap-1 font-extrabold text-[11px] px-2 py-0.5 rounded-lg shadow-xs"
+                className="inline-flex items-center gap-1 font-extrabold text-[11px] px-2.5 py-0.5 rounded-lg shadow-xs"
                 style={{ backgroundColor: '#191f28', color: '#ffffff' }}
               >
                 👑 최고 관리자
               </span>
-            ) : (currentUser?.branchIds && currentUser.branchIds.length > 0) || currentUser?.role === 'admin' ? (
+            ) : (currentUser?.branchIds && currentUser.branchIds.length > 0) || currentUser?.adminRoleCode === 'BRANCH_ADMIN' || currentUser?.adminRoleCode === 'BRANCH_OWNER' || currentUser?.adminRoleCode === 'STAFF' ? (
               <span 
-                className="inline-flex items-center gap-1 font-bold text-[11px] px-2 py-0.5 rounded-lg shadow-xs"
+                className="inline-flex items-center gap-1 font-bold text-[11px] px-2.5 py-0.5 rounded-lg shadow-xs"
                 style={{ backgroundColor: '#faecd8', color: '#8a6230', border: '1px solid rgba(166,124,72,0.4)' }}
               >
-                🏢 [{currentUser?.branchIds && currentUser.branchIds.length > 0 ? currentUser.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ') : currentBranchObj.name}] 관리자
+                🏢 [{currentUser?.branchIds && currentUser.branchIds.length > 0 ? currentUser.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ') : currentBranchObj.name}] 지점 관리자
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#4e5968] bg-white px-2 py-0.5 rounded-lg border border-[#e5e8eb]">
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#4e5968] bg-white px-2.5 py-0.5 rounded-lg border border-[#e5e8eb]">
                 👤 일반 회원
               </span>
             )}
