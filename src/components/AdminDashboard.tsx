@@ -130,6 +130,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [adminRegMode, setAdminRegMode] = useState<'existing' | 'new'>('existing');
   const [selectedExistingUserId, setSelectedExistingUserId] = useState('');
+  const [adminUserSearchQuery, setAdminUserSearchQuery] = useState('');
   const [newAdminBranchIds, setNewAdminBranchIds] = useState<string[]>(() => branches.length > 0 ? [branches[0].id] : ['yeouido']);
   const [newAdminRoleCode, setNewAdminRoleCode] = useState<RoleCode>('BRANCH_ADMIN');
   const [newAdminUserId, setNewAdminUserId] = useState('');
@@ -139,6 +140,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // 특정 회원을 지점 관리자로 지정하는 헬퍼
   const handleOpenAssignAdminModal = (user?: UserAccount) => {
+    setAdminUserSearchQuery('');
     if (user) {
       setAdminRegMode('existing');
       setSelectedExistingUserId(user.id);
@@ -2195,33 +2197,108 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }}
               className="space-y-4 pt-3 text-xs"
             >
-              {/* 기존 회원 선택 드롭다운 */}
+              {/* 기존 회원 검색 & 선택 */}
               {adminRegMode === 'existing' && (
-                <div className="form-group space-y-1 bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb]">
-                  <label className="font-bold text-[#191f28]">권한을 부여할 기존 회원 선택</label>
-                  <select
-                    value={selectedExistingUserId}
-                    onChange={(e) => {
-                      const uId = e.target.value;
-                      setSelectedExistingUserId(uId);
-                      const targetU = users.find((u) => u.id === uId);
-                      if (targetU) {
-                        setNewAdminUserId(targetU.userId);
-                        setNewAdminName(targetU.name);
-                        setNewAdminPhone(targetU.phone);
-                        setNewAdminBranchIds(targetU.branchIds && targetU.branchIds.length > 0 ? targetU.branchIds : (branches.length > 0 ? [branches[0].id] : ['yeouido']));
-                      }
-                    }}
-                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white font-medium"
-                  >
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({u.userId}) - {u.phone} {u.branchIds && u.branchIds.length > 0 ? `[${u.branchIds.length}개 지점 담당중]` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-[#8b95a1] pt-0.5">
-                    💡 선택한 회원의 기존 계정에 지점 관리 권한과 담당 점포가 즉시 할당됩니다.
+                <div className="form-group space-y-2.5 bg-[#f8f9fc] p-3.5 rounded-2xl border border-[#e5e8eb]">
+                  <div className="flex justify-between items-center">
+                    <label className="font-bold text-xs text-[#191f28] flex items-center gap-1.5">
+                      <Users size={14} className="text-[#a67c48]" /> 권한을 부여할 기존 회원 검색 및 선택
+                    </label>
+                    <span className="text-[10px] font-semibold text-[#8b95a1]">
+                      {adminUserSearchQuery ? (
+                        <>검색: <strong className="text-[#a67c48]">
+                          {users.filter(u => 
+                            u.userId.toLowerCase().includes(adminUserSearchQuery.toLowerCase()) || 
+                            u.name.toLowerCase().includes(adminUserSearchQuery.toLowerCase()) || 
+                            u.phone.includes(adminUserSearchQuery)
+                          ).length}명
+                        </strong> / 전체 {users.length}명</>
+                      ) : (
+                        `전체 회원: ${users.length}명`
+                      )}
+                    </span>
+                  </div>
+
+                  {/* 🔍 회원 아이디 / 이름 / 연락처 실시간 검색창 */}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b95a1]" />
+                    <input
+                      type="text"
+                      value={adminUserSearchQuery}
+                      onChange={(e) => {
+                        const q = e.target.value;
+                        setAdminUserSearchQuery(q);
+                        const matched = users.filter((u) =>
+                          u.userId.toLowerCase().includes(q.toLowerCase()) ||
+                          u.name.toLowerCase().includes(q.toLowerCase()) ||
+                          u.phone.includes(q)
+                        );
+                        if (matched.length > 0 && !matched.some((u) => u.id === selectedExistingUserId)) {
+                          const firstMatched = matched[0];
+                          setSelectedExistingUserId(firstMatched.id);
+                          setNewAdminUserId(firstMatched.userId);
+                          setNewAdminName(firstMatched.name);
+                          setNewAdminPhone(firstMatched.phone);
+                          setNewAdminBranchIds(firstMatched.branchIds && firstMatched.branchIds.length > 0 ? firstMatched.branchIds : (branches.length > 0 ? [branches[0].id] : ['yeouido']));
+                        }
+                      }}
+                      placeholder="회원 아이디, 성함, 연락처를 입력하여 빠른 검색..."
+                      className="form-input text-xs py-2.5 pl-8 pr-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48] shadow-xs"
+                    />
+                    {adminUserSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setAdminUserSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8b95a1] hover:text-[#191f28] text-xs font-bold px-1"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 필터링된 회원 드롭다운 목록 */}
+                  {(() => {
+                    const filtered = users.filter((u) =>
+                      u.userId.toLowerCase().includes(adminUserSearchQuery.toLowerCase()) ||
+                      u.name.toLowerCase().includes(adminUserSearchQuery.toLowerCase()) ||
+                      u.phone.includes(adminUserSearchQuery)
+                    );
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="p-3 text-center text-xs text-[#8b95a1] bg-white rounded-xl border border-dashed border-[#e5e8eb]">
+                          '{adminUserSearchQuery}' 검색어와 일치하는 회원이 없습니다.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <select
+                        value={selectedExistingUserId}
+                        onChange={(e) => {
+                          const uId = e.target.value;
+                          setSelectedExistingUserId(uId);
+                          const targetU = users.find((u) => u.id === uId);
+                          if (targetU) {
+                            setNewAdminUserId(targetU.userId);
+                            setNewAdminName(targetU.name);
+                            setNewAdminPhone(targetU.phone);
+                            setNewAdminBranchIds(targetU.branchIds && targetU.branchIds.length > 0 ? targetU.branchIds : (branches.length > 0 ? [branches[0].id] : ['yeouido']));
+                          }
+                        }}
+                        className="form-input text-xs py-2.5 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white font-medium focus:border-[#a67c48]"
+                      >
+                        {filtered.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} ({u.userId}) - {u.phone} {u.branchIds && u.branchIds.length > 0 ? `[🏢 ${u.branchIds.map(bId => branches.find(b => b.id === bId)?.name || bId).join(', ')} 담당중]` : '[일반회원]'}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()}
+
+                  <p className="text-[11px] text-[#8b95a1] pt-0.5 leading-relaxed">
+                    💡 위에서 회원을 선택하면 해당 회원의 기존 계정에 지점 관리 권한과 담당 점포가 즉시 할당됩니다.
                   </p>
                 </div>
               )}
