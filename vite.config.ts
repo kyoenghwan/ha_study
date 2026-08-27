@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'HA-STUDY 르하임 스터디카페',
-        short_name: 'HA-STUDY',
+        name: '르하임 스터디카페',
+        short_name: '르하임',
         description: '르하임 스터디카페 예약 및 운영 관리 시스템',
         lang: 'ko',
         start_url: '/',
