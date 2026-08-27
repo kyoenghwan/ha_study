@@ -107,12 +107,12 @@ export const sendTelegramMessage = async (
   const targetChatId = chatId ? chatId.trim() : '';
 
   if (!token || !targetChatId) {
-    console.warn('[Telegram] 발송 취소: Chat ID가 설정되지 않았습니다.');
-    return { success: false, error: '채팅 ID(Chat ID)가 입력되지 않았습니다.' };
+    console.warn('[Telegram] 발송 취소: 봇 토큰이나 Chat ID가 없습니다.');
+    return { success: false, error: '봇 토큰이나 Chat ID가 입력되지 않았습니다.' };
   }
 
   try {
-    const url = `https://api.telegram.org/bot${botToken.trim()}/sendMessage`;
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
     const res = await fetch(url, {
       method: 'POST',
       headers: {
