@@ -247,7 +247,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                   정회원
                 </span>
               </h3>
-              <p className="text-xs text-[#8b95a1]">{currentUser?.phone || '010-0000-0000'}</p>
             </div>
           </div>
 
