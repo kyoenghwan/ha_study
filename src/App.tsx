@@ -5,7 +5,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { UserDashboard } from './components/UserDashboard';
 import { Scheduler } from './components/Scheduler';
 import { AuthModal } from './components/AuthModal';
-import { Shield, LogOut, Coins, Plus, Building2, ChevronRight, Search, ArrowLeftRight, Bell, X } from 'lucide-react';
+import { Shield, LogOut, Coins, Building2, ChevronRight, Search, ArrowLeftRight, Bell, X } from 'lucide-react';
 import logoImg from './assets/르하임로고.jfif';
 import { FA_CREATE_RESERVATIONS } from './atoms/reservation/FA_create_reservations';
 import type { AuthContext, RoleCode, RoleGrant } from './atoms/auth/DA_auth';
@@ -343,8 +343,9 @@ function App() {
   };
   const [showBranchSelectModal, setShowBranchSelectModal] = useState<boolean>(false);
 
-  // 포인트 충전 모달 상태
+  // 포인트 충전 모달 상태 & 직접 금액 입력 상태
   const [showPointModal, setShowPointModal] = useState<boolean>(false);
+  const [customChargeAmount, setCustomChargeAmount] = useState<string>('30000');
 
   // 권한(user_roles) 상태. 로그인 계정의 활성 권한과 전체 계정의 권한 맵.
   const [authGrants, setAuthGrants] = useState<RoleGrant[]>([]);
@@ -1690,20 +1691,64 @@ function App() {
               </div>
             </div>
 
-            <div className="space-y-2.5">
-              <p className="text-xs font-bold text-[#191f28]">충전할 포인트 금액 선택</p>
-              {[10000, 30000, 50000, 100000].map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => handleApplyPointCharge(amount)}
-                  className="w-full bg-[#f8f9fc] hover:bg-[#a67c48]/10 border border-[#e5e8eb] hover:border-[#a67c48]/50 p-3.5 rounded-xl flex justify-between items-center text-sm font-bold text-[#191f28] transition-all"
-                >
-                  <span>+{amount.toLocaleString()} P</span>
-                  <span className="text-xs text-[#a67c48] flex items-center gap-1 font-semibold">
-                    충전 신청 <Plus size={14} />
+            <div className="space-y-3">
+              {/* ✏️ 직접 금액 입력 필드 */}
+              <div className="bg-[#f8f9fc] p-3.5 rounded-2xl border border-[#e5e8eb] space-y-2">
+                <label className="text-xs font-bold text-[#191f28] flex justify-between items-center">
+                  <span>충전할 금액 직접 입력</span>
+                  <span className="text-[10px] text-[#8b95a1] font-normal">최소 1,000원 이상</span>
+                </label>
+
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    min="1000"
+                    step="1000"
+                    value={customChargeAmount}
+                    onChange={(e) => setCustomChargeAmount(e.target.value)}
+                    placeholder="예: 25000"
+                    className="form-input text-base font-extrabold text-[#191f28] py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-white w-full pr-10 focus:border-[#a67c48]"
+                  />
+                  <span className="absolute right-3.5 text-xs font-bold text-[#a67c48]">
+                    P
                   </span>
+                </div>
+
+                {/* 퀵 빠른 선택 버튼 (원클릭 입력) */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[10000, 30000, 50000, 100000, 200000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setCustomChargeAmount(String(amt))}
+                      className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
+                        customChargeAmount === String(amt)
+                          ? 'bg-[#a67c48] text-white border-[#a67c48] shadow-xs'
+                          : 'bg-white text-[#4e5968] border-[#e5e8eb] hover:bg-[#f1f3f5]'
+                      }`}
+                    >
+                      +{(amt / 10000)}만P
+                    </button>
+                  ))}
+                </div>
+
+                {/* 충전 신청 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const parsed = parseInt(customChargeAmount, 10);
+                    if (isNaN(parsed) || parsed < 1000) {
+                      alert('최소 1,000원 이상의 올바른 충전 금액을 입력해 주세요.');
+                      return;
+                    }
+                    handleApplyPointCharge(parsed);
+                  }}
+                  className="gold-btn w-full py-3 mt-1 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5"
+                >
+                  <Coins size={15} />
+                  <span>{customChargeAmount ? `${parseInt(customChargeAmount || '0', 10).toLocaleString()} P 충전 신청하기` : '충전 신청하기'}</span>
                 </button>
-              ))}
+              </div>
             </div>
 
             <button

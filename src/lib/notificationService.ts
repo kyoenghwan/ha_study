@@ -101,8 +101,12 @@ export const sendTelegramMessage = async (
   chatId: string,
   text: string
 ): Promise<{ success: boolean; error?: string }> => {
-  if (!botToken.trim() || !chatId.trim()) {
-    return { success: false, error: '봇 토큰과 채팅 ID가 입력되지 않았습니다.' };
+  const token = (botToken && botToken.trim()) ? botToken.trim() : OFFICIAL_TELEGRAM_BOT_TOKEN;
+  const targetChatId = chatId ? chatId.trim() : '';
+
+  if (!token || !targetChatId) {
+    console.warn('[Telegram] 발송 취소: Chat ID가 설정되지 않았습니다.');
+    return { success: false, error: '채팅 ID(Chat ID)가 입력되지 않았습니다.' };
   }
 
   try {
@@ -156,7 +160,20 @@ export const triggerChargeRequestNotification = async (
   );
 
   // 3. 텔레그램 알림
-  if (settings.telegramEnabled && settings.telegramBotToken && settings.telegramChatId) {
+  const tokenToUse = settings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN;
+  // localStorage fallback
+  let chatIdToUse = settings.telegramChatId;
+  if (!chatIdToUse) {
+    try {
+      const saved = localStorage.getItem('lheureux_notification_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        chatIdToUse = parsed.telegramChatId;
+      }
+    } catch {}
+  }
+
+  if (chatIdToUse && (settings.telegramEnabled !== false)) {
     const branchText = info.branchName ? `\n🏢 <b>지점</b>: ${info.branchName}` : '';
     const message = `🔔 <b>[르하임 스터디카페] 포인트 충전 신청</b>${branchText}\n\n` +
       `👤 <b>회원명</b>: ${info.userName} (${info.userId})\n` +
@@ -165,7 +182,8 @@ export const triggerChargeRequestNotification = async (
       `⏰ <b>신청 일시</b>: ${new Date().toLocaleString('ko-KR')}\n\n` +
       `👉 <i>관리자 콘솔에서 입금 확인 후 승인해 주세요!</i>`;
 
-    await sendTelegramMessage(settings.telegramBotToken, settings.telegramChatId, message);
+    const res = await sendTelegramMessage(tokenToUse, chatIdToUse, message);
+    console.log('[Telegram Notification Result]:', res);
   }
 };
 
@@ -195,7 +213,19 @@ export const triggerTransferRequestNotification = async (
   );
 
   // 3. 텔레그램 알림
-  if (settings.telegramEnabled && settings.telegramBotToken && settings.telegramChatId) {
+  const tokenToUse = settings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN;
+  let chatIdToUse = settings.telegramChatId;
+  if (!chatIdToUse) {
+    try {
+      const saved = localStorage.getItem('lheureux_notification_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        chatIdToUse = parsed.telegramChatId;
+      }
+    } catch {}
+  }
+
+  if (chatIdToUse && (settings.telegramEnabled !== false)) {
     const message = `🔄 <b>[르하임 스터디카페] 지점 간 포인트 이전 신청</b>\n\n` +
       `👤 <b>회원명</b>: ${info.userName} (${info.userId})\n` +
       `🏢 <b>이전 경로</b>: ${info.fromBranchName} ➔ <b>${info.toBranchName}</b>\n` +
@@ -204,6 +234,7 @@ export const triggerTransferRequestNotification = async (
       `⏰ <b>신청 일시</b>: ${new Date().toLocaleString('ko-KR')}\n\n` +
       `👉 <i>관리자 콘솔에서 확인 후 승인해 주세요!</i>`;
 
-    await sendTelegramMessage(settings.telegramBotToken, settings.telegramChatId, message);
+    const res = await sendTelegramMessage(tokenToUse, chatIdToUse, message);
+    console.log('[Telegram Transfer Notification Result]:', res);
   }
 };
