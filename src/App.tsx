@@ -1048,7 +1048,7 @@ function App() {
               className="text-[#a67c48] text-sm font-bold bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1 rounded-xl flex items-center gap-1 transition-all"
               title="지점 변경 팝업 열기"
             >
-              <span>{currentBranchObj.name}</span>
+              <span>{currentBranchObj.fullName || `르하임 ${currentBranchObj.name}`}</span>
               <ChevronRight size={14} />
             </button>
           </h1>
@@ -1062,11 +1062,8 @@ function App() {
             </span>
           )}
           <button
-            onClick={() => {
-              setRole(null);
-              setSelectedRoomId(null);
-            }}
-            className="flex items-center gap-1 text-xs font-semibold py-2 px-3 rounded-lg border border-[#e5e8eb] text-[#8b95a1] hover:text-[#191f28] hover:bg-[#f8f9fc] transition-all"
+            onClick={handleLogout}
+            className="flex items-center gap-1 text-xs font-semibold py-2 px-3 rounded-lg border border-[#e5e8eb] text-[#8b95a1] hover:text-[#e93d3d] hover:bg-[#f8f9fc] transition-all"
             title="로그아웃"
           >
             <LogOut size={14} /> 로그아웃

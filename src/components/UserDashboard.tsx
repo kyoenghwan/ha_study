@@ -206,6 +206,56 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </div>
       )}
 
+      {/* 👤 내 정보 & 포인트 요약 카드 (상단 배치) */}
+      <div className="bg-[#ffffff] border border-[#a67c48]/30 rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full bg-[#a67c48]/10 text-[#a67c48] flex items-center justify-center font-bold shrink-0">
+              <User size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#191f28] flex items-center gap-1.5">
+                {currentUser?.name || '회원'}님
+                <span className="text-[10px] font-bold bg-[#a67c48]/15 text-[#a67c48] px-2 py-0.5 rounded-full">
+                  정회원
+                </span>
+              </h3>
+              <p className="text-xs text-[#8b95a1]">{currentUser?.phone || '010-0000-0000'}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              setProfileMsg('');
+              setProfileSuccessMsg('');
+              setIsEditingProfile(false);
+              setShowMyProfileModal(true);
+            }}
+            className="gold-btn-outline text-xs py-1.5 px-3 rounded-xl font-bold flex items-center gap-1 shrink-0 shadow-sm"
+          >
+            <FileText size={13} /> 내 정보 / 예약 내역
+          </button>
+        </div>
+
+        <div className="flex justify-between items-center bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb]">
+          <div className="flex items-center gap-2">
+            <Coins size={18} className="text-[#a67c48]" />
+            <div>
+              <span className="text-[11px] text-[#8b95a1]">보유 포인트</span>
+              <p className="text-sm font-extrabold text-[#191f28]">{(currentUser?.points || 0).toLocaleString()} P</p>
+            </div>
+          </div>
+          {onOpenPointModal && (
+            <button
+              onClick={onOpenPointModal}
+              className="gold-btn text-xs py-1.5 px-3.5 rounded-lg font-bold shadow-sm"
+            >
+              충전
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* 공부방 선택 세션 헤더 */}
       <div className="flex justify-between items-center pt-1">
         <div>
@@ -252,55 +302,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         )}
       </div>
 
-      {/* 👤 하단 내 정보 & 포인트 요약 카드 */}
-      <div className="bg-[#ffffff] border border-[#a67c48]/30 rounded-2xl p-4 shadow-sm space-y-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-full bg-[#a67c48]/10 text-[#a67c48] flex items-center justify-center font-bold shrink-0">
-              <User size={20} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[#191f28] flex items-center gap-1.5">
-                {currentUser?.name || '회원'}님
-                <span className="text-[10px] font-bold bg-[#a67c48]/15 text-[#a67c48] px-2 py-0.5 rounded-full">
-                  정회원
-                </span>
-              </h3>
-              <p className="text-xs text-[#8b95a1]">{currentUser?.phone || '010-0000-0000'}</p>
-            </div>
-          </div>
 
-          <button
-            onClick={() => {
-              setProfileMsg('');
-              setProfileSuccessMsg('');
-              setIsEditingProfile(false);
-              setShowMyProfileModal(true);
-            }}
-            className="gold-btn-outline text-xs py-1.5 px-3 rounded-xl font-bold flex items-center gap-1 shrink-0"
-          >
-            <FileText size={13} /> 내 정보 / 예약 내역
-          </button>
-        </div>
-
-        <div className="flex justify-between items-center bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb]">
-          <div className="flex items-center gap-2">
-            <Coins size={18} className="text-[#a67c48]" />
-            <div>
-              <span className="text-[11px] text-[#8b95a1]">보유 포인트</span>
-              <p className="text-sm font-extrabold text-[#191f28]">{(currentUser?.points || 0).toLocaleString()} P</p>
-            </div>
-          </div>
-          {onOpenPointModal && (
-            <button
-              onClick={onOpenPointModal}
-              className="gold-btn text-xs py-1.5 px-3.5 rounded-lg font-bold shadow-sm"
-            >
-              충전
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* 르하임 스터디카페 이용 안내 배너 */}
       <div className="bg-[#f8f9fc] border border-[#e5e8eb] rounded-2xl p-4 space-y-2 text-xs text-[#4e5968] leading-relaxed">
