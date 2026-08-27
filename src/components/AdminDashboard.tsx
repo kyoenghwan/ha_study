@@ -120,7 +120,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [adminRegMode, setAdminRegMode] = useState<'existing' | 'new'>('existing');
   const [selectedExistingUserId, setSelectedExistingUserId] = useState('');
-  const [newAdminBranchIds, setNewAdminBranchIds] = useState<string[]>(['mapo']);
+  const [newAdminBranchIds, setNewAdminBranchIds] = useState<string[]>(() => branches.length > 0 ? [branches[0].id] : ['yeouido']);
   const [newAdminRoleCode, setNewAdminRoleCode] = useState<RoleCode>('BRANCH_ADMIN');
   const [newAdminUserId, setNewAdminUserId] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('1234');
@@ -136,7 +136,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setNewAdminName(user.name);
       setNewAdminPhone(user.phone);
       setNewAdminPassword(user.password || '1234');
-      setNewAdminBranchIds(user.branchIds && user.branchIds.length > 0 ? user.branchIds : ['mapo']);
+      setNewAdminBranchIds(user.branchIds && user.branchIds.length > 0 ? user.branchIds : (branches.length > 0 ? [branches[0].id] : ['yeouido']));
     } else {
       setAdminRegMode('existing');
       if (users.length > 0) {
@@ -146,7 +146,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setNewAdminName(firstUser.name);
         setNewAdminPhone(firstUser.phone);
         setNewAdminPassword(firstUser.password || '1234');
-        setNewAdminBranchIds(firstUser.branchIds && firstUser.branchIds.length > 0 ? firstUser.branchIds : ['mapo']);
+        setNewAdminBranchIds(firstUser.branchIds && firstUser.branchIds.length > 0 ? firstUser.branchIds : (branches.length > 0 ? [branches[0].id] : ['yeouido']));
       }
     }
     setShowCreateAdminModal(true);
@@ -2043,7 +2043,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     setNewAdminUserId(u.userId);
                     setNewAdminName(u.name);
                     setNewAdminPhone(u.phone);
-                    setNewAdminBranchIds(u.branchIds && u.branchIds.length > 0 ? u.branchIds : ['mapo']);
+                    setNewAdminBranchIds(u.branchIds && u.branchIds.length > 0 ? u.branchIds : (branches.length > 0 ? [branches[0].id] : ['yeouido']));
                   }
                 }}
                 className={`flex-1 py-2 text-xs font-bold border-b-2 transition-all ${
@@ -2062,7 +2062,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   setNewAdminName('');
                   setNewAdminPhone('');
                   setNewAdminPassword('1234');
-                  setNewAdminBranchIds(['mapo']);
+                  setNewAdminBranchIds(branches.length > 0 ? [branches[0].id] : ['yeouido']);
                 }}
                 className={`flex-1 py-2 text-xs font-bold border-b-2 transition-all ${
                   adminRegMode === 'new'
@@ -2099,7 +2099,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     setNewAdminUserId('');
                     setNewAdminName('');
                     setNewAdminPhone('');
-                    setNewAdminBranchIds(['mapo']);
+                    setNewAdminBranchIds(branches.length > 0 ? [branches[0].id] : ['yeouido']);
                   }
                 }
               }}
@@ -2119,7 +2119,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         setNewAdminUserId(targetU.userId);
                         setNewAdminName(targetU.name);
                         setNewAdminPhone(targetU.phone);
-                        setNewAdminBranchIds(targetU.branchIds && targetU.branchIds.length > 0 ? targetU.branchIds : ['mapo']);
+                        setNewAdminBranchIds(targetU.branchIds && targetU.branchIds.length > 0 ? targetU.branchIds : (branches.length > 0 ? [branches[0].id] : ['yeouido']));
                       }
                     }}
                     className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white font-medium"
@@ -2146,7 +2146,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="flex gap-1.5 text-[10px]">
                     <button
                       type="button"
-                      onClick={() => setNewAdminBranchIds(['yeouido', 'mapo', 'gangnam', 'hongdae', 'pangyo', 'haeundae', 'dongseongro'])}
+                      onClick={() => setNewAdminBranchIds(branches.map((b) => b.id))}
                       className="text-[#a67c48] hover:underline font-semibold"
                     >
                       전체 선택
@@ -2163,15 +2163,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#f8f9fc] p-3 rounded-2xl border border-[#e5e8eb] max-h-40 overflow-y-auto">
-                  {[
-                    { id: 'yeouido', name: '르하임 여의도점', address: '영등포구 여의도동' },
-                    { id: 'mapo', name: '르하임 마포점', address: '마포구 도화동' },
-                    { id: 'gangnam', name: '르하임 강남점', address: '강남구 역삼동' },
-                    { id: 'hongdae', name: '르하임 홍대입구점', address: '마포구 서교동' },
-                    { id: 'pangyo', name: '르하임 판교역점', address: '분당구 삼평동' },
-                    { id: 'haeundae', name: '르하임 부산 해운대점', address: '해운대구 우동' },
-                    { id: 'dongseongro', name: '르하임 대구 동성로점', address: '대구 중구 동성로' },
-                  ].map((branch) => {
+                  {branches.map((branch) => {
                     const isChecked = newAdminBranchIds.includes(branch.id);
                     return (
                       <label
@@ -2196,7 +2188,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         />
                         <div className="min-w-0">
                           <p className={`text-xs font-bold ${isChecked ? 'text-[#191f28]' : 'text-[#4e5968]'}`}>
-                            {branch.name}
+                            {branch.fullName || branch.name}
                           </p>
                           <p className="text-[10px] text-[#8b95a1] truncate">{branch.address}</p>
                         </div>
