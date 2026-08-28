@@ -6,8 +6,11 @@ import {
   CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight, ReceiptText, RotateCcw, Bell, Send, Volume2, MessageSquare, CheckCheck, ChevronRight 
 } from 'lucide-react';
 import type { NotificationSettings } from '../lib/notificationService';
-import { DEFAULT_NOTIFICATION_SETTINGS, OFFICIAL_TELEGRAM_BOT_TOKEN, playNotificationSound, sendTelegramMessage, requestNotificationPermission } from '../lib/notificationService';
+import { DEFAULT_NOTIFICATION_SETTINGS, playNotificationSound, sendTelegramMessage, requestNotificationPermission } from '../lib/notificationService';
 import { BarcodeView } from './BarcodeView';
+import { showAppAlert, showAppConfirm, showAppPrompt } from './AppDialog';
+
+const alert = showAppAlert;
 
 interface AdminDashboardProps {
   currentUser?: UserAccount | null;
@@ -327,7 +330,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [notifSoundEnabled, setNotifSoundEnabled] = useState(notificationSettings.soundEnabled);
   const [notifTelegramEnabled, setNotifTelegramEnabled] = useState(notificationSettings.telegramEnabled);
 
-  const [notifBotToken, setNotifBotToken] = useState(notificationSettings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN);
   const [notifChatId, setNotifChatId] = useState(notificationSettings.telegramChatId);
   const [notifSaveMsg, setNotifSaveMsg] = useState(false);
   const [notifTesting, setNotifTesting] = useState(false);
@@ -818,8 +820,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       수정
                                     </button>
                                     <button
-                                      onClick={() => {
-                                        if (confirm(`'${res.userName}'님의 예약을 취소하시겠습니까?`)) {
+                                      onClick={async () => {
+                                        if (await showAppConfirm({ title: '예약 취소', message: `'${res.userName}'님의 예약을 취소하시겠습니까?`, tone: 'warning' })) {
                                           onCancelReservation(res.id);
                                         }
                                       }}
@@ -1651,8 +1653,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <span>수정</span>
                           </button>
                           <button
-                            onClick={() => {
-                              if (confirm(`'${branch.fullName}' 지점을 삭제하시겠습니까?`)) {
+                            onClick={async () => {
+                              if (await showAppConfirm({ title: '지점 삭제', message: `'${branch.fullName}' 지점을 삭제하시겠습니까?`, tone: 'danger' })) {
                                 if (onDeleteBranch) onDeleteBranch(branch.id);
                               }
                             }}
@@ -1791,8 +1793,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </td>
                         <td className="p-3 text-center space-x-1">
                           <button
-                            onClick={() => {
-                              const amountStr = prompt(`'${u.name}' 회원님에게 지급할 포인트 금액을 입력해 주세요:`, '10000');
+                            onClick={async () => {
+                              const amountStr = await showAppPrompt({ title: '포인트 지급', message: `'${u.name}' 회원님에게 지급할 포인트 금액을 입력해 주세요.` }, '10000');
                               if (amountStr) {
                                 const amt = parseInt(amountStr, 10);
                                 if (!isNaN(amt) && amt > 0 && onManualAdjustPoint) {
@@ -1805,8 +1807,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             + 지급
                           </button>
                           <button
-                            onClick={() => {
-                              const amountStr = prompt(`'${u.name}' 회원님에게서 차감할 포인트 금액을 입력해 주세요:`, '5000');
+                            onClick={async () => {
+                              const amountStr = await showAppPrompt({ title: '포인트 차감', message: `'${u.name}' 회원님에게서 차감할 포인트 금액을 입력해 주세요.`, tone: 'warning' }, '5000');
                               if (amountStr) {
                                 const amt = parseInt(amountStr, 10);
                                 if (!isNaN(amt) && amt > 0 && onManualAdjustPoint) {
@@ -2615,33 +2617,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   <div className="space-y-3">
-                    {/* 👑 최고 관리자 전용: 텔레그램 봇 토큰 수정 필드 */}
-                    {(isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin') && (
-                      <div 
-                        className="py-1 border-b border-[#e5e8eb]/60 pb-2.5"
-                        style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: '12px' }}
-                      >
-                        <div>
-                          <label className="text-xs font-bold text-[#a67c48] flex items-center gap-1">
-                            👑 텔레그램 봇 토큰
-                          </label>
-                          <span className="text-[9px] text-[#8b95a1] font-semibold block mt-0.5">(최고관리자 전용)</span>
-                        </div>
-                        <div>
-                          <input
-                            type="text"
-                            value={notifBotToken}
-                            onChange={(e) => setNotifBotToken(e.target.value)}
-                            placeholder="예: 8608083217:AAFsHt..."
-                            className="form-input text-xs py-2 px-3 rounded-xl border border-[#a67c48]/50 bg-[#fffdfa] font-mono w-full focus:border-[#a67c48]"
-                          />
-                          <p className="text-[10px] text-[#a67c48] mt-0.5">
-                            💡 최고 관리자만 수정 가능하며, 모든 지점의 기본 알림 발신 봇으로 작동합니다.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
                     {/* 채팅 ID / 인풋필드 + 텔레그램 테스트 발송 버튼 (1줄 나란히 수평 배치) */}
                     <div 
                       className="py-1"
@@ -2665,11 +2640,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             onClick={async () => {
                               setNotifTesting(true);
                               setNotifTestResult(null);
-                              const tokenToUse = (isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin')
-                                ? (notifBotToken.trim() || OFFICIAL_TELEGRAM_BOT_TOKEN)
-                                : (notificationSettings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN);
                               const res = await sendTelegramMessage(
-                                tokenToUse,
+                                '',
                                 notifChatId.trim(),
                                 `🔔 <b>[르하임 스터디카페] 텔레그램 알림 연동 성공!</b>\n\n관리자님의 스마트폰으로 포인트 충전 및 이전 신청 알림이 정상 수신됩니다. 🚀`
                               );
@@ -2695,12 +2667,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   {/* 텔레그램 봇 만들기 1분 안내 */}
                   <div className="bg-[#eef8ff] p-3 rounded-xl border border-[#bce3ff] text-[10px] text-[#005580] space-y-1">
                     <p className="font-bold text-[11px] flex items-center gap-1">
-                      💡 텔레그램 봇 토큰 & Chat ID 무료 발급 방법 (1분):
+                      💡 텔레그램 Chat ID 확인 방법:
                     </p>
                     <ol className="list-decimal pl-3.5 space-y-0.5 text-[10px]">
-                      <li>텔레그램 검색창에 <b>@BotFather</b> 검색 ➔ <code>/newbot</code> 입력하여 새 봇 생성 후 <b>Bot Token</b> 복사</li>
-                      <li>생성된 내 봇에 들어가서 <b>[시작(Start)]</b> 버튼 누르기</li>
-                      <li>검색창에 <b>@userinfobot</b> 검색 ➔ 내 <b>Id (Chat ID 숫자)</b> 확인 후 위 입력창에 붙여넣기</li>
+                      <li>운영 Telegram 봇의 대화방에서 <b>[시작(Start)]</b> 버튼을 누릅니다.</li>
+                      <li><b>@userinfobot</b>에서 본인의 Chat ID 숫자를 확인해 위 입력창에 붙여넣습니다.</li>
+                      <li>봇 토큰은 보안을 위해 서버 Secret에서만 관리됩니다.</li>
                     </ol>
                   </div>
                 </div>
@@ -2710,14 +2682,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const tokenToSave = (isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin')
-                    ? (notifBotToken.trim() || OFFICIAL_TELEGRAM_BOT_TOKEN)
-                    : (notificationSettings.telegramBotToken || OFFICIAL_TELEGRAM_BOT_TOKEN);
-
                   const newSettings: NotificationSettings = {
                     soundEnabled: notifSoundEnabled,
                     telegramEnabled: notifTelegramEnabled,
-                    telegramBotToken: tokenToSave,
+                    telegramBotToken: '',
                     telegramChatId: notifChatId.trim(),
                     notifyOnChargeRequest: true,
                     notifyOnTransferRequest: true,
@@ -3258,7 +3226,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="form-input text-xs py-2.5 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48]"
                 />
                 <p className="text-[10px] text-[#8b95a1] pt-0.5">
-                  💡 담당 지점에서 발생하는 포인트 충전 알림을 받을 본인의 텔레그램 Chat ID를 입력하세요. (비워두면 최고관리자에게 전송됩니다)
+                  💡 담당 지점에서 발생하는 포인트 충전 알림을 받을 본인의 Telegram Chat ID를 입력하세요.
                 </p>
               </div>
 

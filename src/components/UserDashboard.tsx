@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import type { Room, Reservation, BankInfo, MasterBarcode, UserAccount, Branch, PointTransferRequest } from '../types';
 import { ChevronRight, QrCode, Calendar, CheckCircle2, AlertCircle, Sparkles, Clock, Lock, User, Coins, FileText, Edit2, Check, ArrowLeftRight } from 'lucide-react';
 import { BarcodeView } from './BarcodeView';
+import { showAppAlert, showAppConfirm } from './AppDialog';
+
+const alert = showAppAlert;
 
 interface UserDashboardProps {
   currentUser?: UserAccount | null;
@@ -528,8 +531,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                         </span>
                         {onCancelAndRefundReservation && !isActive && (
                           <button
-                            onClick={() => {
-                              if (confirm(`'${room?.name}' 예약을 취소하시겠습니까? 결제하신 금액(포인트)이 즉시 환불됩니다.`)) {
+                            onClick={async () => {
+                              if (await showAppConfirm({ title: '예약 취소 및 환불', message: `'${room?.name}' 예약을 취소하시겠습니까? 결제하신 금액(포인트)이 즉시 환불됩니다.`, tone: 'warning' })) {
                                 onCancelAndRefundReservation(res.id);
                               }
                             }}
@@ -751,8 +754,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
                             {onCancelAndRefundReservation && isUpcoming && (
                               <button
-                                onClick={() => {
-                                  if (confirm(`'${room?.name}' 예약을 취소하시겠습니까? 결제하신 포인트가 즉시 환불됩니다.`)) {
+                                onClick={async () => {
+                                  if (await showAppConfirm({ title: '예약 취소 및 환불', message: `'${room?.name}' 예약을 취소하시겠습니까? 결제하신 포인트가 즉시 환불됩니다.`, tone: 'warning' })) {
                                     onCancelAndRefundReservation(res.id);
                                   }
                                 }}

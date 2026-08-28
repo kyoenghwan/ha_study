@@ -20,6 +20,7 @@ import {
   QA_AUTH_FETCH_USER_ROLES,
 } from './atoms/auth/QA_fetch_user_roles';
 import { FA_AUTH_GRANT_ROLE, FA_AUTH_REVOKE_ROLE } from './atoms/auth/FA_manage_role';
+import { RA_NOTIFICATION_CAN_RECEIVE_BRANCH } from './atoms/notification/RA_notification';
 
 import {
   supabase,
@@ -52,13 +53,17 @@ import {
 import type { DbResult } from './lib/supabase';
 
 import { BranchSelectModal } from './components/BranchSelectModal';
+import { showAppAlert, showAppConfirm } from './components/AppDialog';
 import type { NotificationSettings } from './lib/notificationService';
 import { 
   DEFAULT_NOTIFICATION_SETTINGS, 
   triggerChargeRequestNotification, 
   triggerTransferRequestNotification,
-  playNotificationSound 
+  playNotificationSound,
+  sendBrowserNotification,
 } from './lib/notificationService';
+
+const alert = showAppAlert;
 
 // 르하임 멀티테넌트 지점 목록 정의
 export const BRANCHES: Branch[] = [
@@ -288,11 +293,15 @@ function App() {
   };
 
   // 포인트 이전 반려/거절 (관리자)
-  const handleRejectPointTransfer = (reqId: string) => {
+  const handleRejectPointTransfer = async (reqId: string) => {
     const req = pointTransferRequests.find((r) => r.id === reqId);
     if (!req || req.status !== 'pending') return;
 
-    if (!confirm(`'${req.userName}' 회원님의 ${req.amount.toLocaleString()} P 이전 신청을 반려하시겠습니까?`)) {
+    if (!await showAppConfirm({
+      title: '포인트 이전 신청 반려',
+      message: `'${req.userName}' 회원님의 ${req.amount.toLocaleString()} P 이전 신청을 반려하시겠습니까?`,
+      tone: 'warning',
+    })) {
       return;
     }
 
@@ -595,6 +604,54 @@ function App() {
     };
   }, []);
 
+  // 신규 충전 신청은 신청 지점 담당 관리자 화면에만 실시간으로 표시한다.
+  useEffect(() => {
+    const canReceive = role === 'admin' && Boolean(currentUser) && (
+      currentUser?.isSuperAdmin === true || currentUser?.adminRoleCode === 'PLATFORM_ADMIN' || (currentUser?.branchIds?.length ?? 0) > 0
+    );
+    if (!canReceive) return;
+
+    const channel = supabase
+      .channel(`point-charge-manager-${currentUser?.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'point_transactions' },
+        (payload) => {
+          const tx = payload.new as {
+            id?: string;
+            user_name?: string;
+            branch_id?: string | null;
+            type?: string;
+            amount?: number;
+            status?: string;
+          };
+          if (!tx.id || tx.type !== 'charge_request' || tx.status !== 'pending' || !tx.branch_id) return;
+          const hasBranchAccess = RA_NOTIFICATION_CAN_RECEIVE_BRANCH(currentUser, role, tx.branch_id);
+          if (!hasBranchAccess) return;
+
+          const seenKey = `lheureux_charge_toast_${tx.id}`;
+          if (sessionStorage.getItem(seenKey)) return;
+          sessionStorage.setItem(seenKey, '1');
+
+          const branchName = branches.find((branch) => branch.id === tx.branch_id)?.name || tx.branch_id;
+          triggerInAppToast({
+            title: '포인트 충전 신청 접수',
+            message: `${tx.user_name || '회원'}님이 [${branchName}] ${(tx.amount || 0).toLocaleString()}P 충전을 신청했습니다.`,
+            userName: tx.user_name,
+            amount: tx.amount,
+            type: 'charge',
+          });
+          sendBrowserNotification(
+            '르하임 포인트 충전 신청',
+            `${tx.user_name || '회원'} · ${branchName} · ${(tx.amount || 0).toLocaleString()}P`,
+          );
+        },
+      )
+      .subscribe();
+
+    return () => { void supabase.removeChannel(channel); };
+  }, [branches, currentUser, role]);
+
   // 로그인 계정의 활성 권한 로드.
   // user_roles 에 행이 없는 레거시 계정은 users.role 을 fallback 으로 해석한다.
   // setState 는 async 콜백 안에서만 호출한다 (effect 본문 동기 호출은 연쇄 렌더를 유발).
@@ -706,7 +763,7 @@ function App() {
 
 
   // 무통장 입금 포인트 충전 신청 처리 (이용자용 & 관리자 실시간 알림 트리거)
-  const handleApplyPointCharge = (amount: number) => {
+  const handleApplyPointCharge = async (amount: number) => {
     if (!currentUser) return;
     const branchObj = branches.find(b => b.id === selectedBranch);
     const newTx: PointTransaction = {
@@ -721,21 +778,16 @@ function App() {
       createdAt: new Date().toISOString(),
     };
 
-    const updatedTx = [newTx, ...pointTransactions];
-    updatePointTransactions(updatedTx);
-    persist('포인트 충전 신청', () => saveDbPointTransaction(newTx));
+    const saveResult = await saveDbPointTransaction(newTx);
+    if (!saveResult.ok) {
+      await alert({ title: '충전 신청 실패', message: saveResult.error, tone: 'danger' });
+      return;
+    }
+    updatePointTransactions([newTx, ...pointTransactions]);
     setShowPointModal(false);
 
-    // 🔔 자체 앱 알림 토스트 & 텔레그램 / 사운드 즉시 발송!
-    triggerInAppToast({
-      title: '🔔 포인트 충전 신청 접수!',
-      message: `${currentUser.name}님이 [${branchObj?.name || '지점'}] ${amount.toLocaleString()}P 충전을 신청했습니다.`,
-      userName: currentUser.name,
-      amount,
-      type: 'charge',
-    });
-
-    triggerChargeRequestNotification(notificationSettings, {
+    const notificationResult = await triggerChargeRequestNotification(notificationSettings, {
+      transactionId: newTx.id,
       userName: currentUser.name,
       userId: currentUser.userId,
       userPhone: currentUser.phone,
@@ -743,8 +795,15 @@ function App() {
       branchName: branchObj?.fullName || branchObj?.name,
       branchId: branchObj?.id,
     });
+    if (!notificationResult.success) {
+      console.error('[포인트 충전 Telegram 알림 실패]', notificationResult.error);
+    }
 
-    alert(`무통장 입금 충전 신청이 완료되었습니다.\n입금계좌: ${bankInfo.bankName} ${bankInfo.accountNumber} (${bankInfo.accountHolder})\n관리자 입금 확인 후 포인트가 즉시 지급됩니다.`);
+    await alert({
+      title: '포인트 충전 신청 완료',
+      message: `입금계좌: ${bankInfo.bankName} ${bankInfo.accountNumber} (${bankInfo.accountHolder})\n관리자 입금 확인 후 포인트가 지급됩니다.`,
+      tone: 'success',
+    });
   };
 
   // 관리자 포인트 무통장 입금 확인 승인 처리

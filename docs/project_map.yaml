@@ -2,6 +2,28 @@ version: 1
 project_rule: docs/project_rules/ha_study_project.md
 
 domains:
+  point_charge_notification:
+    process: docs/processes/point_charge_notification_process.md
+    schema: docs/db/schema.md
+    migrations:
+      - docs/db/migrations/004_point_notification.sql
+    atoms:
+      rules: src/atoms/notification/RA_notification.ts
+      operation: src/atoms/notification/OA_send_telegram.ts
+      flow: src/atoms/notification/FA_send_notification.ts
+    server:
+      telegram: supabase/functions/telegram-notification/index.ts
+    ui:
+      shared_dialog:
+        file: src/components/AppDialog.tsx
+        responsive_variants: [mobile, desktop]
+      manager_toast:
+        file: src/App.tsx
+        note: 신규 충전 신청 지점 담당 관리자에게만 표시
+    notes:
+      - Telegram Bot Token은 프론트엔드가 아닌 Supabase Secret에서만 관리한다.
+      - point_transactions.branch_id가 지점 알림 라우팅 SSOT다.
+
   auth_rbac:
     schema: docs/db/schema.md
     migrations:

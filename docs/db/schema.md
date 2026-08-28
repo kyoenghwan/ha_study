@@ -76,11 +76,23 @@
 - `id`: TEXT (PK)
 - `user_id`: TEXT
 - `user_name`: TEXT
+- `branch_id`: TEXT — 충전·사용·환불 대상 지점 ID
 - `type`: TEXT ('charge_request' | 'charge_approved' | 'use' | 'refund')
 - `amount`: INTEGER
 - `description`: TEXT
 - `status`: TEXT ('pending' | 'completed' | 'cancelled')
 - `created_at`: TIMESTAMPTZ
+
+## 5-1. notification_deliveries (외부 알림 발송 이력)
+- `id`: UUID (PK)
+- `event_type`: TEXT ('charge_request' 등)
+- `event_id`: TEXT — 대상 이벤트/트랜잭션 ID
+- `channel`: TEXT ('telegram')
+- `recipient`: TEXT NULL — Telegram Chat ID 등
+- `status`: TEXT ('processing' | 'sent' | 'failed' | 'skipped')
+- `error_message`: TEXT NULL
+- `created_at`, `updated_at`: TIMESTAMPTZ
+- `(event_type, event_id, channel)`: UNIQUE — 중복 발송 방지
 
 ## 6. admin_barcodes (관리자 사전 등록 바코드)
 - `id`: TEXT (PK)

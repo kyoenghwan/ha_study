@@ -174,6 +174,7 @@ export const updateDbUser = async (user: UserAccount): Promise<DbResult> => {
         isSuperAdmin: user.userId === 'admin' ? true : user.isSuperAdmin,
         adminRoleCode: user.userId === 'admin' ? 'PLATFORM_ADMIN' : user.adminRoleCode,
         role: user.role,
+        telegramChatId: user.telegramChatId,
       };
       await supabase.from('app_settings').upsert({
         key: USERS_META_KEY,
@@ -545,6 +546,7 @@ interface PointTransactionRow {
   id: string;
   user_id: string;
   user_name: string;
+  branch_id: string | null;
   type: PointTransaction['type'];
   amount: number;
   description: string | null;
@@ -563,6 +565,7 @@ export const fetchDbPointTransactions = async (): Promise<PointTransaction[]> =>
       id: t.id,
       userId: t.user_id,
       userName: t.user_name,
+      branchId: t.branch_id ?? undefined,
       type: t.type,
       amount: t.amount,
       description: t.description ?? '',
@@ -581,6 +584,7 @@ export const saveDbPointTransaction = async (tx: PointTransaction): Promise<DbRe
       id: tx.id,
       user_id: tx.userId,
       user_name: tx.userName,
+      branch_id: tx.branchId,
       type: tx.type,
       amount: tx.amount,
       description: tx.description,
