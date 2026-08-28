@@ -61,13 +61,24 @@ Deno.serve(async (request) => {
       return json({ success: true, duplicate: true });
     }
 
-    const { data: tx, error: txError } = await supabase
+    let { data: tx, error: txError } = await supabase
       .from('point_transactions')
-      .select('id,user_id,user_name,branch_id,amount,status,created_at')
+      .select('id,user_id,user_name,branch_id,description,amount,status,created_at')
       .eq('id', eventId)
       .eq('type', 'charge_request')
       .single();
-    if (txError || !tx || tx.status !== 'pending' || !tx.branch_id) {
+    if (txError && /branch_id/u.test(txError.message || '')) {
+      const legacyResult = await supabase
+        .from('point_transactions')
+        .select('id,user_id,user_name,description,amount,status,created_at')
+        .eq('id', eventId)
+        .eq('type', 'charge_request')
+        .single();
+      tx = legacyResult.data ? { ...legacyResult.data, branch_id: null } : null;
+      txError = legacyResult.error;
+    }
+    const branchId = tx?.branch_id || tx?.description?.match(/__branch_id=([^_]+)__/u)?.[1];
+    if (txError || !tx || tx.status !== 'pending' || !branchId) {
       return json({ success: false, error: '유효한 지점 충전 신청을 찾지 못했습니다.' }, 404);
     }
 
@@ -78,7 +89,7 @@ Deno.serve(async (request) => {
     ]);
     const metaMap = (metaRow?.value || {}) as Record<string, UserMeta>;
     const manager = Object.values(metaMap).find((meta) =>
-      meta.role === 'admin' && meta.branchIds?.includes(tx.branch_id) && Boolean(meta.telegramChatId?.trim()),
+      meta.role === 'admin' && meta.branchIds?.includes(branchId) && Boolean(meta.telegramChatId?.trim()),
     );
     chatId = manager?.telegramChatId?.trim() || '';
     if (!chatId) {
@@ -94,8 +105,8 @@ Deno.serve(async (request) => {
     }
 
     const branches = Array.isArray(branchRow?.value) ? branchRow.value : [];
-    const branch = branches.find((item: { id?: string }) => item.id === tx.branch_id);
-    const branchName = branch?.fullName || branch?.name || tx.branch_id;
+    const branch = branches.find((item: { id?: string }) => item.id === branchId);
+    const branchName = branch?.fullName || branch?.name || branchId;
     text = `🔔 <b>[르하임 스터디카페] 포인트 충전 신청</b>\n\n` +
       `🏢 <b>지점</b>: ${escapeHtml(branchName)}\n` +
       `👤 <b>회원</b>: ${escapeHtml(tx.user_name)} (${escapeHtml(tx.user_id)})\n` +

@@ -621,19 +621,21 @@ function App() {
             id?: string;
             user_name?: string;
             branch_id?: string | null;
+            description?: string | null;
             type?: string;
             amount?: number;
             status?: string;
           };
-          if (!tx.id || tx.type !== 'charge_request' || tx.status !== 'pending' || !tx.branch_id) return;
-          const hasBranchAccess = RA_NOTIFICATION_CAN_RECEIVE_BRANCH(currentUser, role, tx.branch_id);
+          const branchId = tx.branch_id || tx.description?.match(/__branch_id=([^_]+)__/u)?.[1];
+          if (!tx.id || tx.type !== 'charge_request' || tx.status !== 'pending' || !branchId) return;
+          const hasBranchAccess = RA_NOTIFICATION_CAN_RECEIVE_BRANCH(currentUser, role, branchId);
           if (!hasBranchAccess) return;
 
           const seenKey = `lheureux_charge_toast_${tx.id}`;
           if (sessionStorage.getItem(seenKey)) return;
           sessionStorage.setItem(seenKey, '1');
 
-          const branchName = branches.find((branch) => branch.id === tx.branch_id)?.name || tx.branch_id;
+          const branchName = branches.find((branch) => branch.id === branchId)?.name || branchId;
           triggerInAppToast({
             title: '포인트 충전 신청 접수',
             message: `${tx.user_name || '회원'}님이 [${branchName}] ${(tx.amount || 0).toLocaleString()}P 충전을 신청했습니다.`,
@@ -773,7 +775,7 @@ function App() {
       branchId: selectedBranch,
       type: 'charge_request',
       amount,
-      description: `[${branchObj?.name || '지점'}] 무통장 입금 충전 신청 (${amount.toLocaleString()}원)`,
+      description: `__branch_id=${selectedBranch}__ [${branchObj?.name || '지점'}] 무통장 입금 충전 신청 (${amount.toLocaleString()}원)`,
       status: 'pending',
       createdAt: new Date().toISOString(),
     };

@@ -8,6 +8,7 @@
 
 1. 회원이 선택 지점과 충전 금액으로 신청한다.
 2. `point_transactions`에 `branch_id`, `charge_request`, `pending` 상태로 저장한다.
+   - 운영 DB에 `branch_id` 마이그레이션이 아직 적용되지 않은 경우 description의 `__branch_id=...__` 표식을 임시 호환 경로로 사용한다.
 3. 저장 성공 후 `FA_NOTIFICATION_SEND_CHARGE_REQUEST`가 Edge Function을 호출한다.
 4. Edge Function은 DB에서 신청을 다시 검증하고 `lheureux_users_meta`의 담당 지점과 Chat ID를 조회한다.
 5. `notification_deliveries`로 중복 여부를 확인한 후 Telegram을 발송하고 결과를 기록한다.

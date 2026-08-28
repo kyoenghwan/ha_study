@@ -546,7 +546,7 @@ interface PointTransactionRow {
   id: string;
   user_id: string;
   user_name: string;
-  branch_id: string | null;
+  branch_id?: string | null;
   type: PointTransaction['type'];
   amount: number;
   description: string | null;
@@ -565,7 +565,7 @@ export const fetchDbPointTransactions = async (): Promise<PointTransaction[]> =>
       id: t.id,
       userId: t.user_id,
       userName: t.user_name,
-      branchId: t.branch_id ?? undefined,
+      branchId: t.branch_id ?? t.description?.match(/__branch_id=([^_]+)__/u)?.[1],
       type: t.type,
       amount: t.amount,
       description: t.description ?? '',
@@ -580,7 +580,7 @@ export const fetchDbPointTransactions = async (): Promise<PointTransaction[]> =>
 
 export const saveDbPointTransaction = async (tx: PointTransaction): Promise<DbResult> => {
   try {
-    const { error } = await supabase.from('point_transactions').upsert({
+    const row = {
       id: tx.id,
       user_id: tx.userId,
       user_name: tx.userName,
@@ -590,7 +590,16 @@ export const saveDbPointTransaction = async (tx: PointTransaction): Promise<DbRe
       description: tx.description,
       status: tx.status,
       created_at: tx.createdAt,
-    });
+    };
+    let { error } = await supabase.from('point_transactions').upsert(row);
+
+    // 운영 DB 마이그레이션 전에도 신청 자체가 중단되지 않도록 description의 지점 표식을 사용한다.
+    if (error && /branch_id/u.test(error.message || '')) {
+      const { branch_id: _branchId, ...legacyRow } = row;
+      void _branchId;
+      const retry = await supabase.from('point_transactions').upsert(legacyRow);
+      error = retry.error;
+    }
     return error ? fail('포인트 이력 저장', error) : ok();
   } catch (err) {
     return fail('포인트 이력 저장', err);
