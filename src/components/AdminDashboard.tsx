@@ -19,7 +19,7 @@ interface AdminDashboardProps {
   bankInfo: BankInfo;
   notificationSettings?: NotificationSettings;
   onUpdateNotificationSettings?: (settings: NotificationSettings) => void;
-  onUpdateUserProfile?: (userId: string, data: { name: string; phone: string; password?: string }) => Promise<{ success: boolean; message?: string }>;
+  onUpdateUserProfile?: (userId: string, data: { name: string; phone: string; password?: string; telegramChatId?: string }) => Promise<{ success: boolean; message?: string }>;
   users?: UserAccount[];
   pointTransactions?: PointTransaction[];
   adminBarcodes?: AdminBarcodeItem[];
@@ -330,13 +330,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [notifSoundEnabled, setNotifSoundEnabled] = useState(notificationSettings.soundEnabled);
   const [notifTelegramEnabled, setNotifTelegramEnabled] = useState(notificationSettings.telegramEnabled);
   const [notifBotToken, setNotifBotToken] = useState(notificationSettings.telegramBotToken || '');
-  const [notifChatId, setNotifChatId] = useState(notificationSettings.telegramChatId || '');
+  const [notifChatId, setNotifChatId] = useState(currentUser?.telegramChatId || notificationSettings.telegramChatId || '');
 
   React.useEffect(() => {
     setNotifSoundEnabled(notificationSettings.soundEnabled);
     setNotifTelegramEnabled(notificationSettings.telegramEnabled);
     setNotifBotToken(notificationSettings.telegramBotToken || '');
-    setNotifChatId(notificationSettings.telegramChatId || '');
+    setNotifChatId(currentUser?.telegramChatId || notificationSettings.telegramChatId || '');
   }, [notificationSettings]);
   const [notifSaveMsg, setNotifSaveMsg] = useState(false);
   const [notifTesting, setNotifTesting] = useState(false);
@@ -2727,9 +2727,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   };
                   if (onUpdateNotificationSettings) {
                     onUpdateNotificationSettings(newSettings);
-                    setNotifSaveMsg(true);
-                    setTimeout(() => setNotifSaveMsg(false), 3000);
                   }
+                  // 현재 로그인한 관리자 계정에도 본인의 telegramChatId로 개별 저장/동기화
+                  if (onUpdateUserProfile && currentUser) {
+                    onUpdateUserProfile(currentUser.userId, {
+                      name: currentUser.name,
+                      phone: currentUser.phone,
+                      telegramChatId: notifChatId.trim(),
+                    });
+                  }
+                  setNotifSaveMsg(true);
+                  setTimeout(() => setNotifSaveMsg(false), 3000);
                 }}
                 className="gold-btn w-full py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5"
               >
