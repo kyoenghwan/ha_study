@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import type { Room, Reservation, BankInfo, PaymentMethod, AdminBarcodeItem, MasterBarcode, UserAccount, PointTransaction, Branch, PointTransferRequest } from '../types';
 import { 
   Plus, Trash2, Calendar, Edit2, CheckCircle2, AlertCircle, 
-  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight, ReceiptText, RotateCcw, Bell, Send, Volume2, MessageSquare, CheckCheck, ChevronRight 
+  CreditCard, BarChart3, QrCode, Settings, Check, Search, Coins, Landmark, CalendarRange, Camera, Upload, Users, ArrowLeftRight, ReceiptText, RotateCcw, Bell, Send, Volume2, MessageSquare, CheckCheck, ChevronRight, ChevronDown, ChevronUp, X 
 } from 'lucide-react';
 import type { NotificationSettings } from '../lib/notificationService';
 import { DEFAULT_NOTIFICATION_SETTINGS, playNotificationSound, sendTelegramMessage, requestNotificationPermission } from '../lib/notificationService';
@@ -133,6 +133,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRejectPointTransfer,
 }) => {
   const [pointTabSubMode, setPointTabSubMode] = useState<'charge' | 'transfer'>('charge');
+  // 📋 우측 하단 미처리 할 일 팝업 상태
+  const [isTodoExpanded, setIsTodoExpanded] = useState(true);
+  const [isTodoDismissed, setIsTodoDismissed] = useState(false);
   // 📋 포인트 사용 내역 독립 탭 검색 & 필터 상태
   const [usageSearchQuery, setUsageSearchQuery] = useState('');
   const [usageTypeFilter, setUsageTypeFilter] = useState<'all' | 'use' | 'refund'>('all');
@@ -557,8 +560,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return matchText && r.barcodeStatus === barcodeFilterStatus;
   });
 
+  // 📋 관리자 실시간 미처리 업무(할 일) 계산
+  const isSuperAdminUser = isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin' || currentUser?.userId === 'kyoenghwan' || currentUser?.isSuperAdmin;
+  const myBranchIds = isSuperAdminUser
+    ? []
+    : (currentUser?.branchIds && currentUser.branchIds.length > 0 ? currentUser.branchIds : (selectedBranchId ? [selectedBranchId] : []));
+
+  // 1) 무통장 입금 충전 승인 대기
+  const pendingCharges = pointTransactions.filter((t) => {
+    const isPending = (t.type === 'charge_request' || !t.type) && t.status === 'pending';
+    if (!isPending) return false;
+    if (isSuperAdminUser || myBranchIds.length === 0) return true;
+    return t.branchId && myBranchIds.includes(t.branchId);
+  });
+
+  // 2) 지점 간 포인트 이전 승인 대기
+  const pendingTransfers = pointTransferRequests.filter((r) => {
+    if (r.status !== 'pending') return false;
+    if (isSuperAdminUser || myBranchIds.length === 0) return true;
+    return myBranchIds.includes(r.toBranchId) || myBranchIds.includes(r.fromBranchId);
+  });
+
+  // 3) 무통장 예약 입금 확인 대기
+  const pendingReservations = reservations.filter((r) => {
+    if (r.paymentStatus !== 'deposit_pending') return false;
+    const room = rooms.find((rm) => rm.id === r.roomId);
+    if (isSuperAdminUser || myBranchIds.length === 0) return true;
+    return room?.branchId && myBranchIds.includes(room.branchId);
+  });
+
+  const totalPendingCount = pendingCharges.length + pendingTransfers.length + pendingReservations.length;
+
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[#eef0f4]">
+    <div className="flex-1 flex flex-col overflow-hidden bg-[#eef0f4] relative">
             {/* 관리자 탭 서브 네비게이션 (권한 등급별 접근 권한에 따라 동적 필터링) */}
       <div className="bg-[#ffffff] border-b border-[#e5e8eb] px-4 pt-2.5 flex gap-1 overflow-x-auto shrink-0 shadow-sm">
         {canAccessTab('rooms_reservations') && (
@@ -3574,6 +3608,170 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* 📋 실시간 미처리 업무 (할 일) 우측 하단 플로팅 팝업 위젯 */}
+      {totalPendingCount > 0 && !isTodoDismissed && (
+        <div className="fixed bottom-6 right-6 z-40 max-w-sm w-full transition-all duration-300">
+          {isTodoExpanded ? (
+            <div 
+              className="bg-white/95 backdrop-blur-md border-2 border-[#a67c48]/40 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300"
+              style={{ boxShadow: '0 12px 32px -4px rgba(166, 124, 72, 0.25), 0 4px 12px rgba(0, 0, 0, 0.08)' }}
+            >
+              {/* 위젯 헤더 */}
+              <div className="bg-gradient-to-r from-[#a67c48] to-[#8c6535] text-white px-4 py-3 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                  </span>
+                  <span className="text-xs font-bold tracking-tight">📋 미처리 업무 알림</span>
+                  <span className="bg-white/20 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full">
+                    {totalPendingCount}건 대기
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    type="button"
+                    onClick={() => setIsTodoExpanded(false)}
+                    className="text-white/80 hover:text-white p-1 hover:bg-white/10 rounded-lg transition-all cursor-pointer"
+                    title="최소화"
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setIsTodoDismissed(true)}
+                    className="text-white/80 hover:text-white p-1 hover:bg-white/10 rounded-lg transition-all cursor-pointer"
+                    title="닫기"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 위젯 본문 목록 */}
+              <div className="p-3 space-y-2 max-h-72 overflow-y-auto divide-y divide-[#f1f3f5]">
+                {/* 1. 무통장 포인트 충전 승인 */}
+                {pendingCharges.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('point_management');
+                      setPointTabSubMode('charge');
+                    }}
+                    className="w-full text-left pt-2 first:pt-0 group flex items-start justify-between gap-3 p-2.5 rounded-xl hover:bg-[#fff9f2] transition-all cursor-pointer border border-transparent hover:border-[#a67c48]/20"
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="p-2 rounded-lg bg-[#a67c48]/10 text-[#a67c48] shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                        <Coins size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-[#191f28] group-hover:text-[#a67c48] transition-colors truncate">
+                            포인트 무통장 충전 승인
+                          </p>
+                          <span className="bg-[#e93d3d] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0">
+                            {pendingCharges.length}건
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#8b95a1] mt-0.5 truncate">
+                          {pendingCharges[0].userName} ({pendingCharges[0].amount.toLocaleString()} P)
+                          {pendingCharges.length > 1 ? ` 외 ${pendingCharges.length - 1}건` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight size={14} className="text-[#8b95a1] group-hover:text-[#a67c48] group-hover:translate-x-1 transition-all shrink-0 mt-2" />
+                  </button>
+                )}
+
+                {/* 2. 지점 간 포인트 이전 승인 */}
+                {pendingTransfers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('point_management');
+                      setPointTabSubMode('transfer');
+                    }}
+                    className="w-full text-left pt-2 group flex items-start justify-between gap-3 p-2.5 rounded-xl hover:bg-[#f0f7ff] transition-all cursor-pointer border border-transparent hover:border-[#0088cc]/20"
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="p-2 rounded-lg bg-[#0088cc]/10 text-[#0088cc] shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                        <ArrowLeftRight size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-[#191f28] group-hover:text-[#0088cc] transition-colors truncate">
+                            지점 간 포인트 이전 승인
+                          </p>
+                          <span className="bg-[#0088cc] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0">
+                            {pendingTransfers.length}건
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#8b95a1] mt-0.5 truncate">
+                          {pendingTransfers[0].userName} ({branches.find(b => b.id === pendingTransfers[0].fromBranchId)?.name || pendingTransfers[0].fromBranchId} ➔ {branches.find(b => b.id === pendingTransfers[0].toBranchId)?.name || pendingTransfers[0].toBranchId}, {pendingTransfers[0].amount.toLocaleString()} P)
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight size={14} className="text-[#8b95a1] group-hover:text-[#0088cc] group-hover:translate-x-1 transition-all shrink-0 mt-2" />
+                  </button>
+                )}
+
+                {/* 3. 룸 예약 입금 확인 대기 */}
+                {pendingReservations.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('rooms_reservations');
+                    }}
+                    className="w-full text-left pt-2 group flex items-start justify-between gap-3 p-2.5 rounded-xl hover:bg-[#fff5f5] transition-all cursor-pointer border border-transparent hover:border-[#e93d3d]/20"
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="p-2 rounded-lg bg-[#e93d3d]/10 text-[#e93d3d] shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                        <Calendar size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-[#191f28] group-hover:text-[#e93d3d] transition-colors truncate">
+                            룸 예약 무통장 입금 확인
+                          </p>
+                          <span className="bg-[#e93d3d] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0">
+                            {pendingReservations.length}건
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#8b95a1] mt-0.5 truncate">
+                          {pendingReservations[0].userName} ({pendingReservations[0].date} {pendingReservations[0].startTime}~{pendingReservations[0].endTime})
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight size={14} className="text-[#8b95a1] group-hover:text-[#e93d3d] group-hover:translate-x-1 transition-all shrink-0 mt-2" />
+                  </button>
+                )}
+              </div>
+
+              {/* 위젯 푸터 */}
+              <div className="bg-[#f8f9fc] px-4 py-2 border-t border-[#e5e8eb] flex items-center justify-between text-[10px] text-[#8b95a1]">
+                <span>👉 클릭 시 해당 관리 탭으로 즉시 이동</span>
+                <span className="font-semibold text-[#a67c48]">실시간 동기화</span>
+              </div>
+            </div>
+          ) : (
+            /* 최소화 알약 버튼 */
+            <button
+              type="button"
+              onClick={() => setIsTodoExpanded(true)}
+              className="group bg-gradient-to-r from-[#a67c48] to-[#8c6535] text-white px-4 py-2.5 rounded-full shadow-xl font-bold text-xs flex items-center gap-2.5 cursor-pointer hover:scale-105 transition-all duration-300 border border-white/30 ml-auto animate-bounce hover:animate-none"
+              style={{ boxShadow: '0 8px 24px rgba(166, 124, 72, 0.4)' }}
+            >
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+              </span>
+              <span>📋 미처리 업무 <strong className="underline underline-offset-2">{totalPendingCount}건</strong></span>
+              <ChevronUp size={15} className="group-hover:-translate-y-0.5 transition-transform" />
+            </button>
+          )}
         </div>
       )}
     </div>
