@@ -1,11 +1,16 @@
 import type { NotificationSettings } from '../../lib/notificationService';
 import { OA_NOTIFICATION_SEND_TELEGRAM, type TelegramResult } from './OA_send_telegram';
+import { writeNotificationDebugLog } from '../../lib/notificationDebug';
 
 export const FA_NOTIFICATION_SEND_CHARGE_REQUEST = async (
   settings: NotificationSettings,
   transactionId: string,
 ): Promise<TelegramResult> => {
   if (!settings.telegramEnabled || !settings.notifyOnChargeRequest) {
+    writeNotificationDebugLog(transactionId || 'unknown', 'NOTIFICATION_SKIPPED', 'warn', {
+      telegramEnabled: settings.telegramEnabled,
+      notifyOnChargeRequest: settings.notifyOnChargeRequest,
+    });
     return { success: true, skipped: true };
   }
   if (!transactionId) return { success: false, error: '충전 신청 ID가 없습니다.' };

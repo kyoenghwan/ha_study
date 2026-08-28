@@ -21,6 +21,7 @@ import {
 } from './atoms/auth/QA_fetch_user_roles';
 import { FA_AUTH_GRANT_ROLE, FA_AUTH_REVOKE_ROLE } from './atoms/auth/FA_manage_role';
 import { RA_NOTIFICATION_CAN_RECEIVE_BRANCH } from './atoms/notification/RA_notification';
+import { writeNotificationDebugLog } from './lib/notificationDebug';
 
 import {
   supabase,
@@ -780,11 +781,20 @@ function App() {
       createdAt: new Date().toISOString(),
     };
 
+    writeNotificationDebugLog(newTx.id, 'CHARGE_REQUEST_START', 'info', {
+      branchId: selectedBranch,
+      amount,
+      telegramEnabled: notificationSettings.telegramEnabled,
+      notifyOnChargeRequest: notificationSettings.notifyOnChargeRequest,
+    });
+
     const saveResult = await saveDbPointTransaction(newTx);
     if (!saveResult.ok) {
+      writeNotificationDebugLog(newTx.id, 'DATABASE_SAVE_ERROR', 'error', { error: saveResult.error });
       await alert({ title: '충전 신청 실패', message: saveResult.error, tone: 'danger' });
       return;
     }
+    writeNotificationDebugLog(newTx.id, 'DATABASE_SAVE_SUCCESS', 'success', { branchId: selectedBranch });
     updatePointTransactions([newTx, ...pointTransactions]);
     setShowPointModal(false);
 
@@ -798,7 +808,12 @@ function App() {
       branchId: branchObj?.id,
     });
     if (!notificationResult.success) {
+      writeNotificationDebugLog(newTx.id, 'TELEGRAM_FINAL_ERROR', 'error', { error: notificationResult.error });
       console.error('[포인트 충전 Telegram 알림 실패]', notificationResult.error);
+    } else {
+      writeNotificationDebugLog(newTx.id, 'TELEGRAM_FINAL_SUCCESS', 'success', {
+        skipped: notificationResult.skipped === true,
+      });
     }
 
     await alert({
