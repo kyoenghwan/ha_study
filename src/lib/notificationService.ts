@@ -70,8 +70,18 @@ export const sendTelegramMessage = async (
   chatId: string,
   text: string,
 ): Promise<{ success: boolean; error?: string }> => {
-  const token = botToken?.trim() || '';
+  let token = botToken?.trim() || '';
   const targetChatId = chatId?.trim() || '';
+
+  // 토큰이 전달되지 않은 경우 DB 설정에서 최신 토큰 조회
+  if (!token) {
+    try {
+      const dbSettings = await fetchDbNotificationSettings();
+      if (dbSettings?.telegramBotToken) {
+        token = dbSettings.telegramBotToken.trim();
+      }
+    } catch { /* ignore */ }
+  }
 
   if (!token || !targetChatId) {
     console.warn('[Telegram] 발송 취소: 봇 토큰이나 Chat ID가 없습니다.');

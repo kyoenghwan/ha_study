@@ -329,8 +329,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // 🔔 알림 설정 로컬 상태
   const [notifSoundEnabled, setNotifSoundEnabled] = useState(notificationSettings.soundEnabled);
   const [notifTelegramEnabled, setNotifTelegramEnabled] = useState(notificationSettings.telegramEnabled);
+  const [notifBotToken, setNotifBotToken] = useState(notificationSettings.telegramBotToken || '');
+  const [notifChatId, setNotifChatId] = useState(notificationSettings.telegramChatId || '');
 
-  const [notifChatId, setNotifChatId] = useState(notificationSettings.telegramChatId);
+  React.useEffect(() => {
+    setNotifSoundEnabled(notificationSettings.soundEnabled);
+    setNotifTelegramEnabled(notificationSettings.telegramEnabled);
+    setNotifBotToken(notificationSettings.telegramBotToken || '');
+    setNotifChatId(notificationSettings.telegramChatId || '');
+  }, [notificationSettings]);
   const [notifSaveMsg, setNotifSaveMsg] = useState(false);
   const [notifTesting, setNotifTesting] = useState(false);
   const [notifTestResult, setNotifTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -2617,6 +2624,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   <div className="space-y-3">
+                    {/* 👑 최고 관리자 전용: 텔레그램 봇 토큰 (HTTP API Token) 설정 */}
+                    {(isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin' || currentUser?.userId === 'kyoenghwan' || currentUser?.isSuperAdmin) && (
+                      <div 
+                        className="py-1"
+                        style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'start', gap: '12px' }}
+                      >
+                        <label className="text-xs font-bold text-[#191f28] pt-2.5 flex items-center gap-1">
+                          <span>👑 봇 토큰 (Bot Token)</span>
+                        </label>
+                        <div className="space-y-1">
+                          <input
+                            type="text"
+                            value={notifBotToken}
+                            onChange={(e) => setNotifBotToken(e.target.value)}
+                            placeholder="예: 8608083217:AAFsHtMNceMV9T__xq_y18_7EWbIAelzMAs"
+                            className="form-input text-xs py-2.5 px-3 rounded-xl border border-[#e5e8eb] bg-white font-mono w-full focus:border-[#0088cc]"
+                          />
+                          <p className="text-[10px] text-[#0088cc] font-medium">
+                            👑 <b>최고 관리자 전용</b>: @BotFather를 통해 발급받은 텔레그램 봇 HTTP API Token을 관리합니다.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* 채팅 ID / 인풋필드 + 텔레그램 테스트 발송 버튼 (1줄 나란히 수평 배치) */}
                     <div 
                       className="py-1"
@@ -2640,8 +2671,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             onClick={async () => {
                               setNotifTesting(true);
                               setNotifTestResult(null);
+                              const tokenToTest = notifBotToken.trim() || notificationSettings.telegramBotToken;
                               const res = await sendTelegramMessage(
-                                '',
+                                tokenToTest,
                                 notifChatId.trim(),
                                 `🔔 <b>[르하임 스터디카페] 텔레그램 알림 연동 성공!</b>\n\n관리자님의 스마트폰으로 포인트 충전 및 이전 신청 알림이 정상 수신됩니다. 🚀`
                               );
@@ -2649,7 +2681,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               if (res.success) {
                                 setNotifTestResult({ success: true, message: '스마트폰 텔레그램으로 테스트 알림이 성공적으로 전송되었습니다!' });
                               } else {
-                                setNotifTestResult({ success: false, message: res.error || '텔레그램 전송 실패 (Chat ID를 확인해 주세요)' });
+                                setNotifTestResult({ success: false, message: res.error || '텔레그램 전송 실패 (Chat ID 및 봇 토큰을 확인해 주세요)' });
                               }
                             }}
                             className="text-xs font-bold text-[#0088cc] bg-white hover:bg-[#0088cc]/10 border border-[#0088cc]/30 px-3.5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 shrink-0 whitespace-nowrap cursor-pointer"
@@ -2664,15 +2696,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* 텔레그램 봇 만들기 1분 안내 */}
+                  {/* 텔레그램 봇 만들기 안내 */}
                   <div className="bg-[#eef8ff] p-3 rounded-xl border border-[#bce3ff] text-[10px] text-[#005580] space-y-1">
                     <p className="font-bold text-[11px] flex items-center gap-1">
-                      💡 텔레그램 Chat ID 확인 방법:
+                      💡 텔레그램 알림 연동 방법:
                     </p>
                     <ol className="list-decimal pl-3.5 space-y-0.5 text-[10px]">
-                      <li>운영 Telegram 봇의 대화방에서 <b>[시작(Start)]</b> 버튼을 누릅니다.</li>
-                      <li><b>@userinfobot</b>에서 본인의 Chat ID 숫자를 확인해 위 입력창에 붙여넣습니다.</li>
-                      <li>봇 토큰은 보안을 위해 서버 Secret에서만 관리됩니다.</li>
+                      {(isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin' || currentUser?.userId === 'kyoenghwan' || currentUser?.isSuperAdmin) && (
+                        <li><b>@BotFather</b>에서 생성한 봇 토큰(HTTP API Token)을 위 입력란에 등록합니다.</li>
+                      )}
+                      <li>운영 텔레그램 봇과의 대화방(또는 지점 단톡방)에서 <b>[시작(Start)]</b> 버튼 또는 아무 메시지를 보냅니다.</li>
+                      <li><b>@userinfobot</b>에서 본인(또는 단톡방)의 Chat ID 숫자를 확인해 위 입력창에 넣고 테스트 메시지를 보냅니다.</li>
                     </ol>
                   </div>
                 </div>
@@ -2682,10 +2716,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  const isSuper = isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin' || currentUser?.userId === 'kyoenghwan' || currentUser?.isSuperAdmin;
                   const newSettings: NotificationSettings = {
                     soundEnabled: notifSoundEnabled,
                     telegramEnabled: notifTelegramEnabled,
-                    telegramBotToken: '',
+                    telegramBotToken: isSuper ? notifBotToken.trim() : (notificationSettings.telegramBotToken || ''),
                     telegramChatId: notifChatId.trim(),
                     notifyOnChargeRequest: true,
                     notifyOnTransferRequest: true,
