@@ -54,6 +54,7 @@ import {
 import type { DbResult } from './lib/supabase';
 
 import { BranchSelectModal } from './components/BranchSelectModal';
+import { BranchPointsModal } from './components/BranchPointsModal';
 import { showAppAlert, showAppConfirm } from './components/AppDialog';
 import type { NotificationSettings } from './lib/notificationService';
 import { 
@@ -353,6 +354,8 @@ function App() {
     alert(`'${targetBranch?.fullName || branchId}' 지점이 삭제되었습니다.`);
   };
   const [showBranchSelectModal, setShowBranchSelectModal] = useState<boolean>(false);
+  // 💰 지점별 내 포인트 현황 및 충전 팝업 모달 상태
+  const [showBranchPointsModal, setShowBranchPointsModal] = useState<boolean>(false);
 
   // 포인트 충전 모달 상태 & 직접 금액 입력 상태
   const [showPointModal, setShowPointModal] = useState<boolean>(false);
@@ -1624,22 +1627,37 @@ function App() {
     <>
       {/* 헤더 바 */}
       <header className="p-4 bg-[#ffffff] border-b border-[#e5e8eb] flex items-center justify-between z-10 shrink-0">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <img 
             src={logoImg} 
             alt="르하임 로고" 
-            style={{ height: '36px', width: 'auto' }}
+            style={{ height: '32px', width: 'auto' }}
           />
-          <h1 className="text-sm font-bold text-[#191f28] flex items-center">
+          <div className="flex items-center gap-1.5">
+            {/* 지점 선택 버튼 */}
             <button
               onClick={() => setShowBranchSelectModal(true)}
-              className="text-[#a67c48] text-sm font-bold bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1 rounded-xl flex items-center gap-1 transition-all"
+              className="text-[#a67c48] text-xs sm:text-sm font-bold bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
               title="지점 변경 팝업 열기"
             >
               <span>{currentBranchObj.fullName || `르하임 ${currentBranchObj.name}`}</span>
               <ChevronRight size={14} />
             </button>
-          </h1>
+
+            {/* 💰 현재 지점 내 포인트 표시 버튼 (터치 시 지점별 포인트 현황 & 충전 팝업 오픈) */}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={() => setShowBranchPointsModal(true)}
+                className="bg-[#fdf9f4] hover:bg-[#f8f1e6] border border-[#a67c48]/40 hover:border-[#a67c48] text-[#a67c48] px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
+                title="내 지점별 포인트 현황 및 충전/이전 팝업 열기"
+              >
+                <Coins size={14} className="text-[#a67c48]" />
+                <span>{getBranchPoints(currentUser, selectedBranch).toLocaleString()} P</span>
+                <span className="text-[9px] font-bold bg-[#a67c48] text-white px-1.5 py-0.2 rounded-md">충전/조회</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 헤더 우측 컨트롤: 알림 벨 뱃지 + 화면 전환 버튼 + 권한 뱃지 + 로그아웃 */}
@@ -1960,6 +1978,22 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* 💰 지점별 내 포인트 현황 및 충전/이전 팝업 모달 */}
+      <BranchPointsModal
+        isOpen={showBranchPointsModal}
+        onClose={() => setShowBranchPointsModal(false)}
+        currentUser={currentUser}
+        branches={branches}
+        selectedBranchId={selectedBranch}
+        onSelectBranch={(bId) => setSelectedBranch(bId)}
+        getBranchPoints={getBranchPoints}
+        onOpenChargeModal={() => setShowPointModal(true)}
+        onOpenTransferModal={() => {
+          // 포인트 충전 모달 또는 화면
+          setShowPointModal(true);
+        }}
+      />
 
       {/* 🏢 지점 선택 및 검색 팝업 모달 (메인 대시보드 화면) */}
       <BranchSelectModal
