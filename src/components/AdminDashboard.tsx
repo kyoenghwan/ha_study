@@ -41,6 +41,7 @@ interface AdminDashboardProps {
   onUpdateReservationBarcode?: (resId: string, newBarcodeId: string) => void;
   onUpdateMasterBarcode?: (barcode: MasterBarcode) => void;
   onApprovePointCharge?: (txId: string) => void;
+  onApprovePointRefund?: (txId: string, feeOption: 'full' | 'deduct') => void;
   onManualAdjustPoint?: (userId: string, amount: number, reason: string) => void;
   /** 계정별 활성 권한 맵 (user_roles). key = users.id */
   userGrants?: Record<string, RoleGrant[]>;
@@ -115,6 +116,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateReservationBarcode,
   onUpdateMasterBarcode,
   onApprovePointCharge,
+  onApprovePointRefund,
   onManualAdjustPoint,
   userGrants: _userGrants = {},
   canManageRole: _canManageRole,
@@ -132,7 +134,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onApprovePointTransfer,
   onRejectPointTransfer,
 }) => {
-  const [pointTabSubMode, setPointTabSubMode] = useState<'charge' | 'transfer'>('charge');
+  const [pointTabSubMode, setPointTabSubMode] = useState<'charge' | 'transfer' | 'refund'>('charge');
+  // 💸 포인트 환불 승인 모달 상태 (100% vs 10% 수수료 공제 선택)
+  const [selectedRefundTx, setSelectedRefundTx] = useState<PointTransaction | null>(null);
+  const [refundFeeOption, setRefundFeeOption] = useState<'full' | 'deduct'>('deduct');
   // 📋 우측 하단 미처리 할 일 팝업 상태
   const [isTodoExpanded, setIsTodoExpanded] = useState(true);
   const [isTodoDismissed, setIsTodoDismissed] = useState(false);
@@ -1122,6 +1127,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   >
                     <ArrowLeftRight size={13} /> 지점 간 이전 승인 ({pointTransferRequests.filter(r => r.status === 'pending').length})
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setPointTabSubMode('refund')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                      pointTabSubMode === 'refund' ? 'bg-white text-[#e93d3d] shadow-sm' : 'text-[#8b95a1] hover:text-[#191f28]'
+                    }`}
+                  >
+                    <Coins size={13} /> 포인트 환불 요청 ({pointTransactions.filter(t => t.type === 'refund' && t.status === 'pending').length})
+                  </button>
                 </div>
               </div>
 
@@ -1210,8 +1224,85 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </table>
                   </div>
                 </div>
+              ) : pointTabSubMode === 'refund' ? (
+                /* 💸 포인트 환불 요청 승인 관제 섹션 (100% 전액 vs 10% 공제 선택 승인) */
+                <div className="space-y-4">
+                  {(() => {
+                    const refundTransactions = pointTransactions.filter((t) => t.type === 'refund');
+
+                    return (
+                      <>
+                        <div className="bg-[#fff9f2] p-3.5 rounded-2xl border border-[#f5d0a9] text-xs text-[#8a5314] flex items-center justify-between">
+                          <span className="font-semibold text-[#191f28]">
+                            💸 포인트 환불 대기: <strong className="text-[#e93d3d] font-bold">{refundTransactions.filter(t => t.status === 'pending').length}건</strong>
+                          </span>
+                          <span className="text-[11px]">환불 승인 시 100% 전액 입금 또는 10% 수수료 공제(90% 입금)를 선택하여 송금 처리합니다.</span>
+                        </div>
+
+                        <div className="overflow-x-auto border border-[#e5e8eb] rounded-xl">
+                          <table className="w-full text-left text-xs min-w-[650px]">
+                            <thead className="bg-[#f8f9fc] border-b border-[#e5e8eb] text-[#191f28]">
+                              <tr>
+                                <th className="p-3">신청 일시</th>
+                                <th className="p-3">회원명 (아이디)</th>
+                                <th className="p-3">신청 포인트</th>
+                                <th className="p-3">환불 계좌 정보 및 사유</th>
+                                <th className="p-3">상태</th>
+                                <th className="p-3 text-center">환불 승인 관리</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#e5e8eb]">
+                              {refundTransactions.length === 0 ? (
+                                <tr>
+                                  <td colSpan={6} className="p-8 text-center text-[#8b95a1]">
+                                    포인트 환불 요청 내역이 없습니다.
+                                  </td>
+                                </tr>
+                              ) : (
+                                refundTransactions.map((tx) => (
+                                  <tr key={tx.id} className="hover:bg-[#f8f9fc]">
+                                    <td className="p-3 text-[#8b95a1] font-mono">{(tx.createdAt || '').slice(0, 16).replace('T', ' ')}</td>
+                                    <td className="p-3 font-bold text-[#191f28]">
+                                      {tx.userName} <span className="text-[10px] text-[#8b95a1] font-normal">({tx.userId})</span>
+                                    </td>
+                                    <td className="p-3 font-extrabold text-sm text-[#e93d3d]">
+                                      {tx.amount.toLocaleString()} P
+                                    </td>
+                                    <td className="p-3 text-[#4e5968] max-w-[280px]">{tx.description}</td>
+                                    <td className="p-3 font-bold">
+                                      {tx.status === 'pending' ? (
+                                        <span className="text-[#e93d3d] bg-[#e93d3d]/10 px-2 py-0.5 rounded font-bold animate-pulse">환불 대기</span>
+                                      ) : (
+                                        <span className="text-[#28a745] bg-[#28a745]/10 px-2 py-0.5 rounded font-bold">환불 완료</span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {tx.status === 'pending' ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedRefundTx(tx);
+                                            setRefundFeeOption('deduct');
+                                          }}
+                                          className="bg-[#e93d3d] hover:bg-[#d02c2c] text-white py-1.5 px-3 text-[11px] font-bold rounded-lg shadow-sm cursor-pointer"
+                                        >
+                                          환불 검토 & 승인
+                                        </button>
+                                      ) : (
+                                        <span className="text-[10px] text-[#8b95a1]">처리 완료</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
               ) : (
-                /* 💳 무통장 입금 충전 승인 섹션 (충전 신청 및 승인 건만 집중 표시) */
                 <div className="space-y-4">
                   {(() => {
                     const chargeTransactions = pointTransactions.filter(
@@ -2795,6 +2886,112 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
       </div>
+
+      {/* 💸 포인트 환불 검토 및 승인 모달 (100% vs 10% 공제 선택) */}
+      {selectedRefundTx && (() => {
+        const reqAmt = selectedRefundTx.amount || 0;
+        const fee10 = Math.round(reqAmt * 0.1);
+        const payout90 = reqAmt - fee10;
+        const finalPayout = refundFeeOption === 'full' ? reqAmt : payout90;
+
+        return (
+          <div className="modal-overlay" onClick={() => setSelectedRefundTx(null)}>
+            <div className="modal-content max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center pb-2.5 border-b border-[#e5e8eb]">
+                <h3 className="text-base font-bold text-[#191f28] flex items-center gap-1.5">
+                  <CreditCard size={18} className="text-[#e93d3d]" /> 포인트 환불 검토 및 송금 승인
+                </h3>
+                <button onClick={() => setSelectedRefundTx(null)} className="text-[#8b95a1] hover:text-[#191f28] text-2xl">&times;</button>
+              </div>
+
+              {/* 신청 요약 */}
+              <div className="bg-[#f8f9fc] p-3.5 rounded-xl border border-[#e5e8eb] space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-[#8b95a1]">신청 회원:</span>
+                  <strong className="text-[#191f28]">{selectedRefundTx.userName} ({selectedRefundTx.userId})</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#8b95a1]">환불 신청 포인트:</span>
+                  <strong className="text-sm font-extrabold text-[#e93d3d]">{reqAmt.toLocaleString()} P</strong>
+                </div>
+                <div className="text-[11px] text-[#4e5968] pt-1 border-t border-[#e5e8eb]">
+                  {selectedRefundTx.description}
+                </div>
+              </div>
+
+              {/* 환불 방식 선택 (100% vs 10% 공제) */}
+              <div className="space-y-2 text-xs">
+                <label className="font-bold text-[#191f28]">환불 지급 방식 선택</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className={`border rounded-xl p-3 cursor-pointer flex flex-col justify-between transition-all ${
+                    refundFeeOption === 'deduct' ? 'border-[#e93d3d] bg-[#fff5f5] ring-2 ring-[#e93d3d]/20' : 'border-[#e5e8eb] bg-white'
+                  }`}>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="refundFee"
+                        checked={refundFeeOption === 'deduct'}
+                        onChange={() => setRefundFeeOption('deduct')}
+                        className="accent-[#e93d3d]"
+                      />
+                      <span className="font-bold text-[#191f28]">10% 수수료 공제</span>
+                    </div>
+                    <span className="text-[10px] text-[#8b95a1] pt-1">위약금 10% 제외 90% 지급</span>
+                    <span className="text-xs font-black text-[#e93d3d] pt-1.5">{payout90.toLocaleString()}원 송금</span>
+                  </label>
+
+                  <label className={`border rounded-xl p-3 cursor-pointer flex flex-col justify-between transition-all ${
+                    refundFeeOption === 'full' ? 'border-[#28a745] bg-[#f0fff4] ring-2 ring-[#28a745]/20' : 'border-[#e5e8eb] bg-white'
+                  }`}>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="refundFee"
+                        checked={refundFeeOption === 'full'}
+                        onChange={() => setRefundFeeOption('full')}
+                        className="accent-[#28a745]"
+                      />
+                      <span className="font-bold text-[#191f28]">100% 전액 환불</span>
+                    </div>
+                    <span className="text-[10px] text-[#8b95a1] pt-1">수수료 없이 전액 지급</span>
+                    <span className="text-xs font-black text-[#28a745] pt-1.5">{reqAmt.toLocaleString()}원 송금</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* 최종 실입금 안내 */}
+              <div className="bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb] flex justify-between items-center text-xs">
+                <span className="font-bold text-[#4e5968]">회원 계좌 실입금액:</span>
+                <span className="text-base font-black text-[#191f28]">{finalPayout.toLocaleString()} 원</span>
+              </div>
+
+              {/* 액션 버튼 */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRefundTx(null)}
+                  className="gold-btn-outline flex-1 py-3 text-xs font-bold rounded-xl"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (onApprovePointRefund) {
+                      onApprovePointRefund(selectedRefundTx.id, refundFeeOption);
+                    }
+                    alert(`포인트 환불 승인이 완료되었습니다. (송금 예정액: ${finalPayout.toLocaleString()}원)`);
+                    setSelectedRefundTx(null);
+                  }}
+                  className="bg-[#e93d3d] hover:bg-[#d02c2c] text-white flex-1 py-3 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Check size={14} /> 송금 완료 & 환불 승인
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 새 공부방 추가 모달 */}
       {showAddRoomModal && (

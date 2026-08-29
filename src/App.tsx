@@ -823,6 +823,33 @@ function App() {
     });
   };
 
+  // 💸 포인트 환불 승인 처리 (100% 전액 vs 10% 수수료 공제)
+  const handleApprovePointRefund = (txId: string, feeOption: 'full' | 'deduct') => {
+    const targetTx = pointTransactions.find((t) => t.id === txId);
+    if (!targetTx) return;
+
+    const reqAmt = targetTx.amount || 0;
+    const fee10 = Math.round(reqAmt * 0.1);
+    const payout = feeOption === 'full' ? reqAmt : reqAmt - fee10;
+
+    const updatedTxList = pointTransactions.map((t) => {
+      if (t.id === txId) {
+        return {
+          ...t,
+          status: 'completed' as const,
+          description: `${t.description} [관리자 승인 완료: ${feeOption === 'full' ? '100% 전액 환불' : '10% 수수료 공제 90% 환불'} (${payout.toLocaleString()}원 송금 완료)]`,
+        };
+      }
+      return t;
+    });
+
+    updatePointTransactions(updatedTxList);
+    const updatedTarget = updatedTxList.find((t) => t.id === txId);
+    if (updatedTarget) {
+      persist('포인트 환불 승인', () => saveDbPointTransaction(updatedTarget));
+    }
+  };
+
   // 관리자 포인트 무통장 입금 확인 승인 처리
   const handleApprovePointCharge = (txId: string) => {
     const targetTx = pointTransactions.find(t => t.id === txId);
@@ -927,39 +954,71 @@ function App() {
     return { success: true };
   };
 
-  // 예약 취소 및 포인트 자동 환불
-  const handleCancelAndRefundReservation = (resId: string) => {
-    const targetRes = reservations.find(r => r.id === resId);
-    if (!targetRes) return;
+  // ⏱️ 예약 취소 및 포인트 환불 (입실 30분 전까지 가능, 10% 위약금 차감 정책)
+  const handleCancelAndRefundReservation = async (
+    resId: string,
+    reason?: string
+  ): Promise<{ success: boolean; message?: string; refundAmount?: number; penaltyAmount?: number }> => {
+    const targetRes = reservations.find((r) => r.id === resId);
+    if (!targetRes) return { success: false, message: '예약 정보를 찾을 수 없습니다.' };
+
+    if (targetRes.barcodeStatus === 'cancelled') {
+      return { success: false, message: '이미 취소된 예약입니다.' };
+    }
+    if (targetRes.barcodeStatus === 'used') {
+      return { success: false, message: '이미 이용 완료된 예약은 취소할 수 없습니다.' };
+    }
+
+    // ⏱️ 입실 30분 전까지만 취소 가능 여부 검증
+    const now = new Date();
+    const resStart = new Date(`${targetRes.date}T${targetRes.startTime}:00`);
+    if (!isNaN(resStart.getTime())) {
+      const diffMinutes = (resStart.getTime() - now.getTime()) / (1000 * 60);
+      if (diffMinutes < 30) {
+        return {
+          success: false,
+          message: '입실 30분 전까지만 예약 취소가 가능합니다. (현재 시작 30분 이내이거나 이용 시간이 경과하였습니다.)',
+        };
+      }
+    }
 
     // 1. 예약 상태 취소 변경
-    const updatedRes = reservations.map(r => r.id === resId ? { ...r, barcodeStatus: 'cancelled' as const } : r);
+    const updatedRes = reservations.map((r) => (r.id === resId ? { ...r, barcodeStatus: 'cancelled' as const } : r));
     updateReservations(updatedRes);
 
-    // 2. 포인트 결제 건이었다면 포인트 자동 환불
-    if (targetRes.paymentMethod === 'points') {
-      const refundAmount = targetRes.costPoints || 4000;
-      const targetUser = users.find(u => u.phone === targetRes.userPhone || u.name === targetRes.userName) || currentUser;
-      
-      if (targetUser) {
-        const nextPoints = (targetUser.points || 0) + refundAmount;
-        const updatedUser = { ...targetUser, points: nextPoints };
-        const updatedUsers = users.map(u => u.id === targetUser.id ? updatedUser : u);
-        updateUsers(updatedUsers);
-        persist('회원 정보', () => updateDbUser(updatedUser));
+    // 2. 포인트 결제 건이었다면 10% 위약금 차감 후 90% 포인트 환불
+    let refundAmount = 0;
+    let penaltyAmount = 0;
 
+    if (targetRes.paymentMethod === 'points') {
+      const originalCost = targetRes.costPoints || 4000;
+      penaltyAmount = Math.round(originalCost * 0.1); // 10% 위약금
+      refundAmount = originalCost - penaltyAmount; // 90% 환불
+
+      const targetUser = users.find((u) => u.phone === targetRes.userPhone || u.name === targetRes.userName) || currentUser;
+      const room = rooms.find((r) => r.id === targetRes.roomId);
+      const branchId = room?.branchId || selectedBranch;
+      const branchName = branches.find((b) => b.id === branchId)?.name || currentBranchObj.name;
+
+      if (targetUser) {
+        // 해당 지점 전용 포인트로 90% 환불 지급
+        const updatedUser = adjustUserBranchPoints(targetUser, branchId, refundAmount);
+        const nextUsers = users.map((u) => (u.id === targetUser.id ? updatedUser : u));
+        updateUsers(nextUsers);
         if (currentUser?.id === targetUser.id) {
           setCurrentUser(updatedUser);
         }
+        persist('회원 정보', () => updateDbUser(updatedUser));
 
         // 환불 트랜잭션 저장
         const refundTx: PointTransaction = {
           id: `tx-refund-${Date.now()}`,
           userId: targetUser.userId,
           userName: targetUser.name,
+          branchId,
           type: 'refund',
           amount: refundAmount,
-          description: `예약 취소에 따른 포인트 자동 환불 (${targetRes.date} ${targetRes.startTime})`,
+          description: `[${branchName}] 예약 취소 환불 (${targetRes.date} ${targetRes.startTime} / 결제 ${originalCost.toLocaleString()}P - 위약금(10%) ${penaltyAmount.toLocaleString()}P = ${refundAmount.toLocaleString()}P 지급${reason ? ` / 사유: ${reason}` : ''})`,
           status: 'completed',
           createdAt: new Date().toISOString(),
         };
@@ -969,7 +1028,59 @@ function App() {
       }
     }
 
-    alert('예약 취소 및 결제 포인트 환불 처리가 완료되었습니다.');
+    return {
+      success: true,
+      refundAmount,
+      penaltyAmount,
+      message: `예약이 성공적으로 취소되었습니다. 10% 위약금(${penaltyAmount.toLocaleString()}P)을 제외한 ${refundAmount.toLocaleString()}P가 환불되었습니다.`,
+    };
+  };
+
+  // 💸 회원의 포인트 계좌 환불 신청 처리 (10% 수수료 제외 정책)
+  const handleApplyPointRefundRequest = async (data: {
+    amount: number;
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+    reason?: string;
+  }): Promise<{ success: boolean; message?: string }> => {
+    if (!currentUser) return { success: false, message: '로그인이 필요합니다.' };
+    const currentPts = getBranchPoints(currentUser, selectedBranch);
+    if (currentPts < data.amount) {
+      return { success: false, message: `보유 포인트(${currentPts.toLocaleString()}P)보다 큰 금액은 환불 신청할 수 없습니다.` };
+    }
+
+    const branchName = branches.find((b) => b.id === selectedBranch)?.name || currentBranchObj.name;
+    const penaltyAmount = Math.round(data.amount * 0.1);
+    const payoutAmount = data.amount - penaltyAmount;
+
+    // 포인트 차감
+    const updatedUser = adjustUserBranchPoints(currentUser, selectedBranch, -data.amount);
+    const nextUsers = users.map((u) => (u.id === currentUser.id ? updatedUser : u));
+    updateUsers(nextUsers);
+    setCurrentUser(updatedUser);
+    persist('포인트 환불 신청 차감', () => updateDbUser(updatedUser));
+
+    // 환불 신청 트랜잭션 기록
+    const refundTx: PointTransaction = {
+      id: `tx-refund-req-${Date.now()}`,
+      userId: currentUser.userId,
+      userName: currentUser.name,
+      branchId: selectedBranch,
+      type: 'refund',
+      amount: data.amount,
+      description: `[${branchName}] 포인트 계좌 환불 신청 (신청: ${data.amount.toLocaleString()}P ➔ 실입금예정(90%): ${payoutAmount.toLocaleString()}원 / 계좌: ${data.bankName} ${data.accountNumber} ${data.accountHolder}${data.reason ? ` / 사유: ${data.reason}` : ''})`,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    updatePointTransactions([refundTx, ...pointTransactions]);
+    persist('포인트 환불 신청 저장', () => saveDbPointTransaction(refundTx));
+
+    return {
+      success: true,
+      message: `포인트 환불 신청이 완료되었습니다.\n관리자 확인 후 10% 수수료를 제외한 ${payoutAmount.toLocaleString()}원이 입력하신 계좌(${data.bankName})로 입금됩니다.`,
+    };
   };
 
   // 회원 개인정보 수정 (이름, 연락처, 비밀번호, 텔레그램 Chat ID)
@@ -1659,6 +1770,7 @@ function App() {
             onUpdateReservationBarcode={handleUpdateReservationBarcode}
             onUpdateMasterBarcode={handleUpdateMasterBarcode}
             onApprovePointCharge={handleApprovePointCharge}
+            onApprovePointRefund={handleApprovePointRefund}
             onManualAdjustPoint={handleManualAdjustPoint}
             userGrants={allUserGrants}
             canManageRole={canManageRole}
@@ -1693,7 +1805,9 @@ function App() {
             }
             getBranchPoints={getBranchPoints}
             pointTransferRequests={pointTransferRequests.filter((r) => r.userId === currentUser?.userId || r.userId === currentUser?.id)}
+            pointTransactions={pointTransactions.filter((t) => t.userId === currentUser?.userId || t.userId === currentUser?.id)}
             onApplyPointTransfer={handleApplyPointTransfer}
+            onApplyPointRefundRequest={handleApplyPointRefundRequest}
             onSelectRoom={(roomId) => setSelectedRoomId(roomId)}
             onCancelAndRefundReservation={handleCancelAndRefundReservation}
             onOpenPointModal={() => setShowPointModal(true)}

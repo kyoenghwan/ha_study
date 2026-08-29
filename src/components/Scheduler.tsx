@@ -152,25 +152,6 @@ export const Scheduler: React.FC<SchedulerProps> = ({
 
   const WEEKLY_DAYS = getWeeklyDays();
 
-  // 🖱️ 마우스 & 터치 드래그 다중 슬롯 선택 상태
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragMode, setDragMode] = useState<'select' | 'deselect'>('select');
-  const dragStartSlotRef = useRef<{ date: string; start: string; end: string } | null>(null);
-
-  // 마우스 업 전역 리스너
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      setIsDragging(false);
-      dragStartSlotRef.current = null;
-    };
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    window.addEventListener('touchend', handleGlobalMouseUp);
-    return () => {
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-      window.removeEventListener('touchend', handleGlobalMouseUp);
-    };
-  }, []);
-
   // 슬롯 유효성 검사 (예약됨 또는 과거 시간 여부)
   const isSlotAvailable = (date: string, start: string, end: string) => {
     if (findReservation(date, start, end)) return false;
@@ -181,78 +162,24 @@ export const Scheduler: React.FC<SchedulerProps> = ({
     return true;
   };
 
-  // 드래그 시작 (MouseDown / TouchStart)
-  const handleSlotMouseDown = (date: string, start: string, end: string) => {
+  // 👆 슬롯 클릭 선택/해제 토글 핸들러 (원클릭 다중 선택 및 간편 해제)
+  const handleSlotClick = (date: string, start: string, end: string) => {
     if (!isSlotAvailable(date, start, end)) return;
 
-    const alreadySelected = isSlotSelected(date, start, end);
-    const mode = alreadySelected ? 'deselect' : 'select';
-    setDragMode(mode);
-    setIsDragging(true);
-    dragStartSlotRef.current = { date, start, end };
-
-    if (mode === 'select') {
-      setSelectedSlots((prev) => {
-        if (prev.some((s) => s.date === date && s.start === start && s.end === end)) return prev;
-        return [...prev, { date, start, end }];
-      });
-    } else {
-      setSelectedSlots((prev) => prev.filter((s) => !(s.date === date && s.start === start && s.end === end)));
-    }
-  };
-
-  // 드래그 이동 중 (MouseEnter / TouchMove)
-  const handleSlotMouseEnter = (date: string, start: string, end: string) => {
-    if (!isDragging || !dragStartSlotRef.current) return;
-    if (!isSlotAvailable(date, start, end)) return;
-
-    const startSlot = dragStartSlotRef.current;
-    // 같은 날짜 내에서만 연속 슬롯 범위 계산
-    if (startSlot.date !== date) return;
-
-    const startMin = timeToMinutes(startSlot.start);
-    const currMin = timeToMinutes(start);
-    const minRange = Math.min(startMin, currMin);
-    const maxRange = Math.max(timeToMinutes(startSlot.end), timeToMinutes(end));
-
-    // 범위 내의 모든 유효 슬롯 추출
-    const rangeSlots = TIME_SLOTS.filter((s) => {
-      const sStartMin = timeToMinutes(s.start);
-      const sEndMin = timeToMinutes(s.end);
-      return sStartMin >= minRange && sEndMin <= maxRange && isSlotAvailable(date, s.start, s.end);
-    }).map((s) => ({ date, start: s.start, end: s.end }));
-
-    if (dragMode === 'select') {
-      setSelectedSlots((prev) => {
-        const merged = [...prev];
-        rangeSlots.forEach((slot) => {
-          if (!merged.some((s) => s.date === slot.date && s.start === slot.start && s.end === slot.end)) {
-            merged.push(slot);
-          }
+    setSelectedSlots((prev) => {
+      const isAlready = prev.some((s) => s.date === date && s.start === start && s.end === end);
+      if (isAlready) {
+        // 이미 선택된 슬롯 클릭 시 해제
+        return prev.filter((s) => !(s.date === date && s.start === start && s.end === end));
+      } else {
+        // 미선택 슬롯 클릭 시 추가
+        const next = [...prev, { date, start, end }];
+        return next.sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return timeToMinutes(a.start) - timeToMinutes(b.start);
         });
-        return merged;
-      });
-    } else {
-      setSelectedSlots((prev) => {
-        return prev.filter(
-          (s) => !(s.date === date && rangeSlots.some((rs) => rs.start === s.start && rs.end === s.end))
-        );
-      });
-    }
-  };
-
-  // 모바일 터치 드래그 핸들러
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    const touch = e.touches[0];
-    const elem = document.elementFromPoint(touch.clientX, touch.clientY);
-    const slotKey = elem?.getAttribute('data-slot-key') || elem?.closest('[data-slot-key]')?.getAttribute('data-slot-key');
-    if (slotKey) {
-      const [date, start, end] = slotKey.split('|');
-      if (date && start && end) {
-        handleSlotMouseEnter(date, start, end);
       }
-    }
+    });
   };
 
   const isSlotSelected = (date: string, start: string, end: string) => {
@@ -370,8 +297,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({
       {/* 스케줄 타임라인 표출 영역 (마우스 및 터치 드래그 다중 선택 지원) */}
       <div 
         ref={timelineContainerRef} 
-        onTouchMove={handleTouchMove}
-        className="flex-1 overflow-y-auto p-4 scroll-smooth select-none"
+                className="flex-1 overflow-y-auto p-4 scroll-smooth select-none"
       >
         {viewMode === 'daily' ? (
           /* 일별 스케줄 타임라인 */
@@ -389,12 +315,9 @@ export const Scheduler: React.FC<SchedulerProps> = ({
                 <div
                   key={index}
                   ref={isCurrentSlot ? currentSlotRef : null}
-                  data-slot-key={`${selectedDate}|${slot.start}|${slot.end}`}
-                  onMouseDown={() => handleSlotMouseDown(selectedDate, slot.start, slot.end)}
-                  onMouseEnter={() => handleSlotMouseEnter(selectedDate, slot.start, slot.end)}
-                  onTouchStart={() => handleSlotMouseDown(selectedDate, slot.start, slot.end)}
+                  onClick={() => handleSlotClick(selectedDate, slot.start, slot.end)}
                   className={`rounded-2xl p-3.5 flex justify-between items-center transition-all shadow-sm select-none ${
-                    existingRes || isPastSlot ? 'cursor-not-allowed' : 'cursor-pointer'
+                    existingRes || isPastSlot ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-[#a67c48]/60'
                   } ${isSelected ? 'border-2 -translate-y-0.5 shadow-md' : 'border'}`}
                   style={{
                     backgroundColor: isSelected
@@ -522,10 +445,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({
                         return (
                           <td
                             key={day.date}
-                            data-slot-key={`${day.date}|${slot.start}|${slot.end}`}
-                            onMouseDown={() => handleSlotMouseDown(day.date, slot.start, slot.end)}
-                            onMouseEnter={() => handleSlotMouseEnter(day.date, slot.start, slot.end)}
-                            onTouchStart={() => handleSlotMouseDown(day.date, slot.start, slot.end)}
+                            onClick={() => handleSlotClick(day.date, slot.start, slot.end)}
                             className={`select-none cursor-pointer transition-colors ${isSelected ? 'weekly-cell-selected' : 'weekly-cell-available'}`}
                           >
                             {isSelected ? '선택' : '예약'}
