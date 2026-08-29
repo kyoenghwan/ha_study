@@ -1640,7 +1640,7 @@ function App() {
               className="text-[#a67c48] text-xs sm:text-sm font-bold bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
               title="지점 변경 팝업 열기"
             >
-              <span>{currentBranchObj.fullName || `르하임 ${currentBranchObj.name}`}</span>
+              <span>{currentBranchObj.name}</span>
               <ChevronRight size={14} />
             </button>
 
