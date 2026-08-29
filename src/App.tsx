@@ -1989,10 +1989,7 @@ function App() {
         onSelectBranch={(bId) => setSelectedBranch(bId)}
         getBranchPoints={getBranchPoints}
         onOpenChargeModal={() => setShowPointModal(true)}
-        onOpenTransferModal={() => {
-          // 포인트 충전 모달 또는 화면
-          setShowPointModal(true);
-        }}
+        onApplyPointTransfer={handleApplyPointTransfer}
       />
 
       {/* 🏢 지점 선택 및 검색 팝업 모달 (메인 대시보드 화면) */}
