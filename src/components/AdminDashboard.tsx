@@ -161,8 +161,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newAdminPhone, setNewAdminPhone] = useState('');
   const [newAdminTelegramChatId, setNewAdminTelegramChatId] = useState('');
 
-  // 특정 회원을 지점 관리자로 지정하는 헬퍼
+  // 특정 회원을 지점 관리자로 지정하는 헬퍼 (최고 관리자 전용)
   const handleOpenAssignAdminModal = (user?: UserAccount) => {
+    const isSuper = isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin' || currentUser?.userId === 'kyoenghwan' || currentUser?.isSuperAdmin;
+    if (!isSuper) {
+      alert('관리 권한 설정은 최고 관리자만 수행할 수 있습니다.');
+      return;
+    }
     setAdminUserSearchQuery('');
     if (user) {
       setAdminRegMode('existing');
@@ -1754,12 +1759,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
                 
                 <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => handleOpenAssignAdminModal()}
-                    className="gold-btn text-xs font-bold py-2.5 px-3.5 rounded-xl shadow flex items-center gap-1.5 whitespace-nowrap"
-                  >
-                    <Plus size={15} /> 지점 관리자 등록
-                  </button>
+                  {(isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin' || currentUser?.userId === 'kyoenghwan' || currentUser?.isSuperAdmin) && (
+                    <button
+                      onClick={() => handleOpenAssignAdminModal()}
+                      className="gold-btn text-xs font-bold py-2.5 px-3.5 rounded-xl shadow flex items-center gap-1.5 whitespace-nowrap"
+                    >
+                      <Plus size={15} /> 지점 관리자 등록
+                    </button>
+                  )}
                   <span className="text-xs font-bold bg-[#a67c48]/10 text-[#a67c48] px-3 py-2 rounded-xl border border-[#a67c48]/30 shrink-0">
                     총 {users.length}명
                   </span>
@@ -1811,15 +1818,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               </span>
                             )}
 
-                            {/* 권한 관리 버튼 (모든 계정에 노출되어 자유로운 승격/수정 가능) */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAssignAdminModal(u)}
-                              className="text-[11px] font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
-                              title="관리 권한 및 담당 지점 설정"
-                            >
-                              ⚙️ 권한 설정
-                            </button>
+                            {/* 권한 관리 버튼 (👑 최고 관리자에게만 노출) */}
+                            {(isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin' || currentUser?.userId === 'kyoenghwan' || currentUser?.isSuperAdmin) && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAssignAdminModal(u)}
+                                className="text-[11px] font-bold text-[#a67c48] bg-[#a67c48]/10 hover:bg-[#a67c48]/20 border border-[#a67c48]/30 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                                title="관리 권한 및 담당 지점 설정"
+                              >
+                                ⚙️ 권한 설정
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td className="p-3">
