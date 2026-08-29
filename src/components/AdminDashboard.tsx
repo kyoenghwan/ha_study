@@ -3034,9 +3034,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!newAdminUserId.trim() || !newAdminName.trim() || !newAdminPhone.trim()) {
-                  alert('모든 필수 항목을 입력해 주세요.');
-                  return;
+                if (adminRegMode === 'new') {
+                  if (!newAdminUserId.trim() || !newAdminPassword.trim() || !newAdminName.trim() || !newAdminPhone.trim()) {
+                    alert('신규 관리자의 아이디, 비밀번호, 성함, 연락처를 모두 입력해 주세요.');
+                    return;
+                  }
+                } else {
+                  if (!newAdminUserId.trim()) {
+                    alert('권한을 부여할 회원을 선택해 주세요.');
+                    return;
+                  }
                 }
                 if (newAdminBranchIds.length === 0) {
                   alert('담당할 지점을 최소 1개 이상 선택해 주세요.');
@@ -3047,7 +3054,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     branchIds: newAdminBranchIds,
                     roleCode: newAdminRoleCode,
                     userId: newAdminUserId.trim(),
-                    password: newAdminPassword.trim() || '1234',
+                    password: adminRegMode === 'new' ? (newAdminPassword.trim() || '1234') : undefined,
                     name: newAdminName.trim(),
                     phone: newAdminPhone.trim(),
                     telegramChatId: newAdminTelegramChatId.trim(),
@@ -3057,6 +3064,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     setNewAdminUserId('');
                     setNewAdminName('');
                     setNewAdminPhone('');
+                    setNewAdminTelegramChatId('');
                     setNewAdminBranchIds(branches.length > 0 ? [branches[0].id] : ['yeouido']);
                   }
                 }
@@ -3262,33 +3270,82 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </p>
               </div>
 
-              {/* 아이디 & 비밀번호 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="form-group space-y-1">
-                  <label className="font-bold text-[#191f28]">아이디</label>
-                  <input
-                    type="text"
-                    required
-                    readOnly={adminRegMode === 'existing'}
-                    value={newAdminUserId}
-                    onChange={(e) => setNewAdminUserId(e.target.value)}
-                    placeholder="예: kyoenghwan"
-                    className={`form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] ${adminRegMode === 'existing' ? 'bg-[#f0f0f2] text-[#4e5968]' : 'focus:border-[#a67c48]'}`}
-                  />
-                </div>
+              {/* ✨ 신규 관리자 생성 시에만 아이디/비밀번호/성함/연락처 입력란 노출 */}
+              {adminRegMode === 'new' ? (
+                <div className="space-y-3 bg-[#f8f9fc] p-3.5 rounded-2xl border border-[#e5e8eb]">
+                  <p className="font-bold text-xs text-[#191f28]">✨ 신규 계정 정보 입력</p>
+                  
+                  {/* 아이디 & 비밀번호 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="form-group space-y-1">
+                      <label className="font-bold text-[#191f28]">아이디 *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newAdminUserId}
+                        onChange={(e) => setNewAdminUserId(e.target.value)}
+                        placeholder="예: manager_yeouido"
+                        className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48]"
+                      />
+                    </div>
 
-                <div className="form-group space-y-1">
-                  <label className="font-bold text-[#191f28]">비밀번호</label>
-                  <input
-                    type="text"
-                    required
-                    value={newAdminPassword}
-                    onChange={(e) => setNewAdminPassword(e.target.value)}
-                    placeholder="예: 1234"
-                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
-                  />
+                    <div className="form-group space-y-1">
+                      <label className="font-bold text-[#191f28]">초기 비밀번호 *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newAdminPassword}
+                        onChange={(e) => setNewAdminPassword(e.target.value)}
+                        placeholder="예: 1234"
+                        className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 성함 & 연락처 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="form-group space-y-1">
+                      <label className="font-bold text-[#191f28]">담당자 성함 *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newAdminName}
+                        onChange={(e) => setNewAdminName(e.target.value)}
+                        placeholder="예: 김관리"
+                        className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48]"
+                      />
+                    </div>
+
+                    <div className="form-group space-y-1">
+                      <label className="font-bold text-[#191f28]">휴대폰 번호 *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newAdminPhone}
+                        onChange={(e) => setNewAdminPhone(e.target.value)}
+                        placeholder="예: 010-1234-5678"
+                        className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48]"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* 👤 기존 회원 모드일 때는 선택된 회원 정보 요약 표시 */
+                <div className="bg-[#f0f4f9] p-3 rounded-xl border border-[#d2e0f0] flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-[#a67c48] text-white flex items-center justify-center font-bold text-xs">
+                      {newAdminName.slice(0, 1) || '회'}
+                    </div>
+                    <div>
+                      <p className="font-bold text-[#191f28]">{newAdminName || '회원 선택'} <span className="text-[#8b95a1] font-normal">({newAdminUserId})</span></p>
+                      <p className="text-[11px] text-[#4e5968]">연락처: {newAdminPhone || '-'}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#a67c48] border border-[#a67c48]/30">
+                    기존 계정에 권한 부여
+                  </span>
+                </div>
+              )}
 
               {/* 텔레그램 알림 Chat ID */}
               <div className="form-group space-y-1 bg-[#f8f9fc] p-3 rounded-2xl border border-[#e5e8eb]">
@@ -3303,35 +3360,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="form-input text-xs py-2.5 px-3 rounded-xl w-full border border-[#e5e8eb] bg-white focus:border-[#a67c48]"
                 />
                 <p className="text-[10px] text-[#8b95a1] pt-0.5">
-                  💡 담당 지점에서 발생하는 포인트 충전 알림을 받을 본인의 Telegram Chat ID를 입력하세요.
+                  💡 담당 지점에서 발생하는 포인트 충전 알림을 받을 본인의 Telegram Chat ID를 입력하세요. (선택사항)
                 </p>
-              </div>
-
-              {/* 성함 & 연락처 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="form-group space-y-1">
-                  <label className="font-bold text-[#191f28]">성함</label>
-                  <input
-                    type="text"
-                    required
-                    value={newAdminName}
-                    onChange={(e) => setNewAdminName(e.target.value)}
-                    placeholder="예: 김하윤"
-                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
-                  />
-                </div>
-
-                <div className="form-group space-y-1">
-                  <label className="font-bold text-[#191f28]">휴대폰 번호</label>
-                  <input
-                    type="text"
-                    required
-                    value={newAdminPhone}
-                    onChange={(e) => setNewAdminPhone(e.target.value)}
-                    placeholder="예: 010-1234-1234"
-                    className="form-input text-xs py-2 px-3 rounded-xl w-full border border-[#e5e8eb] focus:border-[#a67c48]"
-                  />
-                </div>
               </div>
 
               <div className="flex gap-2 pt-3">
