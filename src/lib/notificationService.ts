@@ -185,27 +185,39 @@ export const triggerChargeRequestNotification = async (
     branchId: info.branchId,
   });
 
-  // 지점 맞춤 알림: branchId가 있으면 해당 지점 관리자의 telegramChatId를 찾음
-  if (info.branchId) {
-    try {
-      const users = await fetchDbUsers();
+  // 🌟 계정별 텔레그램 알림 라우팅:
+  // 1순위: 해당 지점 담당 관리자 중 telegramChatId가 있는 관리자
+  // 2순위: 최고 관리자 계정 중 telegramChatId가 있는 관리자
+  try {
+    const users = await fetchDbUsers();
+    if (info.branchId) {
       const branchAdmins = users.filter(u => u.role === 'admin' && u.branchIds?.includes(info.branchId!));
-      const adminWithChatId = branchAdmins.find(u => u.telegramChatId);
+      const adminWithChatId = branchAdmins.find(u => u.telegramChatId?.trim());
       if (adminWithChatId && adminWithChatId.telegramChatId) {
-        chatIdToUse = adminWithChatId.telegramChatId;
+        chatIdToUse = adminWithChatId.telegramChatId.trim();
         writeNotificationDebugLog(traceId, 'BRANCH_ADMIN_FOUND', 'success', {
           adminUserId: adminWithChatId.userId,
           chatId: chatIdToUse,
         });
-      } else {
-        writeNotificationDebugLog(traceId, 'NO_BRANCH_ADMIN_CHATID', 'warn', {
-          branchId: info.branchId,
-          adminsFound: branchAdmins.length,
+      }
+    }
+    
+    // 지점 관리자의 Chat ID가 없으면 최고 관리자 계정의 Chat ID로 폴백
+    if (!chatIdToUse) {
+      const superAdmin = users.find(u => 
+        (u.userId === 'admin' || u.userId === 'kyoenghwan' || u.isSuperAdmin || u.adminRoleCode === 'PLATFORM_ADMIN') && 
+        Boolean(u.telegramChatId?.trim())
+      );
+      if (superAdmin && superAdmin.telegramChatId) {
+        chatIdToUse = superAdmin.telegramChatId.trim();
+        writeNotificationDebugLog(traceId, 'SUPER_ADMIN_FALLBACK_FOUND', 'info', {
+          superAdminId: superAdmin.userId,
+          chatId: chatIdToUse,
         });
       }
-    } catch (e) {
-      console.warn('[Telegram] 지점 관리자 조회 실패:', e);
     }
+  } catch (e) {
+    console.warn('[Telegram] 관리자 조회 실패:', e);
   }
 
   if (!chatIdToUse) {

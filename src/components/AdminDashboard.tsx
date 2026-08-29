@@ -338,14 +338,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [notifSoundEnabled, setNotifSoundEnabled] = useState(notificationSettings.soundEnabled);
   const [notifTelegramEnabled, setNotifTelegramEnabled] = useState(notificationSettings.telegramEnabled);
   const [notifBotToken, setNotifBotToken] = useState(notificationSettings.telegramBotToken || '');
-  const [notifChatId, setNotifChatId] = useState(currentUser?.telegramChatId || notificationSettings.telegramChatId || '');
+  // 📱 내 텔레그램 Chat ID는 공용 설정이 아닌 '현재 로그인한 관리자 계정(currentUser)'에만 개별 귀속
+  const [notifChatId, setNotifChatId] = useState(currentUser?.telegramChatId || '');
 
   React.useEffect(() => {
     setNotifSoundEnabled(notificationSettings.soundEnabled);
     setNotifTelegramEnabled(notificationSettings.telegramEnabled);
     setNotifBotToken(notificationSettings.telegramBotToken || '');
-    setNotifChatId(currentUser?.telegramChatId || notificationSettings.telegramChatId || '');
   }, [notificationSettings]);
+
+  React.useEffect(() => {
+    setNotifChatId(currentUser?.telegramChatId || '');
+  }, [currentUser?.telegramChatId, currentUser?.userId]);
   const [notifSaveMsg, setNotifSaveMsg] = useState(false);
   const [notifTesting, setNotifTesting] = useState(false);
   const [notifTestResult, setNotifTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -2760,18 +2764,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 type="button"
                 onClick={() => {
                   const isSuper = isSuperAdmin || currentAdminRole === 'PLATFORM_ADMIN' || currentUser?.userId === 'admin' || currentUser?.userId === 'kyoenghwan' || currentUser?.isSuperAdmin;
+                  // 1. 공용 알림 설정 (봇 토큰 및 알림 켜기/끄기 옵션만 전역 저장)
                   const newSettings: NotificationSettings = {
                     soundEnabled: notifSoundEnabled,
                     telegramEnabled: notifTelegramEnabled,
                     telegramBotToken: isSuper ? notifBotToken.trim() : (notificationSettings.telegramBotToken || ''),
-                    telegramChatId: notifChatId.trim(),
+                    telegramChatId: '', // 공용 테이블에는 빈 값 유지 (계정별 완전 격리)
                     notifyOnChargeRequest: true,
                     notifyOnTransferRequest: true,
                   };
                   if (onUpdateNotificationSettings) {
                     onUpdateNotificationSettings(newSettings);
                   }
-                  // 현재 로그인한 관리자 계정에도 본인의 telegramChatId로 개별 저장/동기화
+                  // 2. 텔레그램 Chat ID는 오직 '현재 로그인한 관리자 본인 계정'에만 개별 저장
                   if (onUpdateUserProfile && currentUser) {
                     onUpdateUserProfile(currentUser.userId, {
                       name: currentUser.name,
