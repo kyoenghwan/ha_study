@@ -853,6 +853,47 @@ function App() {
     }
   };
 
+  // 🚫 관리자 포인트 충전 신청 취소/반려 처리 (미입금 취소 또는 기승인 포인트 회수 취소)
+  const handleRejectPointCharge = async (txId: string, reason?: string) => {
+    const targetTx = pointTransactions.find((t) => t.id === txId);
+    if (!targetTx) return;
+
+    // 이미 완료(completed)된 충전 건이었다면 회원에게서 해당 포인트를 다시 회수(차감)
+    if (targetTx.status === 'completed') {
+      const targetUser = users.find((u) => u.userId === targetTx.userId || u.id === targetTx.userId);
+      if (targetUser) {
+        const branchId = targetTx.branchId || selectedBranch;
+        const updatedUser = adjustUserBranchPoints(targetUser, branchId, -targetTx.amount);
+        const updatedUsers = users.map((u) => (u.id === targetUser.id ? updatedUser : u));
+        updateUsers(updatedUsers);
+        if (currentUser?.id === targetUser.id) {
+          setCurrentUser(updatedUser);
+        }
+        persist('충전 승인 취소에 따른 포인트 회수', () => updateDbUser(updatedUser));
+      }
+    }
+
+    const cancelDesc = reason ? `[관리자 취소/반려: ${reason}]` : '[관리자 취소/반려]';
+    const updatedTxList = pointTransactions.map((t) => {
+      if (t.id === txId) {
+        return {
+          ...t,
+          status: 'cancelled' as const,
+          description: `${t.description} ${cancelDesc}`,
+        };
+      }
+      return t;
+    });
+
+    updatePointTransactions(updatedTxList);
+    const updatedTarget = updatedTxList.find((t) => t.id === txId);
+    if (updatedTarget) {
+      persist('충전 신청 취소/반려 이력', () => saveDbPointTransaction(updatedTarget));
+    }
+
+    alert(`'${targetTx.userName}' 회원님의 ${targetTx.amount.toLocaleString()}P 충전 건이 취소(반려)되었습니다.`);
+  };
+
   // 관리자 포인트 무통장 입금 확인 승인 처리
   const handleApprovePointCharge = (txId: string) => {
     const targetTx = pointTransactions.find(t => t.id === txId);
@@ -1788,6 +1829,7 @@ function App() {
             onUpdateReservationBarcode={handleUpdateReservationBarcode}
             onUpdateMasterBarcode={handleUpdateMasterBarcode}
             onApprovePointCharge={handleApprovePointCharge}
+            onRejectPointCharge={handleRejectPointCharge}
             onApprovePointRefund={handleApprovePointRefund}
             onManualAdjustPoint={handleManualAdjustPoint}
             userGrants={allUserGrants}

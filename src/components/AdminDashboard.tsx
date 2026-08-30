@@ -41,6 +41,7 @@ interface AdminDashboardProps {
   onUpdateReservationBarcode?: (resId: string, newBarcodeId: string) => void;
   onUpdateMasterBarcode?: (barcode: MasterBarcode) => void;
   onApprovePointCharge?: (txId: string) => void;
+  onRejectPointCharge?: (txId: string, reason?: string) => void;
   onApprovePointRefund?: (txId: string, feeOption: 'full' | 'deduct') => void;
   onManualAdjustPoint?: (userId: string, amount: number, reason: string) => void;
   /** 계정별 활성 권한 맵 (user_roles). key = users.id */
@@ -116,6 +117,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateReservationBarcode,
   onUpdateMasterBarcode,
   onApprovePointCharge,
+  onRejectPointCharge,
   onApprovePointRefund,
   onManualAdjustPoint,
   userGrants: _userGrants = {},
@@ -1347,24 +1349,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
 
                                 <div className="flex justify-between items-center bg-[#f8f9fc] p-3 rounded-xl border border-[#e5e8eb]">
-                                  <p className="text-xs font-medium text-[#4e5968]">{tx.description}</p>
+                                  <p className="text-xs font-medium text-[#4e5968]">
+                                    {tx.description.replace(/__branch_id=[^_\s]+__\s*/g, '')}
+                                  </p>
                                   <span className="text-base font-extrabold text-[#191f28] shrink-0 pl-2">
                                     {tx.amount.toLocaleString()} P
                                   </span>
                                 </div>
 
-                                <div className="flex justify-between items-center pt-2 border-t border-[#f1f3f5] text-xs">
+                                <div className="flex justify-between items-center pt-2 border-t border-[#f1f3f5] text-xs gap-2">
                                   <span className="text-[#8b95a1] font-mono text-[11px]">
                                     {(tx.createdAt || '').split('T')[0] || '-'}
                                   </span>
-                                  {tx.status === 'pending' && onApprovePointCharge && (
-                                    <button
-                                      onClick={() => onApprovePointCharge(tx.id)}
-                                      className="gold-btn py-1.5 px-3 text-xs font-bold rounded-lg shadow-sm"
-                                    >
-                                      입금 확인 & 즉시 승인
-                                    </button>
-                                  )}
+                                  <div className="flex items-center gap-1.5">
+                                    {tx.status === 'pending' && (
+                                      <>
+                                        {onRejectPointCharge && (
+                                          <button
+                                            type="button"
+                                            onClick={async () => {
+                                              if (await showAppConfirm({ title: '충전 신청 취소/반려', message: `'${tx.userName}' 회원님의 ${tx.amount.toLocaleString()}P 충전 신청을 취소(반려)하시겠습니까?`, tone: 'warning' })) {
+                                                onRejectPointCharge(tx.id, '관리자 미입금 취소');
+                                              }
+                                            }}
+                                            className="text-xs font-bold text-[#e93d3d] border border-[#e93d3d]/30 bg-[#e93d3d]/5 hover:bg-[#e93d3d]/15 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer"
+                                          >
+                                            신청 취소
+                                          </button>
+                                        )}
+                                        {onApprovePointCharge && (
+                                          <button
+                                            onClick={() => onApprovePointCharge(tx.id)}
+                                            className="gold-btn py-1.5 px-3 text-xs font-bold rounded-lg shadow-sm cursor-pointer"
+                                          >
+                                            입금 확인 & 즉시 승인
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+                                    {tx.status === 'completed' && onRejectPointCharge && (
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          if (await showAppConfirm({ title: '승인 취소 (포인트 회수)', message: `'${tx.userName}' 회원님에게 지급된 ${tx.amount.toLocaleString()}P를 회수하고 충전 승인을 취소하시겠습니까?`, tone: 'warning' })) {
+                                            onRejectPointCharge(tx.id, '관리자 승인 후 취소/포인트 회수');
+                                          }
+                                        }}
+                                        className="text-[11px] font-bold text-[#8b95a1] hover:text-[#e93d3d] border border-[#e5e8eb] hover:border-[#e93d3d]/40 bg-white py-1 px-2 rounded-md transition-all cursor-pointer"
+                                      >
+                                        승인 취소 (회수)
+                                      </button>
+                                    )}
+                                    {tx.status === 'cancelled' && (
+                                      <span className="text-[11px] font-bold text-[#8b95a1] bg-[#f1f3f5] px-2 py-0.5 rounded">취소됨</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             ))
@@ -1401,22 +1440,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <td className="p-3 font-extrabold text-sm text-[#191f28]">
                                       {tx.amount.toLocaleString()} P
                                     </td>
-                                    <td className="p-3 text-[#4e5968] max-w-[240px] truncate">{tx.description}</td>
+                                    <td className="p-3 text-[#4e5968] max-w-[240px] truncate">
+                                      {tx.description.replace(/__branch_id=[^_\s]+__\s*/g, '')}
+                                    </td>
                                     <td className="p-3 font-bold">
                                       {tx.status === 'pending' && <span className="text-[#f59e0b] bg-[#f59e0b]/10 px-2 py-0.5 rounded">입금대기</span>}
                                       {tx.status === 'completed' && <span className="text-[#28a745] bg-[#28a745]/10 px-2 py-0.5 rounded">충전완료</span>}
+                                      {tx.status === 'cancelled' && <span className="text-[#e93d3d] bg-[#e93d3d]/10 px-2 py-0.5 rounded">취소됨</span>}
                                     </td>
                                     <td className="p-3 text-center">
-                                      {tx.status === 'pending' && onApprovePointCharge ? (
-                                        <button
-                                          onClick={() => onApprovePointCharge(tx.id)}
-                                          className="gold-btn py-1.5 px-3 text-[11px] font-bold rounded-lg shadow-sm"
-                                        >
-                                          입금확인 & 승인
-                                        </button>
-                                      ) : (
-                                        <span className="text-[10px] text-[#8b95a1]">완료됨</span>
-                                      )}
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        {tx.status === 'pending' && (
+                                          <>
+                                            {onRejectPointCharge && (
+                                              <button
+                                                type="button"
+                                                onClick={async () => {
+                                                  if (await showAppConfirm({ title: '충전 신청 취소/반려', message: `'${tx.userName}' 회원님의 ${tx.amount.toLocaleString()}P 충전 신청을 취소(반려)하시겠습니까?`, tone: 'warning' })) {
+                                                    onRejectPointCharge(tx.id, '관리자 미입금 취소');
+                                                  }
+                                                }}
+                                                className="text-[11px] font-bold text-[#e93d3d] border border-[#e93d3d]/30 bg-[#e93d3d]/5 hover:bg-[#e93d3d]/15 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer whitespace-nowrap"
+                                              >
+                                                신청 취소
+                                              </button>
+                                            )}
+                                            {onApprovePointCharge && (
+                                              <button
+                                                onClick={() => onApprovePointCharge(tx.id)}
+                                                className="gold-btn py-1.5 px-3 text-[11px] font-bold rounded-lg shadow-sm cursor-pointer whitespace-nowrap"
+                                              >
+                                                입금확인 & 승인
+                                              </button>
+                                            )}
+                                          </>
+                                        )}
+                                        {tx.status === 'completed' && (
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] text-[#28a745] font-bold">완료됨</span>
+                                            {onRejectPointCharge && (
+                                              <button
+                                                type="button"
+                                                onClick={async () => {
+                                                  if (await showAppConfirm({ title: '승인 취소 (포인트 회수)', message: `'${tx.userName}' 회원님에게 지급된 ${tx.amount.toLocaleString()}P를 회수하고 충전 승인을 취소하시겠습니까?`, tone: 'warning' })) {
+                                                    onRejectPointCharge(tx.id, '관리자 승인 후 취소/포인트 회수');
+                                                  }
+                                                }}
+                                                className="text-[10px] font-bold text-[#8b95a1] hover:text-[#e93d3d] border border-[#e5e8eb] hover:border-[#e93d3d]/40 bg-white py-0.5 px-1.5 rounded transition-all cursor-pointer"
+                                                title="충전 승인을 취소하고 포인트를 회수합니다."
+                                              >
+                                                취소(회수)
+                                              </button>
+                                            )}
+                                          </div>
+                                        )}
+                                        {tx.status === 'cancelled' && (
+                                          <span className="text-[10px] text-[#8b95a1]">취소 완료</span>
+                                        )}
+                                      </div>
                                     </td>
                                   </tr>
                                 ))
