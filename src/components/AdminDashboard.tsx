@@ -735,7 +735,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* 탭 콘텐츠 영역 */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col space-y-6 min-h-0">
         {/* TAB 1: 룸 및 예약 관리 */}
         {activeTab === 'rooms_reservations' && (
           <div className="space-y-5">
@@ -1096,9 +1096,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 {/* TAB 3: 포인트 충전 승인 & 지점 간 이전 관제 */}
         {activeTab === 'point_management' && (
-          <div className="space-y-6">
+          <div className="flex-1 flex flex-col min-h-[calc(100vh-140px)] space-y-6">
             {/* 1. 최상단: 포인트 충전 승인 & 지점 간 이전 관제 (가장 중요한 핵심 승인 업무) */}
-            <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm space-y-4">
+            <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm flex-1 flex flex-col space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
                   <h3 className="text-base font-bold text-[#191f28] flex items-center gap-2">
@@ -1151,7 +1151,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <span className="text-[11px] text-[#8b95a1]">승인 시 출발 지점 포인트가 차감되고 도착 지점으로 즉시 적립됩니다.</span>
                   </div>
 
-                  <div className="overflow-x-auto border border-[#e5e8eb] rounded-xl">
+                  <div className="overflow-x-auto border border-[#e5e8eb] rounded-xl shadow-xs flex-1 bg-white min-h-[400px]">
                     <table className="w-full text-left text-xs min-w-[650px]">
                       <thead className="bg-[#f8f9fc] border-b border-[#e5e8eb] text-[#191f28]">
                         <tr>
@@ -1241,7 +1241,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <span className="text-[11px]">환불 승인 시 100% 전액 입금 또는 10% 수수료 공제(90% 입금)를 선택하여 송금 처리합니다.</span>
                         </div>
 
-                        <div className="overflow-x-auto border border-[#e5e8eb] rounded-xl">
+                        <div className="overflow-x-auto border border-[#e5e8eb] rounded-xl shadow-xs flex-1 bg-white min-h-[400px]">
                           <table className="w-full text-left text-xs min-w-[650px]">
                             <thead className="bg-[#f8f9fc] border-b border-[#e5e8eb] text-[#191f28]">
                               <tr>
@@ -1321,7 +1321,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
 
                         {/* 📋 무통장 입금 현황 테이블 리스트 단일 표출 */}
-                        <div className="overflow-x-auto border border-[#e5e8eb] rounded-xl shadow-xs">
+                        <div className="overflow-x-auto border border-[#e5e8eb] rounded-xl shadow-xs flex-1 bg-white min-h-[400px]">
                           <table className="w-full text-left text-xs min-w-[650px]">
                             <thead className="bg-[#f8f9fc] border-b border-[#e5e8eb] text-[#191f28]">
                               <tr>
@@ -1427,8 +1427,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* TAB 4: 📋 포인트 사용/차감 내역 (독립 검색 & 상세 필터 지원 메뉴) */}
         {activeTab === 'point_usage_history' && (
-          <div className="space-y-6">
-            <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm space-y-5">
+          <div className="flex-1 flex flex-col min-h-[calc(100vh-140px)] space-y-6">
+            <div className="bg-white border border-[#e5e8eb] p-5 rounded-2xl shadow-sm flex-1 flex flex-col space-y-5">
               {/* 헤더 타이틀 */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-[#e5e8eb]">
                 <div>
